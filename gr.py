@@ -29,7 +29,7 @@ class BlueExcept(Exception):
 
 def system(args):
   rr = subprocess.check_output(args, shell=True).decode("UTF-8")
-  rr = rr.strip('\n')
+  rr = rr.strip(' \r\n')
   return rr
 
 def gitRev(branch):
@@ -79,11 +79,11 @@ class Gr:
 		path = repo["path"]
 		
 		if not os.path.isdir(path):
-			raise Exception("%s -> doesn't exist"  % (name))
+			raise Exception("%s(%s) -> doesn't exist"  % (name, path))
 
-		self.log(2, "\nChange to %s(%s)..." % (name, path))
 		os.chdir(path)
-		return True
+		ss = "path:%s" % (path)
+		return ss
 		
 	def checkFastForward(self, br1, br2):
 		commonRev = system("git merge-base %s %s" % (br1, br2))
@@ -102,12 +102,12 @@ class Gr:
 				
 		return lst2
 		
-	def checkSameWith(self, branchName, remoteBranch):
+	def checkSameWith(self, name, branchName, remoteBranch):
 		rev = gitRev(branchName)
 		rev2 = gitRev("remotes/"+remoteBranch)
 		isSame = rev == rev2
 		if isSame:
-			self.log2(Color.blue, branchName, "%s is same to %s"  % (branchName, remoteBranch))
+			self.log2(Color.blue, name, "%s is same to %s"  % (branchName, remoteBranch))
 		else:
 			commonRev = system("git merge-base %s %s" % (branchName, remoteBranch))
 			print("common - %s" % commonRev)
