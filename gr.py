@@ -12,16 +12,13 @@ from enum import Enum
 
 
 '''
-~/bin/ipc
+$cat ~/bin/ipc
 
 #!/bin/bash
-cd ~/ipc-tool/bin/
-~/gr/gr.py ipc $1 $2 $3
+~/gr/gr.py ~/ipc-tool/bin/ipc.py $1 $2 $3
 
 
 '''
-
-allComponent = [ 'ipc-tool', 'ipc-linux', 'ipc-sdk-s2', 'ipc-sdk-s2l', 'ipc-bin' ] 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -178,11 +175,14 @@ gr = Gr()
 def run(config):
 	print("config file: %s" % config)
 	
-	cur = os.getcwd()
-	print("current path: %s" % cur)
+	#cur = os.getcwd()
+	cur = os.path.dirname(config)
+	name = os.path.basename(config)
+	print("current path: %s - %s" % (cur, name))
 	sys.path.append(cur)
+	name = os.path.splitext(name)[0]
 	
-	op = __import__(config)
+	op = __import__(name)
 	gr.repoList = op.repoList	
 
 	pass
