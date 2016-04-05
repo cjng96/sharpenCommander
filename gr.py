@@ -110,12 +110,12 @@ class Gr:
 			self.log2(Color.blue, name, "%s is same to %s"  % (branchName, remoteBranch))
 		else:
 			commonRev = system("git merge-base %s %s" % (branchName, remoteBranch))
-			print("common - %s" % commonRev)
+			#print("common - %s" % commonRev)
 			if commonRev[:7] == rev2:
 				# 오히려 앞선경우다. True로 친다.
 				gap = system("git rev-list %s ^%s --count" % (branchName, remoteBranch))
 				gap = int(gap)
-				self.log2(Color.red, branchName, "Your local branch is forward than %s[%d commits]" % (remoteBranch, gap))
+				self.log2(Color.red, name, "Your local branch(%s) is forward than %s[%d commits]" % (branchName, remoteBranch, gap))
 				
 				# print commit log
 				ss = system("git log --oneline --graph --all --decorate --abbrev-commit %s..%s" % (remoteBranch, branchName))
@@ -123,7 +123,7 @@ class Gr:
 				
 				return True
 		
-			self.log2(Color.red, branchName, "\t%s:%s - origin/master:%s -->> Different" % (branchName, rev, rev2))
+			self.log2(Color.red, name, "\t%s:%s - origin/master:%s -->> Different" % (branchName, rev, rev2))
 			
 		return isSame
 
