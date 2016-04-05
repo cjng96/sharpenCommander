@@ -128,43 +128,53 @@ class Gr:
 		return isSame
 
 	def statusComponent(self, name):
-		if not self.changePath(name):
-			return 
-
+		path = self.changePath(name)
+		
 		branchName = system('git rev-parse --abbrev-ref HEAD')
 		originBranch = 'origin/master'
 		
-		isSame = self.checkSameWith(branchName, originBranch)
+		isSame = self.checkSameWith(name, branchName, originBranch)
 		if isSame:
+			# check staged file and untracked file
+			ss = system("git status -s")
+			if ss != "":
+				print(ss)
 			return
 		else:
 			diffList = self.checkFastForward(branchName, originBranch)
 			if len(diffList) == 0:
-				self.log2(Color.blue, name, "Be able to fast-forward...")
+				self.log2(Color.blue, name, "Be able to fast-forward... - %s" % path)
 			else:
-				self.log2(Color.red, name, "NOT be able to fast forward")
+				self.log2(Color.red, name, "NOT be able to fast forward - %s" % path)
 			
 			#ss = system("git st")
 			#print(ss)
 			
 	def mergeSafe(self, name):
-		if not self.changePath(name):
-			return 
+		path = self.changePath(name)
 
 		branchName = system('git rev-parse --abbrev-ref HEAD')
 		originBranch = 'origin/master'
 		
-		isSame = self.checkSameWith(branchName, originBranch)
+		isSame = self.checkSameWith(name, branchName, originBranch)
 		if isSame:
 			return
 	
 		diffList = self.checkFastForward(branchName, originBranch)
 		if len(diffList) != 0:
-			self.log2(Color.red, name, "NOT be able to fast forward")
+			self.log2(Color.red, name, "NOT be able to fast forward - %s" % path)
 		else:			
-			self.log2(Color.blue, name, "merge with %s" % originBranch)
+			self.log2(Color.blue, name, "merge with %s - %s" % (originBranch, path))
 			ss = system("git merge %s" % originBranch)
 			print(ss)
+            
+            
+            
+	def fetch(self, name):
+		path = gr.changePath(name)
+		self.log2(Color.blue, name, "fetch --prune - %s" % path)
+		system("git fetch --prune")
+
 
 gr = Gr()
 
@@ -195,12 +205,12 @@ def cmdStatus(component):
 		gr.statusComponent(comp)
 
 @run.command('fetch', help="fetch all component with prune option")
-def cmdFetch():
+@click.pass_context
+def cmdFetch(ctx):
 	for comp in gr.repoAllName():
-		if not gr.changePath(comp):
-			continue
-
-	system("git fetch --prune")
+		gr.fetch(comp)
+	gr.log(2, "\nautomatic status...")	
+	ctx.invoke(cmdStatus, component="")
 
 @run.command('merge', help="merge all componet that can be fast-forward merge")
 def cmdMerge():
