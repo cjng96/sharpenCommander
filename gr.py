@@ -183,7 +183,7 @@ class Gr:
 gr = Gr()
 
 
-@click.group(context_settings=CONTEXT_SETTINGS)
+@click.group(context_settings=CONTEXT_SETTINGS, chain=True)
 @click.version_option(version='1.0.0')
 #@click.argument('config')
 @click.option('--config')
