@@ -123,7 +123,7 @@ class Gr:
 				
 				return True
 		
-			self.log2(Color.red, name, "\t%s:%s - origin/master:%s -->> Different" % (branchName, rev, rev2))
+			self.log2(Color.red, name, "%s(%s) - origin/master(%s) -->> Different" % (branchName, rev, rev2))
 			
 		return isSame
 
