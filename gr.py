@@ -194,6 +194,8 @@ def run(config):
 	
 	op = __import__(name)
 	gr.repoList = op.repoList	
+	for repo in gr.repoList:
+		repo["path"] = os.path.expanduser(repo["path"])
 
 	pass
 
