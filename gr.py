@@ -197,7 +197,7 @@ def run(config, verbose):
 	cur = os.path.dirname(config)
 	name = os.path.basename(config)
 	cur = os.path.expanduser(cur)
-	print("current path: %s - %s" % (cur, name))
+	#print("current path: %s - %s" % (cur, name))
 	sys.path.append(cur)
 	name = os.path.splitext(name)[0]
 	
