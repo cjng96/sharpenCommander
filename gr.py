@@ -28,15 +28,17 @@ class BlueExcept(Exception):
 		
 
 def system(args):
-  rr = subprocess.check_output(args, shell=True).decode("UTF-8")
-  rr = rr.strip(' \r\n')
-  return rr
+	if gr.isPrintSystem:
+		print("system command - %s" % args)
+	rr = subprocess.check_output(args, shell=True).decode("UTF-8")
+	rr = rr.strip(' \r\n')
+	return rr
 
 def gitRev(branch):
-  ss = system("git br -va")
-  m = re.search(r'^[*]?\s+%s\s+(\w+)' % branch, ss, re.MULTILINE)
-  rev = m.group(1)
-  return rev
+	ss = system("git br -va")
+	m = re.search(r'^[*]?\s+%s\s+(\w+)' % branch, ss, re.MULTILINE)
+	rev = m.group(1)
+	return rev
 		
 Color = Enum('color', 'blue red')
 
@@ -50,6 +52,7 @@ class Ansi:
 class Gr:
 	def __init__(self):
 		self.repoList = dict(name="test", path="")
+		self.isPrintSystem = False
 		
 	def repoAllName(self):
 		return [repo["name"] for repo in self.repoList]
@@ -181,13 +184,18 @@ gr = Gr()
 
 @click.group(context_settings=CONTEXT_SETTINGS)
 @click.version_option(version='1.0.0')
-@click.argument('config')
-def run(config):
+#@click.argument('config')
+@click.option('--config')
+@click.option('--verbose', type=int, default=0)
+def run(config, verbose):
 	print("config file: %s" % config)
+	if verbose > 0:
+		gr.isPrintSystem = True
 	
 	#cur = os.getcwd()
 	cur = os.path.dirname(config)
 	name = os.path.basename(config)
+	cur = os.path.expanduser(cur)
 	print("current path: %s - %s" % (cur, name))
 	sys.path.append(cur)
 	name = os.path.splitext(name)[0]
