@@ -121,7 +121,8 @@ class Gr:
 				self.log2(Color.red, name, "Your local branch(%s) is forward than %s[%d commits]" % (branchName, remoteBranch, gap))
 				
 				# print commit log
-				ss = system("git log --oneline --graph --all --decorate --abbrev-commit %s..%s" % (remoteBranch, branchName))
+				#ss = system("git log --oneline --graph --all --decorate --abbrev-commit %s..%s" % (remoteBranch, branchName))
+				ss = system("git log --oneline --graph --decorate --abbrev-commit %s..%s" % (remoteBranch, branchName))
 				print(ss)
 				
 				return True
