@@ -220,8 +220,9 @@ def cmdStatus(component):
 def cmdFetch(ctx):
 	for comp in gr.repoAllName():
 		gr.fetch(comp)
-	gr.log(2, "\nautomatic status...")	
-	ctx.invoke(cmdStatus, component="")
+	# we support command chaning
+	#gr.log(2, "\nautomatic status...")	
+	#ctx.invoke(cmdStatus, component="")
 
 @run.command('merge', help="merge all componet that can be fast-forward merge")
 def cmdMerge():

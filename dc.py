@@ -85,7 +85,7 @@ class Global:
 		print(ss)
 		
 		
-		target = input("\nInput remote branch name you push to : ")
+		target = input("\nInput remote branch name you push to: ")
 		if target == "":
 			raise ExcFail("Push is canceled")
 			
