@@ -81,11 +81,11 @@ class Global:
 
 		print("There are %d commits to push" % gap)
 	
-		ss = system("git log --oneline --graph --decorate --abbrev-commit %s..%s" % (remoteBranch, currentBranch))
+		ss = system("git log --oneline --graph --decorate --abbrev-commit %s^..%s" % (remoteBranch, currentBranch))
 		print(ss)
 		
 		
-		target = input("\nInput remote branch name you push to :")
+		target = input("\nInput remote branch name you push to : ")
 		if target == "":
 			raise ExcFail("Push is canceled")
 			

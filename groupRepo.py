@@ -122,7 +122,7 @@ class Gr:
 				
 				# print commit log
 				#ss = system("git log --oneline --graph --all --decorate --abbrev-commit %s..%s" % (remoteBranch, branchName))
-				ss = system("git log --oneline --graph --decorate --abbrev-commit %s..%s" % (remoteBranch, branchName))
+				ss = system("git log --oneline --graph --decorate --abbrev-commit %s^..%s" % (remoteBranch, branchName))
 				print(ss)
 				
 				return True
