@@ -46,6 +46,11 @@ class Global:
 g = Global()
 
 def run():
+	try:
+		os.remove("/tmp/cmdDevTool.path")
+	except OSError:
+		pass
+		
 	pp = os.path.expanduser("~/.devcmd")
 	if not os.path.isdir(pp):
 		print("No .devcmd folder. generate it...")
