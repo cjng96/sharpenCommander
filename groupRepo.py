@@ -194,7 +194,7 @@ class Gr:
 			self.log2(Color.red, name, "NOT be able to fast forward - %s" % path)
 		else:			
 			self.log2(Color.blue, name, "merge with %s - %s" % (remoteBranch, path))
-			ss = system("git merge %s" % remoteBranch)
+			ss = system("git rebase %s" % remoteBranch)
 			print(ss)
             
             
