@@ -34,11 +34,29 @@ def system(args):
 	rr = rr.strip(' \r\n')
 	return rr
 
+def systemSafe(args):
+	if gr.isPrintSystem:
+		print("system command - %s" % args)
+	status,output = subprocess.getstatusoutput(args)
+	#rr = output.decode("UTF-8")
+	rr = output
+	rr = rr.strip(' \r\n')
+	return rr
+
 def gitRev(branch):
 	ss = system("git branch -va")
 	m = re.search(r'^[*]?\s+%s\s+(\w+)' % branch, ss, re.MULTILINE)
 	rev = m.group(1)
 	return rev
+
+def gitGetCurrentBranch():
+	return system("git rev-parse --abbrev-ref HEAD")
+
+def gitGetTrackingBranch():
+	try:
+		return system("git rev-parse --abbrev-ref --symbolic-full-name @{u}")
+	except subprocess.CalledProcessError:
+		return None
 		
 Color = Enum('color', 'blue red')
 
@@ -131,21 +149,25 @@ class Gr:
 			
 		return isSame
 
+
 	def statusComponent(self, name):
 		path = self.changePath(name)
 		
-		branchName = system('git rev-parse --abbrev-ref HEAD')
-		originBranch = 'origin/master'
+		branchName = gitGetCurrentBranch()
+		remoteBranch = gitGetTrackingBranch()
+		if remoteBranch == None:
+			self.log2(Color.red, name, "%s DONT'T HAVE TRACKING branch" % branchName)
+			return
 		
-		isSame = self.checkSameWith(name, branchName, originBranch)
+
+		isSame = self.checkSameWith(name, branchName, remoteBranch)
 		if isSame:
 			# check staged file and untracked file
 			ss = system("git status -s")
 			if ss != "":
 				print(ss)
-			return
 		else:
-			diffList = self.checkFastForward(branchName, originBranch)
+			diffList = self.checkFastForward(branchName, remoteBranch)
 			if len(diffList) == 0:
 				self.log2(Color.blue, name, "Be able to fast-forward... - %s" % path)
 			else:
@@ -157,19 +179,22 @@ class Gr:
 	def mergeSafe(self, name):
 		path = self.changePath(name)
 
-		branchName = system('git rev-parse --abbrev-ref HEAD')
-		originBranch = 'origin/master'
+		branchName = gitGetCurrentBranch()
+		remoteBranch = gitGetTrackingBranch()
+		if remoteBranch == None:
+			self.log2(Color.red, name, "%s DONT'T HAVE TRACKING branch" % branchName)
+			return
 		
-		isSame = self.checkSameWith(name, branchName, originBranch)
+		isSame = self.checkSameWith(name, branchName, remoteBranch)
 		if isSame:
 			return
 	
-		diffList = self.checkFastForward(branchName, originBranch)
+		diffList = self.checkFastForward(branchName, remoteBranch)
 		if len(diffList) != 0:
 			self.log2(Color.red, name, "NOT be able to fast forward - %s" % path)
 		else:			
-			self.log2(Color.blue, name, "merge with %s - %s" % (originBranch, path))
-			ss = system("git merge %s" % originBranch)
+			self.log2(Color.blue, name, "merge with %s - %s" % (remoteBranch, path))
+			ss = system("git merge %s" % remoteBranch)
 			print(ss)
             
             
