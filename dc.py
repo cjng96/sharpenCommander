@@ -42,6 +42,31 @@ def system(args):
 	rr = rr.strip(' \r\n')
 	return rr		
 
+def systemSafe(args):
+        if gr.isPrintSystem:
+                print("system command - %s" % args)
+        status,output = subprocess.getstatusoutput(args)
+        #rr = output.decode("UTF-8")
+        rr = output
+        rr = rr.strip(' \r\n')
+        return rr
+
+def gitRev(branch):
+        ss = system("git branch -va")
+        m = re.search(r'^[*]?\s+%s\s+(\w+)' % branch, ss, re.MULTILINE)
+        rev = m.group(1)
+        return rev
+
+def gitGetCurrentBranch():
+        return system("git rev-parse --abbrev-ref HEAD")
+
+def gitGetTrackingBranch():
+        try:
+                return system("git rev-parse --abbrev-ref --symbolic-full-name @{u}")
+        except subprocess.CalledProcessError:
+                return None
+
+
 import os, sys
 
 class Global:
@@ -70,26 +95,33 @@ class Global:
 		for pp in self.lstPath:
 			print(pp)
 
-		
-	def gitPush(self):
-		currentBranch = system("git rev-parse --abbrev-ref HEAD")
-		remoteBranch = "origin/master"
-		print("currentBranch:%s, remote:%s" % (currentBranch, remoteBranch))
-
+	def gitPrintStatus(self):
 		ss = system("git status -s")
 		print("\n"+ss+"\n")
 
-		gap = system("git rev-list %s ^%s --count" % (currentBranch, remoteBranch))
-		gap = int(gap)
-		if gap == 0:
-			raise ExcFail("There is no commit to push")
 
-		print("There are %d commits to push" % gap)
-	
-		ss = system("git log --oneline --graph --decorate --abbrev-commit %s^..%s" % (remoteBranch, currentBranch))
-		print(ss)
-		
-		
+	def gitPush(self):
+		currentBranch = gitGetCurrentBranch()
+		remoteBranch = gitGetTrackingBranch()
+		if remoteBranch == None:
+			print("currentBranch:%s DONT have tracking branch")
+			# todo: print latest 10 commits
+
+		else:
+			print("currentBranch:%s, remote:%s" % (currentBranch, remoteBranch))
+
+			gap = system("git rev-list %s ^%s --count" % (currentBranch, remoteBranch))
+			gap = int(gap)
+			if gap == 0:
+				self.gitPrintStatus()
+				raise ExcFail("There is no commit to push")
+
+			print("There are %d commits to push" % gap)
+			ss = system("git log --oneline --graph --decorate --abbrev-commit %s^..%s" % (remoteBranch, currentBranch))
+			print(ss)
+
+		self.gitPrintStatus()
+
 		target = input("\nInput remote branch name you push to: ")
 		if target == "":
 			raise ExcFail("Push is canceled")
