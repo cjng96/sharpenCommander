@@ -35,7 +35,7 @@ def system(args):
 	return rr
 
 def gitRev(branch):
-	ss = system("git br -va")
+	ss = system("git branch -va")
 	m = re.search(r'^[*]?\s+%s\s+(\w+)' % branch, ss, re.MULTILINE)
 	rev = m.group(1)
 	return rev
