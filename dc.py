@@ -108,13 +108,13 @@ def run():
 		print("No .devcmd folder. generate it...")
 		os.mkdir(pp)
 		
-	if not os.path.isfile(os.path.join(pp, "devPath.py")):
+	if not os.path.isfile(os.path.join(pp, "path.py")):
 		raise ExcFail("No path.py file in ~/.devcmd")
 
 		
 	sys.path.append(pp)
-	m = __import__("devPath")
-	g.lstPath = m.G_PATH_LIST
+	m = __import__("path")
+	g.lstPath = m.pathList
 	
 	if len(sys.argv) == 1:
 		target = "~"

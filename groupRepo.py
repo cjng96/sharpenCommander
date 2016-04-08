@@ -214,6 +214,9 @@ gr = Gr()
 @click.option('--config')
 @click.option('--verbose', type=int, default=0)
 def run(config, verbose):
+	if config == None:
+		config = "~/.devcmd/path.py"
+
 	print("config file: %s" % config)
 	if verbose > 0:
 		gr.isPrintSystem = True
@@ -227,7 +230,7 @@ def run(config, verbose):
 	name = os.path.splitext(name)[0]
 	
 	op = __import__(name)
-	gr.repoList = op.repoList	
+	gr.repoList = [repo for repo in op.pathList if "repo" in repo and repo["repo"] != 0]
 	for repo in gr.repoList:
 		repo["path"] = os.path.expanduser(repo["path"])
 
