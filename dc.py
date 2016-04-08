@@ -65,6 +65,11 @@ class Global:
 				return
 				
 		raise ExcFail("No that folder[%s]" % target)
+
+	def listPath(self):
+		for pp in self.lstPath:
+			print(pp)
+
 		
 	def gitPush(self):
 		currentBranch = system("git rev-parse --abbrev-ref HEAD")
@@ -123,6 +128,9 @@ def run():
 		
 	if target == "push":
 		g.gitPush()
+		return
+	elif target == "list":
+		g.listPath()
 		return
 		
 	#print("target - %s" % target)
