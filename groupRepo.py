@@ -236,6 +236,16 @@ def run(config, verbose):
 
 	pass
 
+@run.command('update', help='fetch + merge + status')
+@click.pass_context
+def cmdUpdate(ctx):
+	print("fetch.......")
+	ctx.invoke(cmdFetch)
+	print("\nmerge.......")
+	ctx.invoke(cmdMerge)
+	print("\nstatus......")
+	ctx.invoke(cmdStatus, component="")
+
 
 @run.command('st', help='status of all or indicated component')
 @click.argument('component', nargs=-1)
