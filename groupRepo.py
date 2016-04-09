@@ -73,7 +73,7 @@ class Gr:
 		self.isPrintSystem = False
 		
 	def repoAllName(self):
-		return [repo["name"] for repo in self.repoList]
+		return [repo["name"][0] for repo in self.repoList]
 		
 		
 	def log(self, lv, msg):
@@ -91,7 +91,7 @@ class Gr:
 
 	def getRepo(self, name):
 		for repo in self.repoList:
-			if repo["name"] == name:
+			if name in repo["name"]:
 				return repo
 		raise Exception("Can't find repo[name:%s]" % name)
 				
@@ -233,8 +233,9 @@ def run(config, verbose):
 	gr.repoList = [repo for repo in op.pathList if "repo" in repo and repo["repo"] != 0]
 	for repo in gr.repoList:
 		repo["path"] = os.path.expanduser(repo["path"])
-
-	pass
+		name = repo["name"]
+		if type(name) is str:
+			repo["name"] = [name]
 
 @run.command('update', help='fetch + merge + status')
 @click.pass_context
