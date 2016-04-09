@@ -164,6 +164,10 @@ def run():
 	elif target == "list":
 		g.listPath()
 		return
+	elif target == "config":
+		g.savePath("~/.devcmd")
+		return
+		
 		
 	#print("target - %s" % target)
 	g.cd(target)
