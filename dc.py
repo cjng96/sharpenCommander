@@ -85,7 +85,11 @@ class Global:
 			return
 	
 		for pp in self.lstPath:
-			if pp["name"] == target:
+			lst = pp["name"]
+			if type(lst) == str:
+				lst = [lst] 
+
+			if target.lower() in map(str.lower, lst):
 				self.savePath(pp["path"])
 				return
 				
