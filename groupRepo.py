@@ -28,7 +28,11 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 class BlueExcept(Exception):
 	def __init__(self, msg):
 		super(self, msg)
-		
+	
+class NoExistErr(Exception):
+	def __init__(self, path, msg):
+		self.path = path
+		super().__init__(msg)	
 
 		
 Color = Enum('color', 'blue red')
@@ -66,18 +70,21 @@ class Gr:
 			if name in repo["name"]:
 				return repo
 		raise Exception("Can't find repo[name:%s]" % name)
-				
-	def changePath(self, name):
+
+	def getRepoPath(self, name):
 		repo = self.getRepo(name)
 		path = repo["path"]
-		
+		return path
+				
+	def changePath(self, name):
+		path = self.getRepoPath(name)
 		if not os.path.isdir(path):
-			raise Exception("%s(%s) -> doesn't exist"  % (name, path))
+			raise NoExistErr(path, "%s(%s) -> doesn't exist"  % (name, path))
 
 		os.chdir(path)
 		ss = "path:%s" % (path)
 		return ss
-		
+
 				
 	def checkSameWith(self, name, branchName, remoteBranch):
 		rev = git.rev(branchName)
@@ -105,7 +112,11 @@ class Gr:
 			return True
 
 	def statusComponent(self, name):
-		path = self.changePath(name)
+		try:
+			path = self.changePath(name)
+		except NoExistErr as e:
+			self.log2(Color.red, name, "%s DOESN'T exist" % e.path)
+			return
 		
 		branchName = git.getCurrentBranch()
 		remoteBranch = git.getTrackingBranch()
