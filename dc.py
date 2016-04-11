@@ -131,6 +131,16 @@ class Global:
 		ss, status = systemSafe("git push origin %s:%s" % (currentBranch, target))
 		print(ss)
 		
+		if status != 0:
+			while True:
+				hr = input("\n\nPush failed. Do you want to push with force option?[y/N]: ").lower()
+				if hr == 'y':
+					ss = system("git push origin %s:%s -f" % (currentBranch, target))
+					print(ss)				
+					break
+				elif hr == 'n' or hr == '':
+					break
+		
 
 g = Global()
 
