@@ -96,7 +96,6 @@ class Global:
 			rev1 = git.rev(currentBranch)
 			rev2 = git.rev("remotes/"+remoteBranch)
 			revCommon = git.commonParentRev(currentBranch, remoteBranch)
-			print("v1 : %s, v2: %s, vc:%s" % (rev1, rev2, revCommon))
 			if rev2 == revCommon:
 				print("local branch is good situation")
 			else:
