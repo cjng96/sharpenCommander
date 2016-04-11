@@ -10,6 +10,9 @@ import re
 
 from enum import Enum
 
+import tool
+from tool import git, system, systemSafe
+
 
 '''
 $cat ~/bin/ipc
@@ -27,36 +30,6 @@ class BlueExcept(Exception):
 		super(self, msg)
 		
 
-def system(args):
-	if gr.isPrintSystem:
-		print("system command - %s" % args)
-	rr = subprocess.check_output(args, shell=True).decode("UTF-8")
-	rr = rr.strip(' \r\n')
-	return rr
-
-def systemSafe(args):
-	if gr.isPrintSystem:
-		print("system command - %s" % args)
-	status,output = subprocess.getstatusoutput(args)
-	#rr = output.decode("UTF-8")
-	rr = output
-	rr = rr.strip(' \r\n')
-	return rr
-
-def gitRev(branch):
-	ss = system("git branch -va")
-	m = re.search(r'^[*]?\s+%s\s+(\w+)' % branch, ss, re.MULTILINE)
-	rev = m.group(1)
-	return rev
-
-def gitGetCurrentBranch():
-	return system("git rev-parse --abbrev-ref HEAD")
-
-def gitGetTrackingBranch():
-	try:
-		return system("git rev-parse --abbrev-ref --symbolic-full-name @{u}")
-	except subprocess.CalledProcessError:
-		return None
 		
 Color = Enum('color', 'blue red')
 
@@ -70,7 +43,6 @@ class Ansi:
 class Gr:
 	def __init__(self):
 		self.repoList = dict(name="test", path="")
-		self.isPrintSystem = False
 		
 	def repoAllName(self):
 		return [repo["name"][0] for repo in self.repoList]
@@ -106,55 +78,37 @@ class Gr:
 		ss = "path:%s" % (path)
 		return ss
 		
-	def checkFastForward(self, br1, br2):
-		commonRev = system("git merge-base %s %s" % (br1, br2))
-		
-		br1Diff = system("git diff --name-only %s %s" % (commonRev, br1))
-		br2Diff = system("git diff --name-only %s %s" % (commonRev, br2))
-		
-		br1 = br1Diff.split()
-		br2 = br2Diff.split()
-		
-		# check same file
-		lst2 = []
-		for ss in br1:
-			if ss in br2:
-				lst2.append(ss)
 				
-		return lst2
-		
 	def checkSameWith(self, name, branchName, remoteBranch):
-		rev = gitRev(branchName)
-		rev2 = gitRev("remotes/"+remoteBranch)
+		rev = git.rev(branchName)
+		rev2 = git.rev("remotes/"+remoteBranch)
 		isSame = rev == rev2
 		if isSame:
 			self.log2(Color.blue, name, "%s is same to %s"  % (branchName, remoteBranch))
+			return True
 		else:
-			commonRev = system("git merge-base %s %s" % (branchName, remoteBranch))
+			commonRev = git.commonParent(branchName, remoteBranch)
 			#print("common - %s" % commonRev)
-			if commonRev[:7] == rev2:
-				# 오히려 앞선경우다. True로 친다.
-				gap = system("git rev-list %s ^%s --count" % (branchName, remoteBranch))
-				gap = int(gap)
-				self.log2(Color.red, name, "Your local branch(%s) is forward than %s[%d commits]" % (branchName, remoteBranch, gap))
-				
-				# print commit log
-				#ss = system("git log --oneline --graph --all --decorate --abbrev-commit %s..%s" % (remoteBranch, branchName))
-				ss = system("git log --oneline --graph --decorate --abbrev-commit %s^..%s" % (remoteBranch, branchName))
-				print(ss)
-				
-				return True
+			if commonRev != rev2:
+				self.log2(Color.red, name, "%s(%s) - origin/master(%s) -->> Different" % (branchName, rev, rev2))
+				return False
 		
-			self.log2(Color.red, name, "%s(%s) - origin/master(%s) -->> Different" % (branchName, rev, rev2))
+			# 오히려 앞선경우다. True로 친다.
+			gap = git.commitGap(branchName, remoteBracnh)
+			self.log2(Color.red, name, "Your local branch(%s) is forward than %s[%d commits]" % (branchName, remoteBranch, gap))
 			
-		return isSame
-
+			# print commit log
+			#ss = system("git log --oneline --graph --all --decorate --abbrev-commit %s..%s" % (remoteBranch, branchName))
+			ss = git.commitLogBetween(branchName, remoteBranch)
+			print(ss)
+			
+			return True
 
 	def statusComponent(self, name):
 		path = self.changePath(name)
 		
-		branchName = gitGetCurrentBranch()
-		remoteBranch = gitGetTrackingBranch()
+		branchName = git.getCurrentBranch()
+		remoteBranch = git.getTrackingBranch()
 		if remoteBranch == None:
 			self.log2(Color.red, name, "%s DONT'T HAVE TRACKING branch" % branchName)
 			return
@@ -167,7 +121,7 @@ class Gr:
 			if ss != "":
 				print(ss)
 		else:
-			diffList = self.checkFastForward(branchName, remoteBranch)
+			diffList = git.checkFastForward(branchName, remoteBranch)
 			if len(diffList) == 0:
 				self.log2(Color.blue, name, "Be able to fast-forward... - %s" % path)
 			else:
@@ -179,8 +133,8 @@ class Gr:
 	def mergeSafe(self, name):
 		path = self.changePath(name)
 
-		branchName = gitGetCurrentBranch()
-		remoteBranch = gitGetTrackingBranch()
+		branchName = git.getCurrentBranch()
+		remoteBranch = git.getTrackingBranch()
 		if remoteBranch == None:
 			self.log2(Color.red, name, "%s DONT'T HAVE TRACKING branch" % branchName)
 			return
@@ -189,7 +143,7 @@ class Gr:
 		if isSame:
 			return
 	
-		diffList = self.checkFastForward(branchName, remoteBranch)
+		diffList = git.checkFastForward(branchName, remoteBranch)
 		if len(diffList) != 0:
 			self.log2(Color.red, name, "NOT be able to fast forward - %s" % path)
 		else:			
@@ -219,7 +173,7 @@ def run(config, verbose):
 
 	print("config file: %s" % config)
 	if verbose > 0:
-		gr.isPrintSystem = True
+		tool.g.isPrintSystem = True
 	
 	#cur = os.getcwd()
 	cur = os.path.dirname(config)

@@ -2,6 +2,11 @@
 
 import subprocess
 
+import tool
+from tool import git, system, systemSafe
+
+
+
 '''
 dc - devCmd
 
@@ -27,45 +32,12 @@ dc - devCmd
  3) git push origin master:TARGET_BRANCH
  
  
-
 '''
 
 class ExcFail(Exception):
 	def __init__(self, msg):
 		super().__init__(msg)
 		
-
-def system(args):
-	if g.isPrintSystem:
-		print("system command - %s" % args)
-	rr = subprocess.check_output(args, shell=True).decode("UTF-8")
-	rr = rr.strip(' \r\n')
-	return rr		
-
-def systemSafe(args):
-        if gr.isPrintSystem:
-                print("system command - %s" % args)
-        status,output = subprocess.getstatusoutput(args)
-        #rr = output.decode("UTF-8")
-        rr = output
-        rr = rr.strip(' \r\n')
-        return rr
-
-def gitRev(branch):
-        ss = system("git branch -va")
-        m = re.search(r'^[*]?\s+%s\s+(\w+)' % branch, ss, re.MULTILINE)
-        rev = m.group(1)
-        return rev
-
-def gitGetCurrentBranch():
-        return system("git rev-parse --abbrev-ref HEAD")
-
-def gitGetTrackingBranch():
-        try:
-                return system("git rev-parse --abbrev-ref --symbolic-full-name @{u}")
-        except subprocess.CalledProcessError:
-                return None
-
 
 import os, sys
 
@@ -99,14 +71,10 @@ class Global:
 		for pp in self.lstPath:
 			print(pp)
 
-	def gitPrintStatus(self):
-		ss = system("git status -s")
-		print("\n"+ss+"\n")
-
 
 	def gitPush(self):
-		currentBranch = gitGetCurrentBranch()
-		remoteBranch = gitGetTrackingBranch()
+		currentBranch = git.getCurrentBranch()
+		remoteBranch = git.getTrackingBranch()
 		if remoteBranch == None:
 			print("currentBranch:%s DONT have tracking branch")
 			# todo: print latest 10 commits
@@ -114,26 +82,28 @@ class Global:
 		else:
 			print("currentBranch:%s, remote:%s" % (currentBranch, remoteBranch))
 
-			gap = system("git rev-list %s ^%s --count" % (currentBranch, remoteBranch))
-			gap = int(gap)
+			# push 할 커밋 내역 
+			gap = git.commitGap(currentBranch, remoteBranch)
 			if gap == 0:
-				self.gitPrintStatus()
+				git.printStatus()
 				raise ExcFail("There is no commit to push")
 
 			print("There are %d commits to push" % gap)
-			ss = system("git log --oneline --graph --decorate --abbrev-commit %s^..%s" % (remoteBranch, currentBranch))
+			ss = git.commitLogBetween(currentBranch, remoteBranch)
 			print(ss)
-
-		self.gitPrintStatus()
+			
+	
+		git.printStatus()
 
 		target = input("\nInput remote branch name you push to: ")
 		if target == "":
 			raise ExcFail("Push is canceled")
 			
 
-		# push it			
-		ss = system("git push origin %s:%s" % (currentBranch, target))
+		# push it	
+		ss, status = systemSafe("git push origin %s:%s" % (currentBranch, target))
 		print(ss)
+
 		
 
 g = Global()
@@ -163,6 +133,8 @@ def run():
 		target = sys.argv[1]
 		
 	if target == "push":
+		print("fetching first...")
+		git.fetch()
 		g.gitPush()
 		return
 	elif target == "list":
