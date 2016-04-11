@@ -35,4 +35,14 @@ vi .bashrc
 DEV_CMD_PATH=~/devCmdTool
 . $DEV_CMD_PATH/bash-script.sh
 
+mkdir ~/.devcmd
 
+** write your path.py file as follows
+
+pathList = [
+        dict(name="dev", path=os.path.join(g_root, "devCmdTool"), repo=1),
+        dict(name=["coCpp", "cpp"], path=os.path.join(g_root, "coCpp"), repo=1),
+        dict(name="")
+]
+
+  
