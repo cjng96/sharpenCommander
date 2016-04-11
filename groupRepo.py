@@ -142,7 +142,12 @@ class Gr:
 			#print(ss)
 			
 	def mergeSafe(self, name):
-		path = self.changePath(name)
+		try:
+			path = self.changePath(name)
+		except NoExistErr as e:
+			self.log2(Color.red, name, "%s DOESN'T exist" % e.path)
+			return
+
 
 		branchName = git.getCurrentBranch()
 		remoteBranch = git.getTrackingBranch()
@@ -165,7 +170,12 @@ class Gr:
             
             
 	def fetch(self, name):
-		path = gr.changePath(name)
+		try:
+			path = gr.changePath(name)
+		except NoExistErr as e:
+			self.log2(Color.red, name, "%s DOESN'T exist" % e.path)
+			return
+
 		self.log2(Color.blue, name, "fetch --prune - %s" % path)
 		system("git fetch --prune")
 
