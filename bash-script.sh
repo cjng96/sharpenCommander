@@ -1,6 +1,6 @@
 
 # DEV_CMD_PATH=~/devCmdTool
-# . DEV_CMD_PATH/bash-script.sh
+# . $DEV_CMD_PATH/bash-script.sh
 
 
 function dc()
