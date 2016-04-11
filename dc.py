@@ -92,7 +92,34 @@ class Global:
 			ss = git.commitLogBetween(currentBranch, remoteBranch)
 			print(ss)
 			
-	
+			# remoteBranch의 fast-forward인지 체크
+			rev1 = git.rev(currentBranch)
+			rev2 = git.rev("remotes/"+remoteBranch)
+			revCommon = git.commonParentRev(currentBranch, remoteBranch)
+			print("v1 : %s, v2: %s, vc:%s" % (rev1, rev2, revCommon))
+			if rev2 == revCommon:
+				print("local branch is good situation")
+			else:
+				diffList = git.checkFastForward(currentBranch, remoteBranch)
+				if len(diffList) == 0:
+					while True:
+						hr = input("\n\nyou can rebase local to remoteBranch. want? Y/N: ").lower()
+						if hr == 'y':
+							ss = git.rebase(remoteBranch)
+							# exe result?
+							print(ss)
+							break
+				else:
+					while True:
+						hr = input("\n\nit could be impossible to rebase onto remoteBranch. rebase/skip: ").lower()
+						if hr == 'rebase':
+							ss = git.rebase(remoteBranch)
+							print(ss)
+							break
+						elif hr == 'skip':
+							break
+							
+		
 		git.printStatus()
 
 		target = input("\nInput remote branch name you push to: ")
@@ -103,7 +130,6 @@ class Global:
 		# push it	
 		ss, status = systemSafe("git push origin %s:%s" % (currentBranch, target))
 		print(ss)
-
 		
 
 g = Global()
