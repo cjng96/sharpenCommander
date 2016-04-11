@@ -87,14 +87,14 @@ class Gr:
 			self.log2(Color.blue, name, "%s is same to %s"  % (branchName, remoteBranch))
 			return True
 		else:
-			commonRev = git.commonParent(branchName, remoteBranch)
+			commonRev = git.commonParentRev(branchName, remoteBranch)
 			#print("common - %s" % commonRev)
 			if commonRev != rev2:
 				self.log2(Color.red, name, "%s(%s) - origin/master(%s) -->> Different" % (branchName, rev, rev2))
 				return False
 		
 			# 오히려 앞선경우다. True로 친다.
-			gap = git.commitGap(branchName, remoteBracnh)
+			gap = git.commitGap(branchName, remoteBranch)
 			self.log2(Color.red, name, "Your local branch(%s) is forward than %s[%d commits]" % (branchName, remoteBranch, gap))
 			
 			# print commit log
