@@ -72,6 +72,18 @@ class Global:
 			print(pp)
 
 
+	def printCommitLogForPush(self, currentBranch, remoteBranch):
+		# push 할 커밋 내역 
+		gap = git.commitGap(currentBranch, remoteBranch)
+		if gap == 0:
+			git.printStatus()
+			raise ExcFail("There is no commit to push")
+
+		print("There are %d commits to push" % gap)
+		ss = git.commitLogBetween(currentBranch, remoteBranch)
+		print(ss)
+		
+
 	def gitPush(self):
 		currentBranch = git.getCurrentBranch()
 		remoteBranch = git.getTrackingBranch()
@@ -81,17 +93,9 @@ class Global:
 
 		else:
 			print("currentBranch:%s, remote:%s" % (currentBranch, remoteBranch))
-
-			# push 할 커밋 내역 
-			gap = git.commitGap(currentBranch, remoteBranch)
-			if gap == 0:
-				git.printStatus()
-				raise ExcFail("There is no commit to push")
-
-			print("There are %d commits to push" % gap)
-			ss = git.commitLogBetween(currentBranch, remoteBranch)
-			print(ss)
 			
+			self.printCommitLogForPush(currentBranch, remoteBranch)
+
 			# remoteBranch의 fast-forward인지 체크
 			rev1 = git.rev(currentBranch)
 			rev2 = git.rev("remotes/"+remoteBranch)
@@ -102,21 +106,26 @@ class Global:
 				diffList = git.checkFastForward(currentBranch, remoteBranch)
 				if len(diffList) == 0:
 					while True:
-						hr = input("\n\nyou can rebase local to remoteBranch. want? Y/N: ").lower()
+						hr = input("\n\n*** You can rebase local to remoteBranch. want? y/n: ").lower()
 						if hr == 'y':
 							ss = git.rebase(remoteBranch)
 							# exe result?
 							print(ss)
 							break
+						elif hr == "n":
+							break
 				else:
 					while True:
-						hr = input("\n\nit could be impossible to rebase onto remoteBranch. rebase/skip: ").lower()
+						hr = input("\n\n*** It could be impossible to rebase onto remoteBranch. rebase/skip: ").lower()
 						if hr == 'rebase':
 							ss = git.rebase(remoteBranch)
 							print(ss)
 							break
 						elif hr == 'skip':
 							break
+		
+				# print commit log again					
+				self.printCommitLogForPush(currentBranch, remoteBranch)
 							
 		
 		git.printStatus()
