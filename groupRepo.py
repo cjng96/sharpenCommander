@@ -159,6 +159,13 @@ class Gr:
 		if isSame:
 			return
 	
+		repo = self.getRepo(name)
+		if "type" in repo and repo["type"] == "bin":
+			self.log2(Color.blue, name, "merge with %s - %s - bin type" % (remoteBranch, path))
+			ss = system("git merge --ff-only %s" % remoteBranch)
+			print(ss)
+			return
+	
 		diffList = git.checkFastForward(branchName, remoteBranch)
 		if len(diffList) != 0:
 			self.log2(Color.red, name, "NOT be able to fast forward - %s" % path)
