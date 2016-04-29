@@ -111,12 +111,26 @@ class Gr:
 			
 			return True
 
+	def stashCheck(self, name):
+		uname = "###groupRepo###"
+		stashName = git.stashGetNameSafe(uname)
+		if stashName != None:
+			self.log2(Color.red, name, "YOU HAVE STASH ITEM. PROCESS IT FIRST")
+			return False
+
+		return True
+
+
 	def statusComponent(self, name):
 		try:
 			path = self.changePath(name)
 		except NoExistErr as e:
 			self.log2(Color.red, name, "%s DOESN'T exist" % e.path)
 			return
+
+		if not self.stashCheck(name):
+			return
+
 		
 		branchName = git.getCurrentBranch()
 		remoteBranch = git.getTrackingBranch()
@@ -148,6 +162,8 @@ class Gr:
 			self.log2(Color.red, name, "%s DOESN'T exist" % e.path)
 			return
 
+		if not self.stashCheck(name):
+			return
 
 		branchName = git.getCurrentBranch()
 		remoteBranch = git.getTrackingBranch()
@@ -162,7 +178,14 @@ class Gr:
 		repo = self.getRepo(name)
 		if "type" in repo and repo["type"] == "bin":
 			self.log2(Color.blue, name, "merge with %s - %s - bin type" % (remoteBranch, path))
-			ss = system("git merge --ff-only %s" % remoteBranch)
+		
+			uname = "###groupRepo###"	
+			ss = system("git stash save -u \"%s\"" % uname)
+			print(ss)
+			ss = system("git merge %s" % remoteBranch)
+			print(ss)
+			stashName = git.stashGetNameSafe(uname)
+			ss = system("git stash pop %s" % stashName)
 			print(ss)
 			return
 	

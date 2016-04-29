@@ -82,4 +82,18 @@ class git:
 		
 	def rebase(branch):
 		return system("git rebase %s" % branch)
+	
+	def stashGetNameSafe(name):
+		ss = system("git stash list")
+		print(ss)
+		m = re.search(r'^(stash@\{\d+\}):\s(\w|\s).+: %s$' % name, ss)
+		if not m:
+			return None
+
+		return m.group(1)
+	
+	def stashPop(name):
+		ss = system("git stash pop %s" % name)
+		print
+		
 		
