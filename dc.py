@@ -71,7 +71,6 @@ class Global:
 		for pp in self.lstPath:
 			print(pp)
 
-
 	def printCommitLogForPush(self, currentBranch, remoteBranch):
 		# push 할 커밋 내역 
 		gap = git.commitGap(currentBranch, remoteBranch)
@@ -148,6 +147,138 @@ class Global:
 					break
 				elif hr == 'n' or hr == '':
 					break
+
+
+import urwid
+import urwid.raw_display
+import urwid.web_display
+from urwid.signals import connect_signal
+
+class mButton(urwid.Button):
+	'''
+	Button without pre/post Text
+	'''
+	def __init__(self, label, on_press=None, user_data=None):
+		self._label = urwid.wimp.SelectableIcon(label, 0)
+		super(urwid.Button, self).__init__(self._label)
+		#urwid.widget.WidgetWrap.__init__(self, self._label)
+
+		# The old way of listening for a change was to pass the callback
+		# in to the constructor.  Just convert it to the new way:
+		if on_press:
+			connect_signal(self, 'click', on_press, user_data)
+
+		#self.set_label(label)
+
+class mListBox(urwid.ListBox):
+	def focusNext(self):
+		try: 
+			self.body.set_focus(self.body.get_next(self.body.get_focus()[1])[1])
+		except:
+			pass
+			
+	def focusPrevious(self):
+		try: 
+			self.body.set_focus(self.body.get_prev(self.body.get_focus()[1])[1])
+		except:
+			pass      
+
+	# TODO: scroll 
+	def scrollDown(self):
+		try: 
+			self.body.set_focus(self.body.get_next(self.body.get_focus()[1])[1])
+		except:
+			pass
+			
+	def scrollUp(self):
+		try: 
+			self.body.set_focus(self.body.get_prev(self.body.get_focus()[1])[1])
+		except:
+			pass      
+
+class Urwid:
+	def genEdit(label, text, fn):
+		w = urwid.Edit(label, text)
+		urwid.connect_signal(w, 'change', fn)
+		fn(w, text)
+		w = urwid.AttrWrap(w, 'edit')
+		return w
+		
+	def makeTextList(lstStr):
+		outList = []
+		for line in lstStr:
+			outList.append(urwid.Text(line))
+		return outList
+		
+	def makeBtnList(lstStr, onClick):
+		outList = []
+		for line in lstStr:
+			btn = mButton(line, onClick)
+			outList.append(btn)
+		return outList
+
+def unhandled(key):
+	if key == 'f8':
+		raise urwid.ExitMainLoop()
+	elif key == 'j':
+		g.widgetContent.scrollDown()
+	elif key == 'k':
+		g.widgetContent.scrollUp()
+
+def onFileSelected(btn):
+	label = btn.get_label()
+	fileName = label[2:].strip()
+
+	g.headerText.set_text("file - " + label)
+	
+	# display
+	if label.startswith("?? "):
+		ss = open(fileName, "rb").read().decode()
+	else:
+		ss = system("git diff %s" % fileName)
+	ss = ss.replace("\t", "    ")
+		
+	del g.widgetContent.body[:]
+	g.widgetContent.body += Urwid.makeTextList(ss.split("\n"))
+	g.widgetContent.set_focus(0)
+	
+
+def urwidGitStatus():
+	#lst = system("git -c color.status=always status")
+	lst = system("git status -s")
+	lstContent = ["test"]
+
+	fileList = mListBox(urwid.SimpleListWalker(Urwid.makeBtnList(lst.split("\n"), onFileSelected)))
+	g.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(lstContent)))
+	g.widgetMain = urwid.Pile([(10, urwid.AttrMap(fileList, 'body')), g.widgetContent])
+	
+	g.headerText = urwid.Text("header...")
+	frame = urwid.Frame(g.widgetMain, header=g.headerText)
+		
+
+	palette = [
+		('body','black','light gray', 'standout'),
+		('reverse','light gray','black'),
+		('header','white','dark red', 'bold'),
+		('important','dark blue','light gray',('standout','underline')),
+		('editfc','white', 'dark blue', 'bold'),
+		('editbx','light gray', 'dark blue'),
+		('editcp','black','light gray', 'standout'),
+		('bright','dark gray','light gray', ('bold','standout')),
+		('buttn','black','dark cyan'),
+		('buttnf','white','dark blue','bold'),
+		]
+		
+	# use appropriate Screen class
+	#if urwid.web_display.is_web_request():
+	#	screen = urwid.web_display.Screen()
+	#else:
+	#	screen = urwid.raw_display.Screen()
+	screen = urwid.raw_display.Screen()
+
+	urwid.MainLoop(frame, palette, screen,
+		unhandled_input=unhandled).run()
+		
 		
 
 g = Global()
@@ -181,6 +312,8 @@ def run():
 		git.fetch()
 		g.gitPush()
 		return
+	elif target == "st":
+		urwidGitStatus()
 	elif target == "list":
 		g.listPath()
 		return
