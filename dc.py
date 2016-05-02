@@ -1,3 +1,4 @@
+# coding: utf-8
 #!/usr/bin/env python3
 
 import subprocess
@@ -72,7 +73,7 @@ class Global:
 			print(pp)
 
 	def printCommitLogForPush(self, currentBranch, remoteBranch):
-		# push 할 커밋 내역 
+		# commit log to push
 		gap = git.commitGap(currentBranch, remoteBranch)
 		if gap == 0:
 			git.printStatus()
@@ -95,7 +96,7 @@ class Global:
 			
 			self.printCommitLogForPush(currentBranch, remoteBranch)
 
-			# remoteBranch의 fast-forward인지 체크
+			# check if fast-forward of remoteBranch
 			rev1 = git.rev(currentBranch)
 			rev2 = git.rev("remotes/"+remoteBranch)
 			revCommon = git.commonParentRev(currentBranch, remoteBranch)
@@ -197,6 +198,26 @@ class mListBox(urwid.ListBox):
 			pass      
 
 class Urwid:
+
+	def terminal2markup(ss):
+		#source = "\033[31mFOO\033[0mBAR"
+		table = {"[1":'bluefg', "[31":'bluefg', "[32":'bluefg', "[33":'bluefg', "[36":'bluefg', "[41":"blugfg", "[0":'default', "[":'default'}
+		markup = []
+		st = ss.find("\x1b")
+		if st == -1:
+			return ss
+			
+		items = ss.split("\x1b")
+		pt = 1
+		if not ss.startswith("\x1b"):
+			markup.append(items[0])
+		
+		for at in items[pt:]:
+			attr, text = at.split("m",1)
+			markup.append((table[attr], text))
+			
+		return markup
+		
 	def genEdit(label, text, fn):
 		w = urwid.Edit(label, text)
 		urwid.connect_signal(w, 'change', fn)
@@ -204,9 +225,11 @@ class Urwid:
 		w = urwid.AttrWrap(w, 'edit')
 		return w
 		
+		
 	def makeTextList(lstStr):
 		outList = []
 		for line in lstStr:
+			line = Urwid.terminal2markup(line)
 			outList.append(urwid.Text(line))
 		return outList
 		
@@ -216,6 +239,9 @@ class Urwid:
 			btn = mButton(line, onClick)
 			outList.append(btn)
 		return outList
+		
+
+	
 
 def unhandled(key):
 	if key == 'f8':
@@ -235,7 +261,8 @@ def onFileSelected(btn):
 	if label.startswith("?? "):
 		ss = open(fileName, "rb").read().decode()
 	else:
-		ss = system("git diff %s" % fileName)
+		ss = system("git diff --color %s" % fileName)
+		
 	ss = ss.replace("\t", "    ")
 		
 	del g.widgetContent.body[:]
@@ -257,6 +284,7 @@ def urwidGitStatus():
 		
 
 	palette = [
+		('bluefg', 'light blue', 'black'),
 		('body','black','light gray', 'standout'),
 		('reverse','light gray','black'),
 		('header','white','dark red', 'bold'),
@@ -283,7 +311,18 @@ def urwidGitStatus():
 
 g = Global()
 
+def winTest():
+	ss = system("c:\\cygwin64\\bin\\git.exe diff --color dc.py")
+
+	kk = Urwid.terminal2markup(ss)
+	st = ss.find("\x1b")
+	print("%d %x %x %x %x" % (st, ss[0], ss[1], ss[2], ss[3]))
+	sys.exit(0)
+
+
 def run():
+	#winTest()
+	
 	try:
 		os.remove("/tmp/cmdDevTool.path")
 	except OSError:
@@ -329,6 +368,7 @@ def run():
 
 if __name__ == "__main__":
 	try:
+
 		ret = run()
 	except ExcFail as e:
 		print(e)
