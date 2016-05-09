@@ -188,22 +188,26 @@ class mListBox(urwid.ListBox):
 
 	# TODO: scroll 
 	def scrollDown(self):
-		try: 
-			self.body.set_focus(self.body.get_next(self.body.get_focus()[1])[1])
-		except:
-			pass
+		cur = self.body.get_focus()
+		if cur[1] >= len(self.body)-1:
+			return
+			
+		nextRow = self.body.get_next(cur[1])
+		self.body.set_focus(nextRow[1])
 			
 	def scrollUp(self):
-		try: 
-			self.body.set_focus(self.body.get_prev(self.body.get_focus()[1])[1])
-		except:
-			pass      
+		cur = self.body.get_focus()
+		if cur[1] == 0:
+			return
+			
+		self.body.set_focus(self.body.get_prev(cur[1])[1])
+
 
 class Urwid:
 
 	def terminal2markup(ss):
 		#source = "\033[31mFOO\033[0mBAR"
-		table = {"[1":'bluefg', "[31":'bluefg', "[32":'bluefg', "[33":'bluefg', "[36":'bluefg', "[41":"blugfg", "[0":'default', "[":'default'}
+		table = {"[1":'blod', "[31":'redfg', "[32":'greenfg', "[33":'yellowfg', "[36":'cyanfg', "[41":"redbg", "[0":'std', "[":'reset'}
 		markup = []
 		st = ss.find("\x1b")
 		if st == -1:
@@ -243,17 +247,21 @@ class Urwid:
 			btn = mButton(line, onClick)
 			outList.append(btn)
 		return outList
-		
-
-	
 
 def unhandled(key):
 	if key == 'f8' or key == "q":
 		raise urwid.ExitMainLoop()
-	elif key == 'j':
+	elif key == "up" or key == 'k':
 		g.widgetContent.scrollDown()
-	elif key == 'k':
+	elif key == "down" or key == 'j':
 		g.widgetContent.scrollUp()
+	elif key == "left":
+		pass
+	elif key == "right":
+		pass
+		
+def inputFilter(keys, raw):
+	return keys
 
 def onFileSelected(btn):
 	label = btn.get_label()
@@ -281,14 +289,24 @@ def urwidGitStatus():
 
 	fileList = mListBox(urwid.SimpleListWalker(Urwid.makeBtnList(lst.split("\n"), onFileSelected)))
 	g.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(lstContent)))
-	g.widgetMain = urwid.Pile([(10, urwid.AttrMap(fileList, 'body')), g.widgetContent])
+	g.widgetMain = urwid.Pile([(10, urwid.AttrMap(fileList, 'std')), g.widgetContent])
 	
 	g.headerText = urwid.Text("header...")
 	frame = urwid.Frame(g.widgetMain, header=g.headerText)
 		
-
+	# (name, fg, bg, mono, fgHigh, bgHigh)
 	palette = [
-		('bluefg', 'light blue', 'black'),
+		('std', 'light gray', 'black'),
+		('reset', 'std'),
+		('blod', 'light gray,bold', 'black'),
+		('redfg', 'dark red', 'black'),
+		('greenfg', 'dark green', 'black'),
+		('yellowfg', 'yellow', 'black'),
+		('bluefg', 'dark blue', 'black'),
+		('cyanfg', 'dark cyan', 'black'),
+		
+		('redbg', 'black', 'dark red'),
+		
 		('body','black','light gray', 'standout'),
 		('reverse','light gray','black'),
 		('header','white','dark red', 'bold'),
@@ -309,11 +327,12 @@ def urwidGitStatus():
 	screen = urwid.raw_display.Screen()
 
 	urwid.MainLoop(frame, palette, screen,
-		unhandled_input=unhandled).run()
+		unhandled_input=unhandled, input_filter=inputFilter).run()
 		
 		
 
 g = Global()
+g.log = open("log.log", "w", encoding="UTF-8")
 
 def winTest():
 	ss = system("c:\\cygwin64\\bin\\git.exe diff --color dc.py")
@@ -373,7 +392,11 @@ def run():
 
 if __name__ == "__main__":
 	try:
-
+		# no working..
+		f = open("err.log", "w")
+		original_stderr = sys.stdout
+		sys.stdout = f
+		
 		ret = run()
 	except ExcFail as e:
 		print(e)
