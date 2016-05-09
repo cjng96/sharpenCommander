@@ -3,7 +3,9 @@
 
 import subprocess
 
+import sys
 import tool
+import pudb
 from tool import git, system, systemSafe
 
 
@@ -214,7 +216,8 @@ class Urwid:
 		
 		for at in items[pt:]:
 			attr, text = at.split("m",1)
-			markup.append((table[attr], text))
+			if text != "":	# skip empty string
+				markup.append((table[attr], text))
 			
 		return markup
 		
@@ -229,8 +232,9 @@ class Urwid:
 	def makeTextList(lstStr):
 		outList = []
 		for line in lstStr:
-			line = Urwid.terminal2markup(line)
-			outList.append(urwid.Text(line))
+			line2 = Urwid.terminal2markup(line)
+			#g.log.write("ma - %s\n -> %s\n" % (line, line2))
+			outList.append(urwid.Text(line2))
 		return outList
 		
 	def makeBtnList(lstStr, onClick):
