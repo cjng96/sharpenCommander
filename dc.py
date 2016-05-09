@@ -353,6 +353,7 @@ def run():
 		return
 	elif target == "st":
 		urwidGitStatus()
+		return
 	elif target == "list":
 		g.listPath()
 		return
