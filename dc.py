@@ -392,11 +392,6 @@ def run():
 
 if __name__ == "__main__":
 	try:
-		# no working..
-		f = open("err.log", "w")
-		original_stderr = sys.stdout
-		sys.stdout = f
-		
 		ret = run()
 	except ExcFail as e:
 		print(e)
