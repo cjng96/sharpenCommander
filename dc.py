@@ -244,7 +244,7 @@ class Urwid:
 	
 
 def unhandled(key):
-	if key == 'f8':
+	if key == 'f8' or key == "q":
 		raise urwid.ExitMainLoop()
 	elif key == 'j':
 		g.widgetContent.scrollDown()
