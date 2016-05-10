@@ -3,9 +3,10 @@
 
 import subprocess
 
+import os
 import sys
+
 import tool
-import pudb
 from tool import git, system, systemSafe
 
 
@@ -42,7 +43,6 @@ class ExcFail(Exception):
 		super().__init__(msg)
 		
 
-import os, sys
 
 class Global:
 	def __init__(self):
@@ -204,7 +204,6 @@ class mListBox(urwid.ListBox):
 
 
 class Urwid:
-
 	def terminal2markup(ss):
 		#source = "\033[31mFOO\033[0mBAR"
 		table = {"[1":'blod', "[31":'redfg', "[32":'greenfg', "[33":'yellowfg', "[36":'cyanfg', "[41":"redbg", "[0":'std', "[":'reset'}
