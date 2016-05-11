@@ -248,8 +248,10 @@ class Urwid:
 		
 	def makeBtnList(lstStr, onClick):
 		outList = []
+		isFirst = True 
 		for line in lstStr:
-			line2 = Urwid.terminal2markup(line)
+			line2 = Urwid.terminal2markup(line, 1 if isFirst else 0)
+			isFirst = False
 			btn = mButton(line2, onClick)
 			btn.origText = line
 			btn = urwid.AttrMap(btn, None, "reveal focus")
@@ -313,6 +315,15 @@ def unhandled(key):
 		fname = getFileNameFromBtn(btn)
 		Urwid.popupAsk("Git reset", "Do you want to reset a file[%s]?" % fname, onReset)
 		
+	elif key == "R":
+		def onReset():
+			system("git co -- %s" % fname)
+			refreshFileList()
+				
+		btn = g.widgetFileList.focus
+		fname = getFileNameFromBtn(btn)
+		Urwid.popupAsk("Git reset(f)", "Do you want to drop file[%s]s modification?" % fname, onReset)
+	
 	elif key == "h":
 		Urwid.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 		
