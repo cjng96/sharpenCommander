@@ -264,15 +264,15 @@ def inputFilter(keys, raw):
 
 def onFileSelected(btn):
 	label = btn.get_label()
-	fileName = label[2:].strip()
+	g.selectfileName = label[2:].strip()
 
-	g.headerText.set_text("file - " + label)
+	#g.headerText.set_text("file - " + label)
 	
 	# display
 	if label.startswith("?? "):
-		ss = open(fileName, "rb").read().decode()
+		ss = open(g.selectfileName, "rb").read().decode()
 	else:
-		ss = system("git diff --color %s" % fileName)
+		ss = system("git diff --color %s" % g.selectfileName)
 		
 	ss = ss.replace("\t", "    ")
 		
@@ -288,9 +288,9 @@ def urwidGitStatus():
 
 	fileList = mListBox(urwid.SimpleListWalker(Urwid.makeBtnList(lst.split("\n"), onFileSelected)))
 	g.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(lstContent)))
-	g.widgetMain = urwid.Pile([(10, urwid.AttrMap(fileList, 'std')), g.widgetContent])
+	g.widgetMain = urwid.Pile([(8, urwid.AttrMap(fileList, 'std')), ('pack', urwid.Divider('-')), g.widgetContent])
 	
-	g.headerText = urwid.Text("header...")
+	g.headerText = urwid.Text(">> dc V1.0 - Q(Quit), A(Add), C(Commit), I(Ignore)")
 	frame = urwid.Frame(g.widgetMain, header=g.headerText)
 		
 	# (name, fg, bg, mono, fgHigh, bgHigh)
@@ -332,6 +332,10 @@ def urwidGitStatus():
 
 g = Global()
 g.log = open("log.log", "w", encoding="UTF-8")
+g.selectfileName = ""	#
+g.headerText = "" 
+g.widgetContent = None
+
 
 def winTest():
 	ss = system("c:\\cygwin64\\bin\\git.exe diff --color dc.py")
