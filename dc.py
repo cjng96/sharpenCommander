@@ -9,6 +9,11 @@ import sys
 import tool
 from tool import git, system, systemSafe
 
+import urwid
+import urwid.raw_display
+import urwid.web_display
+from urwid.signals import connect_signal
+
 
 
 '''
@@ -152,11 +157,6 @@ class Global:
 					break
 
 
-import urwid
-import urwid.raw_display
-import urwid.web_display
-from urwid.signals import connect_signal
-
 class mButton(urwid.Button):
 	'''
 	Button without pre/post Text
@@ -175,16 +175,19 @@ class mButton(urwid.Button):
 
 class mListBox(urwid.ListBox):
 	def focusNext(self):
-		try: 
-			self.body.set_focus(self.body.get_next(self.body.get_focus()[1])[1])
-		except:
-			pass
+		cur = self.body.get_focus()
+		if cur[1] >= len(self.body)-1:
+			return
+			
+		nextRow = self.body.get_next(cur[1])
+		self.body.set_focus(nextRow[1])
 			
 	def focusPrevious(self):
-		try: 
-			self.body.set_focus(self.body.get_prev(self.body.get_focus()[1])[1])
-		except:
-			pass      
+		cur = self.body.get_focus()
+		if cur[1] == 0:
+			return
+			
+		self.body.set_focus(self.body.get_prev(cur[1])[1])
 
 	# TODO: scroll 
 	def scrollDown(self):
@@ -243,9 +246,36 @@ class Urwid:
 	def makeBtnList(lstStr, onClick):
 		outList = []
 		for line in lstStr:
-			btn = mButton(line, onClick)
+			line2 = Urwid.terminal2markup(line)
+			btn = mButton(line2, onClick)
 			outList.append(btn)
 		return outList
+		
+	def popupMsg(title, ss):
+		def onCloseBtn(btn):
+			g.mainLoop.widget = g.mainLoop.widget.bottom_w
+			
+		txtMsg = urwid.Text(ss)
+		btnClose = urwid.Button("Close", onCloseBtn)
+		popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', btnClose)]), title)
+		g.mainLoop.widget = urwid.Overlay(urwid.Filler(popup), g.mainLoop.widget, 'center', 20, 'middle', 10)
+		
+	def popupAsk(title, ss, onOk, onCancel = None):
+		def onClickBtn(btn):
+			if btn == btnYes:
+				onOk()
+			elif btn == btnNo:
+				if onCancel != None: 
+					onCancel()
+					
+			g.mainLoop.widget = g.mainLoop.widget.bottom_w
+			
+		txtMsg = urwid.Text(ss)
+		btnYes = urwid.Button("Yes", onClickBtn)
+		btnNo = urwid.Button("No", onClickBtn)
+		popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', urwid.Columns([btnYes, btnNo]))]), title)
+		g.mainLoop.widget = urwid.Overlay(urwid.Filler(popup), g.mainLoop.widget, 'center', 40, 'middle', 5)
+		
 
 def unhandled(key):
 	if key == 'f8' or key == "q":
@@ -254,25 +284,57 @@ def unhandled(key):
 		g.widgetContent.scrollUp()
 	elif key == 'j':
 		g.widgetContent.scrollDown()
-	elif key == "left":
-		pass
-	elif key == "right":
-		pass
+	elif key == "[":
+		g.widgetFileList.focusPrevious()
+		onFileSelected(g.widgetFileList.focus)
+	elif key == "]":
+		g.widgetFileList.focusNext()
+		onFileSelected(g.widgetFileList.focus)
+	elif key == "a":
+		def onAdd():
+			system("git add %s" % fname)
+			refreshFileList()
+				
+		btn = g.widgetFileList.focus
+		fname = getFileNameFromBtn(btn)
+		Urwid.popupAsk("Git add", "Do you want to add a file[%s]?" % fname, onAdd)
+
+	elif key == "r":
+		def onReset():
+			system("git reset %s" % fname)
+			refreshFileList()
+				
+		btn = g.widgetFileList.focus
+		fname = getFileNameFromBtn(btn)
+		Urwid.popupAsk("Git reset", "Do you want to reset a file[%s]?" % fname, onReset)
+		
+	elif key == "h":
+		Urwid.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 		
 def inputFilter(keys, raw):
 	return keys
 
+def getFileNameFromBtn(btn):
+	label = btn.get_label()
+	return label[2:].strip()
+		
+
 def onFileSelected(btn):
 	label = btn.get_label()
-	g.selectfileName = label[2:].strip()
+	g.selectFileName = getFileNameFromBtn(btn)
 
 	#g.headerText.set_text("file - " + label)
 	
 	# display
 	if label.startswith("?? "):
-		ss = open(g.selectfileName, "rb").read().decode()
+		try:
+			ss = open(g.selectFileName, "r", encoding="UTF-8").read()
+		except UnicodeDecodeError:
+			Urwid.popupMsg("Encoding", "Encoding error[%s]" % g.selectFileName);
+			ss = "Error to load"
+			
 	else:
-		ss = system("git diff --color %s" % g.selectfileName)
+		ss = system("git diff --color %s" % g.selectFileName)
 		
 	ss = ss.replace("\t", "    ")
 		
@@ -280,19 +342,24 @@ def onFileSelected(btn):
 	g.widgetContent.body += Urwid.makeTextList(ss.split("\n"))
 	g.widgetContent.set_focus(0)
 	
+def refreshFileList():
+	lstFile = system("git -c color.status=always status -s")
+	del g.widgetFileList.body.contents[:]
+	g.widgetFileList.body += Urwid.makeBtnList(lstFile.split("\n"), onFileSelected)
 
 def urwidGitStatus():
-	#lst = system("git -c color.status=always status")
-	lst = system("git status -s")
+	lstFile = ""
 	lstContent = ["test"]
 
-	fileList = mListBox(urwid.SimpleListWalker(Urwid.makeBtnList(lst.split("\n"), onFileSelected)))
+	g.widgetFileList = mListBox(urwid.SimpleListWalker(Urwid.makeBtnList(lstFile.split("\n"), onFileSelected)))
 	g.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(lstContent)))
-	g.widgetMain = urwid.Pile([(8, urwid.AttrMap(fileList, 'std')), ('pack', urwid.Divider('-')), g.widgetContent])
+	g.widgetFrame = urwid.Pile([(8, urwid.AttrMap(g.widgetFileList, 'std')), ('pack', urwid.Divider('-')), g.widgetContent])
 	
-	g.headerText = urwid.Text(">> dc V1.0 - Q(Quit), A(Add), C(Commit), I(Ignore)")
-	frame = urwid.Frame(g.widgetMain, header=g.headerText)
+	g.headerText = urwid.Text(">> dc V1.0 - Q(Quit), A(Add), R(Reset), C(Commit), I(Ignore), [/](Prev/Next file)")
+	g.mainWidget = urwid.Frame(g.widgetFrame, header=g.headerText)
 		
+	refreshFileList()
+	
 	# (name, fg, bg, mono, fgHigh, bgHigh)
 	palette = [
 		('std', 'light gray', 'black'),
@@ -325,15 +392,22 @@ def urwidGitStatus():
 	#	screen = urwid.raw_display.Screen()
 	screen = urwid.raw_display.Screen()
 
-	urwid.MainLoop(frame, palette, screen,
-		unhandled_input=unhandled, input_filter=inputFilter).run()
+	g.mainLoop = urwid.MainLoop(g.mainWidget, palette, screen,
+		unhandled_input=unhandled, input_filter=inputFilter)
+	g.mainLoop.run()
 		
 		
 
 g = Global()
 g.log = open("log.log", "w", encoding="UTF-8")
-g.selectfileName = ""	#
+g.selectFileName = ""	#
+
+g.mainLoop = None	# urwid
+
+g.mainWidget = None
+g.widgetFrame = None
 g.headerText = "" 
+g.widgetFileList = None
 g.widgetContent = None
 
 
