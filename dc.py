@@ -250,10 +250,10 @@ class Urwid:
 def unhandled(key):
 	if key == 'f8' or key == "q":
 		raise urwid.ExitMainLoop()
-	elif key == "up" or key == 'k':
-		g.widgetContent.scrollDown()
-	elif key == "down" or key == 'j':
+	elif key == 'k':
 		g.widgetContent.scrollUp()
+	elif key == 'j':
+		g.widgetContent.scrollDown()
 	elif key == "left":
 		pass
 	elif key == "right":
