@@ -163,6 +163,7 @@ class mButton(urwid.Button):
 	'''
 	def __init__(self, label, on_press=None, user_data=None):
 		self._label = urwid.wimp.SelectableIcon(label, 0)
+		
 		super(urwid.Button, self).__init__(self._label)
 		#urwid.widget.WidgetWrap.__init__(self, self._label)
 
@@ -206,10 +207,12 @@ class mListBox(urwid.ListBox):
 		self.body.set_focus(self.body.get_prev(cur[1])[1])
 
 
+
 class Urwid:
-	def terminal2markup(ss):
+	def terminal2markup(ss, invert=0):
 		#source = "\033[31mFOO\033[0mBAR"
-		table = {"[1":'blod', "[31":'redfg', "[32":'greenfg', "[33":'yellowfg', "[36":'cyanfg', "[41":"redbg", "[0":'std', "[":'reset'}
+		table = {"[1":("bold",'bold_f'), "[31":('redfg','redfg_f'), "[32":('greenfg', "greenfg_f"), 
+			"[33":('yellowfg', "yellowfg_f"), "[36":('cyanfg', "cyanfg_f"), "[41":("redbg", "regbg_f"), "[0":('std', "std_f"), "[":('std', "std_f")}
 		markup = []
 		st = ss.find("\x1b")
 		if st == -1:
@@ -223,7 +226,7 @@ class Urwid:
 		for at in items[pt:]:
 			attr, text = at.split("m",1)
 			if text != "":	# skip empty string
-				markup.append((table[attr], text))
+				markup.append((table[attr][invert], text))
 			
 		return markup
 		
@@ -248,6 +251,8 @@ class Urwid:
 		for line in lstStr:
 			line2 = Urwid.terminal2markup(line)
 			btn = mButton(line2, onClick)
+			btn.origText = line
+			btn = urwid.AttrMap(btn, None, "reveal focus")
 			outList.append(btn)
 		return outList
 		
@@ -315,12 +320,13 @@ def inputFilter(keys, raw):
 	return keys
 
 def getFileNameFromBtn(btn):
-	label = btn.get_label()
+	label = btn.base_widget.get_label()
 	return label[2:].strip()
 		
 
 def onFileSelected(btn):
-	label = btn.get_label()
+	# why btn.get_label() is impossible?
+	label = btn.base_widget.get_label()
 	g.selectFileName = getFileNameFromBtn(btn)
 
 	#g.headerText.set_text("file - " + label)
@@ -344,14 +350,23 @@ def onFileSelected(btn):
 	
 def refreshFileList():
 	lstFile = system("git -c color.status=always status -s")
-	del g.widgetFileList.body.contents[:]
+	del g.widgetFileList.body[:]
 	g.widgetFileList.body += Urwid.makeBtnList(lstFile.split("\n"), onFileSelected)
 
 def urwidGitStatus():
 	lstFile = ""
 	lstContent = ["test"]
+	
+	def onFileFocusChanged(new_focus):
+		# old widget
+		widget = g.widgetFileList.focus
+		widget.base_widget._label.set_text(Urwid.terminal2markup(widget.base_widget.origText, 0))
 
-	g.widgetFileList = mListBox(urwid.SimpleListWalker(Urwid.makeBtnList(lstFile.split("\n"), onFileSelected)))
+		widget = g.widgetFileList.body[new_focus]
+		widget.base_widget._label.set_text(Urwid.terminal2markup(widget.base_widget.origText, 1))
+
+	g.widgetFileList = mListBox(urwid.SimpleFocusListWalker(Urwid.makeBtnList(lstFile.split("\n"), onFileSelected)))
+	g.widgetFileList.body.set_focus_changed_callback(onFileFocusChanged)
 	g.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(lstContent)))
 	g.widgetFrame = urwid.Pile([(8, urwid.AttrMap(g.widgetFileList, 'std')), ('pack', urwid.Divider('-')), g.widgetContent])
 	
@@ -363,15 +378,26 @@ def urwidGitStatus():
 	# (name, fg, bg, mono, fgHigh, bgHigh)
 	palette = [
 		('std', 'light gray', 'black'),
+		('std_f', 'black', 'dark cyan'),
 		('reset', 'std'),
-		('blod', 'light gray,bold', 'black'),
+		("reset_f", "std_f"),
+		('bold', 'light gray,bold', 'black'),
+		('bold_f', 'light gray,bold', 'dark cyan'),
+
 		('redfg', 'dark red', 'black'),
+		('redfg_f', 'light red', 'dark cyan'),
 		('greenfg', 'dark green', 'black'),
+		('greenfg_f', 'light green', 'dark cyan'),
 		('yellowfg', 'yellow', 'black'),
+		('yellowfg_f', 'yellow', 'dark cyan'),
 		('bluefg', 'dark blue', 'black'),
+		('bluefg_f', 'light blue', 'dark cyan'),
 		('cyanfg', 'dark cyan', 'black'),
+		('cyanfg_f', 'light gray', 'dark cyan'),
 		
 		('redbg', 'black', 'dark red'),
+		
+		('reveal focus', "black", "dark cyan", "standout"),
 		
 		('body','black','light gray', 'standout'),
 		('reverse','light gray','black'),
