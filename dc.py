@@ -7,7 +7,7 @@ import os
 import sys
 
 import tool
-from tool import git, system, systemSafe
+from tool import git, system, systemSafe, systemRet
 
 import urwid
 import urwid.raw_display
@@ -305,6 +305,18 @@ def unhandled(key):
 		btn = g.widgetFileList.focus
 		fname = getFileNameFromBtn(btn)
 		Urwid.popupAsk("Git add", "Do you want to add a file[%s]?" % fname, onAdd)
+		
+	elif key == "A":
+		def onAdd():
+			g.mainLoop.stop()
+			systemRet("git add -p %s" % fname)
+			g.mainLoop.start()
+			refreshFileList()
+			onFileSelected(g.widgetFileList.focus)
+				
+		btn = g.widgetFileList.focus
+		fname = getFileNameFromBtn(btn)
+		Urwid.popupAsk("Git add(prompt)", "Do you want to add a file[%s]?" % fname, onAdd)
 
 	elif key == "r":
 		def onReset():
@@ -382,7 +394,7 @@ def urwidGitStatus():
 	g.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(lstContent)))
 	g.widgetFrame = urwid.Pile([(8, urwid.AttrMap(g.widgetFileList, 'std')), ('pack', urwid.Divider('-')), g.widgetContent])
 	
-	g.headerText = urwid.Text(">> dc V1.0 - Q(Quit), A(Add), R(Reset), C(Commit), I(Ignore), [/](Prev/Next file)")
+	g.headerText = urwid.Text(">> dc V%s - q(Quit),a(Add),A(prompt),r(Reset),R(drop),c(Commit), i(Ignore),[/](Prev/Next file)" % g.version)
 	g.mainWidget = urwid.Frame(g.widgetFrame, header=g.headerText)
 		
 	refreshFileList()
@@ -437,6 +449,7 @@ def urwidGitStatus():
 		
 
 g = Global()
+g.version = "1.0"
 g.log = open("log.log", "w", encoding="UTF-8")
 g.selectFileName = ""	#
 

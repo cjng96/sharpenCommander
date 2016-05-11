@@ -24,6 +24,12 @@ def systemSafe(args):
 	rr = rr.strip(' \r\n')
 	return rr,status
 
+def systemRet(args):
+	if g.isPrintSystem:
+		print("system command - %s" % args)
+		
+	ret = subprocess.call(args, shell=True)
+	return ret
 
 class git:
 	# if remote branch, insert "remotes/"
