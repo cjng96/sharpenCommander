@@ -336,6 +336,14 @@ def unhandled(key):
 		fname = getFileNameFromBtn(btn)
 		Urwid.popupAsk("Git reset(f)", "Do you want to drop file[%s]s modification?" % fname, onReset)
 	
+	elif key == "e":
+		btn = g.widgetFileList.focus
+		fname = getFileNameFromBtn(btn)
+
+		g.mainLoop.stop()
+		systemRet("vim %s" % fname)
+		g.mainLoop.start()
+		
 	elif key == "h":
 		Urwid.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 		
