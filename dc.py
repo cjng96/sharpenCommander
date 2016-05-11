@@ -406,6 +406,7 @@ def urwidGitStatus():
 	g.mainWidget = urwid.Frame(g.widgetFrame, header=g.headerText)
 		
 	refreshFileList()
+	onFileSelected(g.widgetFileList.focus)	# auto display
 	
 	# (name, fg, bg, mono, fgHigh, bgHigh)
 	palette = [
