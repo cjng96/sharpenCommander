@@ -346,7 +346,8 @@ def onFileSelected(btn):
 		
 	del g.widgetContent.body[:]
 	g.widgetContent.body += Urwid.makeTextList(ss.split("\n"))
-	g.widgetContent.set_focus(0)
+	g.widgetFrame.set_focus(g.widgetContent)
+
 	
 def refreshFileList():
 	lstFile = system("git -c color.status=always status -s")
