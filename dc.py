@@ -250,7 +250,9 @@ class mMainStatusDialog(cDialog):
 		#g.headerText.set_text("file - " + label)
 		
 		# display
-		if label.startswith("?? "):
+		if label == "< Nothing >":
+			ss = label
+		elif label.startswith("?? "):
 			try:
 				ss = open(self.selectFileName, "r", encoding="UTF-8").read()
 			except UnicodeDecodeError:
