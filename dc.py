@@ -404,7 +404,7 @@ def onFileSelected(btn):
 		try:
 			ss = open(g.selectFileName, "r", encoding="UTF-8").read()
 		except UnicodeDecodeError:
-			Urwid.popupMsg("Encoding", "Encoding error[%s]" % g.selectFileName);
+			#Urwid.popupMsg("Encoding", "Encoding error[%s]" % g.selectFileName);
 			ss = "Error to load"
 			
 	else:
