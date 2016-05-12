@@ -330,12 +330,12 @@ class Urwid:
 		
 	def popupMsg(title, ss):
 		def onCloseBtn(btn):
-			g.mainLoop.widget = g.mainLoop.widget.bottom_w
+			g.loop.widget = g.mainLoop.widget.bottom_w
 			
 		txtMsg = urwid.Text(ss)
 		btnClose = urwid.Button("Close", onCloseBtn)
 		popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', btnClose)]), title)
-		g.mainLoop.widget = urwid.Overlay(urwid.Filler(popup), g.mainLoop.widget, 'center', 20, 'middle', 10)
+		g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 20, 'middle', 10)
 		
 	def popupAsk(title, ss, onOk, onCancel = None):
 		def onClickBtn(btn):
@@ -345,13 +345,13 @@ class Urwid:
 				if onCancel != None: 
 					onCancel()
 					
-			g.mainLoop.widget = g.mainLoop.widget.bottom_w
+			g.loop.widget = g.loop.widget.bottom_w
 			
 		txtMsg = urwid.Text(ss)
 		btnYes = urwid.Button("Yes", onClickBtn)
 		btnNo = urwid.Button("No", onClickBtn)
 		popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', urwid.Columns([btnYes, btnNo]))]), title)
-		g.mainLoop.widget = urwid.Overlay(urwid.Filler(popup), g.mainLoop.widget, 'center', 40, 'middle', 5)
+		g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 40, 'middle', 5)
 		
 	def popupInput(title, ss, onOk, onCancel = None):
 		def onClickBtn(btn):
@@ -361,91 +361,91 @@ class Urwid:
 				if onCancel != None: 
 					onCancel()
 					
-			g.mainLoop.widget = g.mainLoop.widget.bottom_w
+			g.loop.widget = g.loop.widget.bottom_w
 			
 		edInput = urwid.Edit(ss)
 		btnOk = urwid.Button("OK", onClickBtn)
 		btnCancel = urwid.Button("Cancel", onClickBtn)
 		popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', urwid.Columns([btnOk, btnCancel]))]), title)
-		g.mainLoop.widget = urwid.Overlay(urwid.Filler(popup), g.mainLoop.widget, 'center', 40, 'middle', 5)
+		g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 40, 'middle', 5)
 		
 
 def gitStatusUnhandled(key):
 	if key == 'f8' or key == "q":
 		raise urwid.ExitMainLoop()
 	elif key == 'k':
-		g.mainDialog.widgetContent.scrollUp()
+		g.dialog.widgetContent.scrollUp()
 	elif key == 'j':
-		g.mainDialog.widgetContent.scrollDown()
+		g.dialog.widgetContent.scrollDown()
 	elif key == "[":
-		g.mainDialog.widgetFileList.focusPrevious()
-		g.mainDialog.refreshFileContentCur()
+		g.dialog.widgetFileList.focusPrevious()
+		g.dialog.refreshFileContentCur()
 	elif key == "]":
-		g.mainDialog.widgetFileList.focusNext()
-		g.mainDialog.refreshFileContentCur()
+		g.dialog.widgetFileList.focusNext()
+		g.dialog.refreshFileContentCur()
 		
 	elif key == "A":
 		def onAdd():
 			system("git add %s" % fname)
-			g.mainDialog.refreshFileList()
+			g.dialog.refreshFileList()
 				
-		btn = g.mainDialog.widgetFileList.focus
+		btn = g.dialog.widgetFileList.focus
 		fname = getFileNameFromBtn(btn)
 		Urwid.popupAsk("Git add", "Do you want to add a file[%s]?" % fname, onAdd)
 		
 	elif key == "a":
 		def onAdd():
-			g.mainLoop.stop()
+			g.loop.stop()
 			systemRet("git add -p %s" % fname)
-			g.mainLoop.start()
-			g.mainDialog.refreshFileList()
+			g.loop.start()
+			g.dialog.refreshFileList()
 				
-		btn = g.mainDialog.widgetFileList.focus
+		btn = g.dialog.widgetFileList.focus
 		fname = getFileNameFromBtn(btn)
 		Urwid.popupAsk("Git add(prompt)", "Do you want to add a file[%s]?" % fname, onAdd)
 
 	elif key == "r":
 		def onReset():
 			system("git reset %s" % fname)
-			g.mainDialog.refreshFileList()
+			g.dialog.refreshFileList()
 				
-		btn = g.mainDialog.widgetFileList.focus
+		btn = g.dialog.widgetFileList.focus
 		fname = getFileNameFromBtn(btn)
 		Urwid.popupAsk("Git reset", "Do you want to reset a file[%s]?" % fname, onReset)
 		
 	elif key == "R":
 		def onReset():
 			system("git checkout -- %s" % fname)
-			g.mainDialog.refreshFileList()
+			g.dialog.refreshFileList()
 				
-		btn = g.mainDialog.widgetFileList.focus
+		btn = g.dialog.widgetFileList.focus
 		fname = getFileNameFromBtn(btn)
 		Urwid.popupAsk("Git reset(f)", "Do you want to drop file[%s]s modification?" % fname, onReset)
 	
 	elif key == "e":
-		btn = g.mainDialog.widgetFileList.focus
+		btn = g.dialog.widgetFileList.focus
 		fname = getFileNameFromBtn(btn)
 
-		g.mainLoop.stop()
+		g.loop.stop()
 		systemRet("vim %s" % fname)
-		g.mainLoop.start()
+		g.loop.start()
 		onFileSelected(g.widgetFileList.focus)
 		
 	elif key == "c":
 		def onCommit():
-			g.mainLoop.stop()
+			g.loop.stop()
 			systemRet("git commit")
-			g.mainLoop.start()
-			g.mainDialog.refreshFileList()
+			g.loop.start()
+			g.dialog.refreshFileList()
 				
 		Urwid.popupAsk("Git commit", "Do you want to commit?", onCommit)
 
 	elif key == "C":
 		def onCommit():
-			g.mainLoop.stop()
+			g.loop.stop()
 			systemRet("git commit -a")
-			g.mainLoop.start()
-			g.mainDialog.refreshFileList()
+			g.loop.start()
+			g.dialog.refreshFileList()
 				
 		Urwid.popupAsk("Git commit(all)", "Do you want to commit?", onCommit)
 		
@@ -469,7 +469,7 @@ def urwidGitStatus():
 	
 	main = mMainStatusDialog()
 	main.refreshFileList()
-	g.mainDialog = main
+	g.dialog = main
 
 	# (name, fg, bg, mono, fgHigh, bgHigh)
 	palette = [
@@ -520,9 +520,9 @@ def urwidGitStatus():
 	#	screen = urwid.raw_display.Screen()
 	screen = urwid.raw_display.Screen()
 
-	g.mainLoop = urwid.MainLoop(main.mainWidget, palette, screen,
+	g.loop = urwid.MainLoop(main.mainWidget, palette, screen,
 		unhandled_input=gitStatusUnhandled, input_filter=inputFilter)
-	g.mainLoop.run()
+	g.loop.run()
 		
 		
 
@@ -531,9 +531,9 @@ g.version = "1.0"
 g.log = open("log.log", "w", encoding="UTF-8")
 g.selectFileName = ""	#
 
-g.mainLoop = None	# urwid
+g.loop = None	# urwid
 
-g.mainDialog = None
+g.dialog = None
 
 
 def winTest():
