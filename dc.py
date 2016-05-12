@@ -210,7 +210,6 @@ class mListBox(urwid.ListBox):
 def refreshBtnList(content, listBox, onClick):
 	del listBox.body[:]
 	listBox.body += Urwid.makeBtnList(content.split("\n"), onClick)
-	
 
 
 class cDialog():
@@ -392,31 +391,27 @@ class mGitCommitDialog(cDialog):
 			self.onExit()
 
 	def onFileFocusChanged(self, new_focus):
+	
+		themes = [("greenfg", "greenfg_f"), ("std", "std_f")]
+		
 		# old widget
 		widget = self.widgetFileList.focus
-		markup = Urwid.terminal2markup(widget.base_widget.origText, 0)
-		widget.base_widget._label.set_text(markup)
+		theme = themes[0 if widget.base_widget.data == "s" else 1]
+		widget.base_widget._label.set_text((theme[0], widget.base_widget.origText))
 
 		widget = self.widgetFileList.body[new_focus]
-		markup = Urwid.terminal2markup(widget.base_widget.origText, 1)
-		widget.base_widget._label.set_text(markup)
+		theme = themes[0 if widget.base_widget.data == "s" else 1]
+		widget.base_widget._label.set_text((theme[1], widget.base_widget.origText))
 
 	def onFileSelected(self, btn):
 		# why btn.get_label() is impossible?
 		label = btn.base_widget.get_label()
-		self.selectFileName = getFileNameFromBtn(btn)
+		self.selectFileName = btn.base_widget.get_label()
 		#g.headerText.set_text("file - " + label)
 		
 		# display
-		if label.startswith("?? "):
-			try:
-				ss = open(self.selectFileName, "r", encoding="UTF-8").read()
-			except UnicodeDecodeError:
-				#Urwid.popupMsg("Encoding", "Encoding error[%s]" % g.selectFileName);
-				ss = "Error to load"
-		else:
-			ss = system("git diff --color %s" % g.selectFileName)
-			
+		btnType = btn.base_widget.data
+		ss = system("git diff %s --color %s" % ("" if btnType == "c" else "--staged", g.selectFileName))
 		ss = ss.replace("\t", "    ")
 			
 		del self.widgetContent.body[:]
@@ -427,8 +422,18 @@ class mGitCommitDialog(cDialog):
 		self.onFileSelected(self.widgetFileList.focus)
 
 	def refreshFileList(self):
-		fileList = system("git -c color.status=always status -s")
-		refreshBtnList(fileList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
+		del self.widgetFileList.body[:]
+
+		# staged file list		
+		fileList = system("git diff --name-only --cached")
+		self.widgetFileList.body += Urwid.makeBtnList(fileList.split("\n"), lambda btn: self.onFileSelected(btn), 
+			lambda btn: setattr(btn, "data", "s"), )
+
+		# general file list
+		fileList = system("git diff --name-only")
+		self.widgetFileList.body += Urwid.makeBtnList(fileList.split("\n"), lambda btn: self.onFileSelected(btn), lambda btn: setattr(btn, "data", "c"))
+	
+		self.onFileFocusChanged(self.widgetFileList.focus_position)
 	
 		self.onFileSelected(self.widgetFileList.focus)	# auto display
 
@@ -551,14 +556,20 @@ class Urwid:
 			outList.append(urwid.Text(line2))
 		return outList
 		
-	def makeBtnList(lstStr, onClick):
+	def makeBtnList(lstStr, onClick, doApply=None):
 		outList = []
 		isFirst = True 
 		for line in lstStr:
+			if line.strip() == "":
+				continue
 			line2 = Urwid.terminal2markup(line, 1 if isFirst else 0)
 			isFirst = False
 			btn = mButton(line2, onClick)
 			btn.origText = line
+			
+			if doApply != None:
+				doApply(btn)
+				
 			btn = urwid.AttrMap(btn, None, "reveal focus")
 			outList.append(btn)
 		return outList
