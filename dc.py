@@ -209,6 +209,8 @@ class mListBox(urwid.ListBox):
 
 def refreshBtnList(content, listBox, onClick):
 	del listBox.body[:]
+	if content.strip() == "":
+		content = "< Nothing >"
 	listBox.body += Urwid.makeBtnList(content.split("\n"), onClick)
 
 
@@ -431,10 +433,12 @@ class mGitCommitDialog(cDialog):
 		self.widgetFileList.body += Urwid.makeBtnList(fileList.split("\n"), 
 			lambda btn: self.onFileSelected(btn), 
 			lambda btn: setattr(btn, "data", "c"))
-	
-		self.onFileFocusChanged(self.widgetFileList.focus_position)
-	
-		self.onFileSelected(self.widgetFileList.focus)	# auto display
+			
+		if len(self.widgetFileList.body) == 0:
+			self.widgetFileList.body += Urwid.makeBtnList(["< Nothing >"], None)
+		else:
+			self.onFileFocusChanged(self.widgetFileList.focus_position)
+			self.onFileSelected(self.widgetFileList.focus)	# auto display
 
 	def unhandled(self, key):
 		if key == "q":
