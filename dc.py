@@ -254,11 +254,11 @@ class mMainStatusDialog(cDialog):
 			try:
 				ss = open(self.selectFileName, "r", encoding="UTF-8").read()
 			except UnicodeDecodeError:
-				#Urwid.popupMsg("Encoding", "Encoding error[%s]" % g.selectFileName);
+				#Urwid.popupMsg("Encoding", "Encoding error[%s]" % self.selectFileName);
 				ss = "Error to load"
 				
 		else:
-			ss = system("git diff --color %s" % g.selectFileName)
+			ss = system("git diff --color %s" % self.selectFileName)
 			
 		ss = ss.replace("\t", "    ")
 			
@@ -409,7 +409,7 @@ class mGitCommitDialog(cDialog):
 		
 		# display
 		btnType = btn.base_widget.data
-		ss = system("git diff %s --color %s" % ("" if btnType == "c" else "--staged", g.selectFileName))
+		ss = system("git diff %s --color %s" % ("" if btnType == "c" else "--staged", self.selectFileName))
 		ss = ss.replace("\t", "    ")
 			
 		del self.widgetContent.body[:]
@@ -704,7 +704,6 @@ def urwidGitStatus():
 g = Global()
 g.version = "1.0"
 g.log = open("log.log", "w", encoding="UTF-8")
-g.selectFileName = ""	#
 
 g.loop = None	# urwid
 
