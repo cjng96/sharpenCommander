@@ -384,11 +384,7 @@ class mGitCommitDialog(cDialog):
 		self.widgetFrame.set_focus(self.edInput)
 
 	def onMsgChanged(self, edit, text):
-		if text.endswith("\n"):
-			# commit
-			ss = system("git commit -m \"%s\"" % text[:-1])
-			print(ss)
-			self.onExit()
+		pass
 
 	def onFileFocusChanged(self, new_focus):
 	
@@ -426,12 +422,15 @@ class mGitCommitDialog(cDialog):
 
 		# staged file list		
 		fileList = system("git diff --name-only --cached")
-		self.widgetFileList.body += Urwid.makeBtnList(fileList.split("\n"), lambda btn: self.onFileSelected(btn), 
-			lambda btn: setattr(btn, "data", "s"), )
+		self.widgetFileList.body += Urwid.makeBtnList(fileList.split("\n"), 
+			lambda btn: self.onFileSelected(btn), 
+			lambda btn: setattr(btn, "data", "s"))
 
 		# general file list
 		fileList = system("git diff --name-only")
-		self.widgetFileList.body += Urwid.makeBtnList(fileList.split("\n"), lambda btn: self.onFileSelected(btn), lambda btn: setattr(btn, "data", "c"))
+		self.widgetFileList.body += Urwid.makeBtnList(fileList.split("\n"), 
+			lambda btn: self.onFileSelected(btn), 
+			lambda btn: setattr(btn, "data", "c"))
 	
 		self.onFileFocusChanged(self.widgetFileList.focus_position)
 	
@@ -498,6 +497,13 @@ class mGitCommitDialog(cDialog):
 			g.loop.start()
 			
 			self.refreshFileContentCur()
+			
+		elif key == "enter":
+			# commit
+			text = self.edInput.get_text()
+			ss = system("git commit -m \"%s\"" % text[:-1])
+			#print(ss)
+			self.onExit()
 
 		elif key == "C":
 			def onCommit():
@@ -506,7 +512,7 @@ class mGitCommitDialog(cDialog):
 				g.loop.start()
 				self.refreshFileList()
 					
-			Urwid.popupAsk("Git commit(all)", "Do you want to commit?", onCommit)
+			Urwid.popupAsk("Git commit(all)", "Do you want to commit all content?", onCommit)
 			
 		elif key == "h":
 			Urwid.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
