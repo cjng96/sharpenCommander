@@ -283,6 +283,22 @@ class Urwid:
 		popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', urwid.Columns([btnYes, btnNo]))]), title)
 		g.mainLoop.widget = urwid.Overlay(urwid.Filler(popup), g.mainLoop.widget, 'center', 40, 'middle', 5)
 		
+	def popupInput(title, ss, onOk, onCancel = None):
+		def onClickBtn(btn):
+			if btn == btnOk:
+				onOk(edInput.edit_text)
+			elif btn == btnCancel:
+				if onCancel != None: 
+					onCancel()
+					
+			g.mainLoop.widget = g.mainLoop.widget.bottom_w
+			
+		edInput = urwid.Edit(ss)
+		btnOk = urwid.Button("OK", onClickBtn)
+		btnCancel = urwid.Button("Cancel", onClickBtn)
+		popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', urwid.Columns([btnOk, btnCancel]))]), title)
+		g.mainLoop.widget = urwid.Overlay(urwid.Filler(popup), g.mainLoop.widget, 'center', 40, 'middle', 5)
+		
 
 def unhandled(key):
 	if key == 'f8' or key == "q":
