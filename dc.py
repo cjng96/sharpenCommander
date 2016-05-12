@@ -207,12 +207,83 @@ class mListBox(urwid.ListBox):
 		self.body.set_focus(self.body.get_prev(cur[1])[1])
 
 
+def refreshBtnList(content, listBox, onClick):
+	del listBox.body[:]
+	listBox.body += Urwid.makeBtnList(content.split("\n"), onClick)
+	
+
+
+class cDialog():
+	def __init__(self):
+		self.mainWidget = None
+		
+	
+class mMainStatusDialog(cDialog):
+	def __init__(self):
+		super().__init__()
+
+		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(Urwid.makeBtnList(["< No files >"], None)))
+		self.widgetFileList.body.set_focus_changed_callback(lambda new_focus: self.onFileFocusChanged(new_focus))
+		self.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(["< Nothing to display >"])))
+
+		self.headerText = urwid.Text(">> dc V%s - q(Quit),a/A(Add/prompt),r/R(Reset/drop),c/C(Commit/All), i(Ignore),[/](Prev/Next file)" % g.version)
+		self.widgetFrame = urwid.Pile([(8, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
+		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
+
+	def onFileFocusChanged(self, new_focus):
+		# old widget
+		widget = self.widgetFileList.focus
+		widget.base_widget._label.set_text(Urwid.terminal2markup(widget.base_widget.origText, 0))
+
+		widget = self.widgetFileList.body[new_focus]
+		widget.base_widget._label.set_text(Urwid.terminal2markup(widget.base_widget.origText, 1))
+
+	def onFileSelected(self, btn):
+		# why btn.get_label() is impossible?
+		label = btn.base_widget.get_label()
+		self.selectFileName = getFileNameFromBtn(btn)
+
+		#g.headerText.set_text("file - " + label)
+		
+		# display
+		if label.startswith("?? "):
+			try:
+				ss = open(self.selectFileName, "r", encoding="UTF-8").read()
+			except UnicodeDecodeError:
+				#Urwid.popupMsg("Encoding", "Encoding error[%s]" % g.selectFileName);
+				ss = "Error to load"
+				
+		else:
+			ss = system("git diff --color %s" % g.selectFileName)
+			
+		ss = ss.replace("\t", "    ")
+			
+		del self.widgetContent.body[:]
+		self.widgetContent.body += Urwid.makeTextList(ss.split("\n"))
+		self.widgetFrame.set_focus(self.widgetContent)
+
+	def refreshFileContentCur(self):
+		self.onFileSelected(self.widgetFileList.focus)
+
+	def refreshFileList(self):
+		fileList = system("git -c color.status=always status -s")
+		refreshBtnList(fileList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
+	
+		self.onFileSelected(self.widgetFileList.focus)	# auto display
+
 
 class Urwid:
+
 	def terminal2markup(ss, invert=0):
 		#source = "\033[31mFOO\033[0mBAR"
-		table = {"[1":("bold",'bold_f'), "[31":('redfg','redfg_f'), "[32":('greenfg', "greenfg_f"), 
-			"[33":('yellowfg', "yellowfg_f"), "[36":('cyanfg', "cyanfg_f"), "[41":("redbg", "regbg_f"), "[0":('std', "std_f"), "[":('std', "std_f")}
+		table = {"[1":("bold",'bold_f'), 
+			"[31":('redfg','redfg_f'), "[32":('greenfg', "greenfg_f"), 
+			"[33":('yellowfg', "yellowfg_f"), "[36":('cyanfg', "cyanfg_f"), 
+			"[41":("redbg", "regbg_f"),
+			"[1;31":("redfg_b", "redfg_bf"), 
+			"[1;32":("greenfg_b", "greenfg_bf"), 
+			"[1;36":("cyanfg_b", "cyanfg_bf"), 
+			"[0":('std', "std_f"), "[":('std', "std_f")}
 		markup = []
 		st = ss.find("\x1b")
 		if st == -1:
@@ -236,7 +307,6 @@ class Urwid:
 		fn(w, text)
 		w = urwid.AttrWrap(w, 'edit')
 		return w
-		
 		
 	def makeTextList(lstStr):
 		outList = []
@@ -300,25 +370,26 @@ class Urwid:
 		g.mainLoop.widget = urwid.Overlay(urwid.Filler(popup), g.mainLoop.widget, 'center', 40, 'middle', 5)
 		
 
-def unhandled(key):
+def gitStatusUnhandled(key):
 	if key == 'f8' or key == "q":
 		raise urwid.ExitMainLoop()
 	elif key == 'k':
-		g.widgetContent.scrollUp()
+		g.mainDialog.widgetContent.scrollUp()
 	elif key == 'j':
-		g.widgetContent.scrollDown()
+		g.mainDialog.widgetContent.scrollDown()
 	elif key == "[":
-		g.widgetFileList.focusPrevious()
-		onFileSelected(g.widgetFileList.focus)
+		g.mainDialog.widgetFileList.focusPrevious()
+		g.mainDialog.refreshFileContentCur()
 	elif key == "]":
-		g.widgetFileList.focusNext()
-		onFileSelected(g.widgetFileList.focus)
+		g.mainDialog.widgetFileList.focusNext()
+		g.mainDialog.refreshFileContentCur()
+		
 	elif key == "A":
 		def onAdd():
 			system("git add %s" % fname)
-			refreshFileList()
+			g.mainDialog.refreshFileList()
 				
-		btn = g.widgetFileList.focus
+		btn = g.mainDialog.widgetFileList.focus
 		fname = getFileNameFromBtn(btn)
 		Urwid.popupAsk("Git add", "Do you want to add a file[%s]?" % fname, onAdd)
 		
@@ -327,56 +398,54 @@ def unhandled(key):
 			g.mainLoop.stop()
 			systemRet("git add -p %s" % fname)
 			g.mainLoop.start()
-			refreshFileList()
-			onFileSelected(g.widgetFileList.focus)
+			g.mainDialog.refreshFileList()
 				
-		btn = g.widgetFileList.focus
+		btn = g.mainDialog.widgetFileList.focus
 		fname = getFileNameFromBtn(btn)
 		Urwid.popupAsk("Git add(prompt)", "Do you want to add a file[%s]?" % fname, onAdd)
 
 	elif key == "r":
 		def onReset():
 			system("git reset %s" % fname)
-			refreshFileList()
+			g.mainDialog.refreshFileList()
 				
-		btn = g.widgetFileList.focus
+		btn = g.mainDialog.widgetFileList.focus
 		fname = getFileNameFromBtn(btn)
 		Urwid.popupAsk("Git reset", "Do you want to reset a file[%s]?" % fname, onReset)
 		
 	elif key == "R":
 		def onReset():
 			system("git checkout -- %s" % fname)
-			refreshFileList()
+			g.mainDialog.refreshFileList()
 				
-		btn = g.widgetFileList.focus
+		btn = g.mainDialog.widgetFileList.focus
 		fname = getFileNameFromBtn(btn)
 		Urwid.popupAsk("Git reset(f)", "Do you want to drop file[%s]s modification?" % fname, onReset)
 	
 	elif key == "e":
-		btn = g.widgetFileList.focus
+		btn = g.mainDialog.widgetFileList.focus
 		fname = getFileNameFromBtn(btn)
 
 		g.mainLoop.stop()
 		systemRet("vim %s" % fname)
 		g.mainLoop.start()
 		onFileSelected(g.widgetFileList.focus)
-
 		
 	elif key == "c":
 		def onCommit():
 			g.mainLoop.stop()
 			systemRet("git commit")
 			g.mainLoop.start()
-			refreshFileList()
+			g.mainDialog.refreshFileList()
 				
 		Urwid.popupAsk("Git commit", "Do you want to commit?", onCommit)
-		
+
 	elif key == "C":
 		def onCommit():
 			g.mainLoop.stop()
 			systemRet("git commit -a")
 			g.mainLoop.start()
-			refreshFileList()
+			g.mainDialog.refreshFileList()
 				
 		Urwid.popupAsk("Git commit(all)", "Do you want to commit?", onCommit)
 		
@@ -390,61 +459,18 @@ def inputFilter(keys, raw):
 def getFileNameFromBtn(btn):
 	label = btn.base_widget.get_label()
 	return label[2:].strip()
-		
 
-def onFileSelected(btn):
-	# why btn.get_label() is impossible?
-	label = btn.base_widget.get_label()
-	g.selectFileName = getFileNameFromBtn(btn)
 
-	#g.headerText.set_text("file - " + label)
-	
-	# display
-	if label.startswith("?? "):
-		try:
-			ss = open(g.selectFileName, "r", encoding="UTF-8").read()
-		except UnicodeDecodeError:
-			#Urwid.popupMsg("Encoding", "Encoding error[%s]" % g.selectFileName);
-			ss = "Error to load"
-			
-	else:
-		ss = system("git diff --color %s" % g.selectFileName)
-		
-	ss = ss.replace("\t", "    ")
-		
-	del g.widgetContent.body[:]
-	g.widgetContent.body += Urwid.makeTextList(ss.split("\n"))
-	g.widgetFrame.set_focus(g.widgetContent)
 
-	
-def refreshFileList():
-	lstFile = system("git -c color.status=always status -s")
-	del g.widgetFileList.body[:]
-	g.widgetFileList.body += Urwid.makeBtnList(lstFile.split("\n"), onFileSelected)
 
 def urwidGitStatus():
 	lstFile = ""
 	lstContent = ["test"]
 	
-	def onFileFocusChanged(new_focus):
-		# old widget
-		widget = g.widgetFileList.focus
-		widget.base_widget._label.set_text(Urwid.terminal2markup(widget.base_widget.origText, 0))
+	main = mMainStatusDialog()
+	main.refreshFileList()
+	g.mainDialog = main
 
-		widget = g.widgetFileList.body[new_focus]
-		widget.base_widget._label.set_text(Urwid.terminal2markup(widget.base_widget.origText, 1))
-
-	g.widgetFileList = mListBox(urwid.SimpleFocusListWalker(Urwid.makeBtnList(lstFile.split("\n"), onFileSelected)))
-	g.widgetFileList.body.set_focus_changed_callback(onFileFocusChanged)
-	g.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(lstContent)))
-	g.widgetFrame = urwid.Pile([(8, urwid.AttrMap(g.widgetFileList, 'std')), ('pack', urwid.Divider('-')), g.widgetContent])
-	
-	g.headerText = urwid.Text(">> dc V%s - q(Quit),a/A(Add/prompt),r/R(Reset/drop),c/C(Commit/All), i(Ignore),[/](Prev/Next file)" % g.version)
-	g.mainWidget = urwid.Frame(g.widgetFrame, header=g.headerText)
-		
-	refreshFileList()
-	onFileSelected(g.widgetFileList.focus)	# auto display
-	
 	# (name, fg, bg, mono, fgHigh, bgHigh)
 	palette = [
 		('std', 'light gray', 'black'),
@@ -455,15 +481,21 @@ def urwidGitStatus():
 		('bold_f', 'light gray,bold', 'dark cyan'),
 
 		('redfg', 'dark red', 'black'),
+		('redfg_b', 'bold,dark red', 'black'),
 		('redfg_f', 'light red', 'dark cyan'),
+		('redfg_bf', 'bold,light red', 'dark cyan'),
 		('greenfg', 'dark green', 'black'),
+		('greenfg_b', 'bold,dark green', 'black'),
 		('greenfg_f', 'light green', 'dark cyan'),
+		('greenfg_bf', 'bold,light green', 'dark cyan'),
 		('yellowfg', 'yellow', 'black'),
 		('yellowfg_f', 'yellow', 'dark cyan'),
 		('bluefg', 'dark blue', 'black'),
 		('bluefg_f', 'light blue', 'dark cyan'),
 		('cyanfg', 'dark cyan', 'black'),
+		('cyanfg_b', 'bold,dark cyan', 'black'),
 		('cyanfg_f', 'light gray', 'dark cyan'),
+		('cyanfg_bf', 'bold,light gray', 'dark cyan'),
 		
 		('redbg', 'black', 'dark red'),
 		
@@ -488,8 +520,8 @@ def urwidGitStatus():
 	#	screen = urwid.raw_display.Screen()
 	screen = urwid.raw_display.Screen()
 
-	g.mainLoop = urwid.MainLoop(g.mainWidget, palette, screen,
-		unhandled_input=unhandled, input_filter=inputFilter)
+	g.mainLoop = urwid.MainLoop(main.mainWidget, palette, screen,
+		unhandled_input=gitStatusUnhandled, input_filter=inputFilter)
 	g.mainLoop.run()
 		
 		
@@ -501,11 +533,7 @@ g.selectFileName = ""	#
 
 g.mainLoop = None	# urwid
 
-g.mainWidget = None
-g.widgetFrame = None
-g.headerText = "" 
-g.widgetFileList = None
-g.widgetContent = None
+g.mainDialog = None
 
 
 def winTest():
