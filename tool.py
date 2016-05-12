@@ -53,7 +53,7 @@ class git:
 		return commonRev[:7]
 
 	def printStatus():
-		ss = system("git status -s")
+		ss = system("git -c color.status=always status -s")
 		print("\n"+ss+"\n")
 		
 
@@ -62,7 +62,8 @@ class git:
 		return int(gap)
 
 	def commitLogBetween(brNew, brOld):
-		ss = system("git log --oneline --graph --decorate --abbrev-commit %s^..%s" % (brOld, brNew))
+		# color print
+		ss = system("git log --color --oneline --graph --decorate --abbrev-commit %s^..%s" % (brOld, brNew))
 		return ss
 		
 
