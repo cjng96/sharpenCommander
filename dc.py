@@ -343,6 +343,7 @@ def unhandled(key):
 		g.mainLoop.stop()
 		systemRet("vim %s" % fname)
 		g.mainLoop.start()
+		onFileSelected(g.widgetFileList.focus)
 
 		
 	elif key == "c":
