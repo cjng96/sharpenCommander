@@ -133,7 +133,7 @@ class Global:
 		
 				# print commit log again					
 				self.printCommitLogForPush(currentBranch, remoteBranch)
-							
+
 		
 		git.printStatus()
 
@@ -343,6 +343,26 @@ def unhandled(key):
 		g.mainLoop.stop()
 		systemRet("vim %s" % fname)
 		g.mainLoop.start()
+
+		
+	elif key == "c":
+		def onReset():
+			g.mainLoop.stop()
+			systemRet("git commit")
+			g.mainLoop.start()
+			refreshFileList()
+				
+		Urwid.popupAsk("Git commit", "Do you want to commit?", onReset)
+		
+	elif key == "C":
+		def onReset():
+			g.mainLoop.stop()
+			systemRet("git commit -a")
+			g.mainLoop.start()
+			refreshFileList()
+				
+		Urwid.popupAsk("Git commit(all)", "Do you want to commit?", onReset)
+		
 		
 	elif key == "h":
 		Urwid.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
