@@ -345,7 +345,7 @@ def unhandled(key):
 		
 	elif key == "R":
 		def onReset():
-			system("git co -- %s" % fname)
+			system("git checkout -- %s" % fname)
 			refreshFileList()
 				
 		btn = g.widgetFileList.focus
@@ -363,22 +363,22 @@ def unhandled(key):
 
 		
 	elif key == "c":
-		def onReset():
+		def onCommit():
 			g.mainLoop.stop()
 			systemRet("git commit")
 			g.mainLoop.start()
 			refreshFileList()
 				
-		Urwid.popupAsk("Git commit", "Do you want to commit?", onReset)
+		Urwid.popupAsk("Git commit", "Do you want to commit?", onCommit)
 		
 	elif key == "C":
-		def onReset():
+		def onCommit():
 			g.mainLoop.stop()
 			systemRet("git commit -a")
 			g.mainLoop.start()
 			refreshFileList()
 				
-		Urwid.popupAsk("Git commit(all)", "Do you want to commit?", onReset)
+		Urwid.popupAsk("Git commit(all)", "Do you want to commit?", onCommit)
 		
 		
 	elif key == "h":
