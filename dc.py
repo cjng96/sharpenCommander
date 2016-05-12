@@ -313,7 +313,7 @@ def unhandled(key):
 	elif key == "]":
 		g.widgetFileList.focusNext()
 		onFileSelected(g.widgetFileList.focus)
-	elif key == "a":
+	elif key == "A":
 		def onAdd():
 			system("git add %s" % fname)
 			refreshFileList()
@@ -322,7 +322,7 @@ def unhandled(key):
 		fname = getFileNameFromBtn(btn)
 		Urwid.popupAsk("Git add", "Do you want to add a file[%s]?" % fname, onAdd)
 		
-	elif key == "A":
+	elif key == "a":
 		def onAdd():
 			g.mainLoop.stop()
 			systemRet("git add -p %s" % fname)
@@ -439,7 +439,7 @@ def urwidGitStatus():
 	g.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(lstContent)))
 	g.widgetFrame = urwid.Pile([(8, urwid.AttrMap(g.widgetFileList, 'std')), ('pack', urwid.Divider('-')), g.widgetContent])
 	
-	g.headerText = urwid.Text(">> dc V%s - q(Quit),a(Add),A(prompt),r(Reset),R(drop),c(Commit), i(Ignore),[/](Prev/Next file)" % g.version)
+	g.headerText = urwid.Text(">> dc V%s - q(Quit),a/A(Add/prompt),r/R(Reset/drop),c/C(Commit/All), i(Ignore),[/](Prev/Next file)" % g.version)
 	g.mainWidget = urwid.Frame(g.widgetFrame, header=g.headerText)
 		
 	refreshFileList()
