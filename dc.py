@@ -278,7 +278,7 @@ class mMainStatusDialog(cDialog):
 		self.onFileSelected(self.widgetFileList.focus)	# auto display
 
 	def unhandled(self, key):
-		if key == 'f8' or key == "Q":
+		if key == 'f8' or key == "q":
 			raise urwid.ExitMainLoop()
 		elif key == 'k':
 			self.widgetContent.scrollUp()
