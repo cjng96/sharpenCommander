@@ -500,7 +500,7 @@ class mGitCommitDialog(cDialog):
 		elif key == "enter":
 			# commit
 			text = self.edInput.get_edit_text()
-			ss = system("git commit -m \"%s\"" % text[:-1])
+			ss = system("git commit -m \"%s\"" % text)
 			#print(ss)
 			self.onExit()
 
