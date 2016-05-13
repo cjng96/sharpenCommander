@@ -278,7 +278,7 @@ class mMainStatusDialog(cDialog):
 		self.onFileSelected(self.widgetFileList.focus)	# auto display
 
 	def unhandled(self, key):
-		if key == 'f8' or key == "q":
+		if key == 'f8' or key == "Q":
 			raise urwid.ExitMainLoop()
 		elif key == 'k':
 			self.widgetContent.scrollUp()
@@ -296,12 +296,7 @@ class mMainStatusDialog(cDialog):
 				system("git add %s" % fname)
 				self.refreshFileList()
 					
-			btn = self.widgetFileList.focus
-			fname = getFileNameFromBtn(btn)
-			Urwid.popupAsk("Git add", "Do you want to add a file[%s]?" % fname, onAdd)
-			
-		elif key == "a":
-			def onAdd():
+			def onPrompt():
 				g.loop.stop()
 				systemRet("git add -p %s" % fname)
 				g.loop.start()
@@ -309,9 +304,9 @@ class mMainStatusDialog(cDialog):
 					
 			btn = self.widgetFileList.focus
 			fname = getFileNameFromBtn(btn)
-			Urwid.popupAsk("Git add(prompt)", "Do you want to add a file[%s]?" % fname, onAdd)
+			Urwid.popupAsk3("Git add", "Do you want to add a file[%s]?" % fname, "Add", "Prompt", "Cancel", onAdd, onPrompt)
 
-		elif key == "r":
+		elif key == "R":
 			def onReset():
 				system("git reset %s" % fname)
 				self.refreshFileList()
@@ -320,16 +315,16 @@ class mMainStatusDialog(cDialog):
 			fname = getFileNameFromBtn(btn)
 			Urwid.popupAsk("Git reset", "Do you want to reset a file[%s]?" % fname, onReset)
 			
-		elif key == "R":
-			def onReset():
+		elif key == "D":
+			def onDrop():
 				system("git checkout -- %s" % fname)
 				self.refreshFileList()
 					
 			btn = self.widgetFileList.focus
 			fname = getFileNameFromBtn(btn)
-			Urwid.popupAsk("Git reset(f)", "Do you want to drop file[%s]s modification?" % fname, onReset)
+			Urwid.popupAsk("Git reset(f)", "Do you want to drop file[%s]s modification?" % fname, onDrop)
 		
-		elif key == "e":
+		elif key == "E":
 			btn = self.widgetFileList.focus
 			fname = getFileNameFromBtn(btn)
 
@@ -348,7 +343,7 @@ class mMainStatusDialog(cDialog):
 					
 			Urwid.popupAsk("Git commit", "Do you want to commit?", onCommit)
 
-		elif key == "c":
+		elif key == "C":
 			def onExit():
 				g.dialog = self
 				g.loop.widget = self.mainWidget
@@ -357,15 +352,6 @@ class mMainStatusDialog(cDialog):
 			dlg = mGitCommitDialog(onExit)
 			g.dialog = dlg
 			g.loop.widget = dlg.mainWidget
-
-		elif key == "C":
-			def onCommit():
-				g.loop.stop()
-				systemRet("git commit -a")
-				g.loop.start()
-				self.refreshFileList()
-					
-			Urwid.popupAsk("Git commit(all)", "Do you want to commit?", onCommit)
 			
 		elif key == "h":
 			Urwid.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
@@ -443,7 +429,7 @@ class mGitCommitDialog(cDialog):
 			self.onFileSelected(self.widgetFileList.focus)	# auto display
 
 	def unhandled(self, key):
-		if key == "q":
+		if key == "Q":
 			self.onExit()
 		elif key == 'k':
 			self.widgetContent.scrollUp()
@@ -461,12 +447,7 @@ class mGitCommitDialog(cDialog):
 				system("git add %s" % fname)
 				self.refreshFileList()
 					
-			btn = self.widgetFileList.focus
-			fname = getFileNameFromBtn(btn)
-			Urwid.popupAsk("Git add", "Do you want to add a file[%s]?" % fname, onAdd)
-			
-		elif key == "a":
-			def onAdd():
+			def onPrompt():
 				g.loop.stop()
 				systemRet("git add -p %s" % fname)
 				g.loop.start()
@@ -474,9 +455,9 @@ class mGitCommitDialog(cDialog):
 					
 			btn = self.widgetFileList.focus
 			fname = getFileNameFromBtn(btn)
-			Urwid.popupAsk("Git add(prompt)", "Do you want to add a file[%s]?" % fname, onAdd)
+			Urwid.popupAsk3("Git add", "Do you want to add a file[%s]?" % fname, "Add", "Prompt", "Cancel", onAdd, onPrompt)
 
-		elif key == "r":
+		elif key == "R":
 			def onReset():
 				system("git reset %s" % fname)
 				self.refreshFileList()
@@ -485,16 +466,16 @@ class mGitCommitDialog(cDialog):
 			fname = getFileNameFromBtn(btn)
 			Urwid.popupAsk("Git reset", "Do you want to reset a file[%s]?" % fname, onReset)
 			
-		elif key == "R":
-			def onReset():
+		elif key == "D":
+			def onDrop():
 				system("git checkout -- %s" % fname)
 				self.refreshFileList()
 					
 			btn = self.widgetFileList.focus
 			fname = getFileNameFromBtn(btn)
-			Urwid.popupAsk("Git reset(f)", "Do you want to drop file[%s]s modification?" % fname, onReset)
+			Urwid.popupAsk("Git reset(f)", "Do you want to drop file[%s]s modification?" % fname, onDrop)
 		
-		elif key == "e":
+		elif key == "E":
 			btn = self.widgetFileList.focus
 			fname = getFileNameFromBtn(btn)
 
@@ -503,6 +484,18 @@ class mGitCommitDialog(cDialog):
 			g.loop.start()
 			
 			self.refreshFileContentCur()
+			
+		elif key == "esc":
+			self.widgetFrame.set_focus(self.edInput)
+			
+		elif key == "ctrl a":
+			# commit all
+			def onCommit():
+				text = self.edInput.get_edit_text()
+				ss = system("git commit -a -m \"%s\"" % text[:-1])
+				self.onExit()
+					
+			Urwid.popupAsk("Git Commit", "Do you want to commit all modification?", onCommit)
 			
 		elif key == "enter":
 			# commit
@@ -609,6 +602,25 @@ class Urwid:
 		btnYes = urwid.Button("Yes", onClickBtn)
 		btnNo = urwid.Button("No", onClickBtn)
 		popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', urwid.Columns([btnYes, btnNo]))]), title)
+		g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 40, 'middle', 5)
+		
+	def popupAsk3(title, ss, btnName1, btnName2, btnName3, onBtn1, onBtn2, onBtn3 = None):
+		def onClickBtn(btn):
+			if btn == btnB1:
+				onBtn1()
+			elif btn == btnB2:
+				onBtn2()
+			elif btn == btnB3:
+				if onBtn3 != None: 
+					onBtn3()
+					
+			g.loop.widget = g.loop.widget.bottom_w
+			
+		txtMsg = urwid.Text(ss)
+		btnB1 = urwid.Button(btnName1, onBtn1)
+		btnB2 = urwid.Button(btnName2, onBtn2)
+		btnB3 = urwid.Button(btnName3, onBtn3)
+		popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', urwid.Columns([btnB1, btnB2, btnB3]))]), title)
 		g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 40, 'middle', 5)
 		
 	def popupInput(title, ss, onOk, onCancel = None):
