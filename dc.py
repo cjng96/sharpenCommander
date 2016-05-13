@@ -617,9 +617,9 @@ class Urwid:
 			g.loop.widget = g.loop.widget.bottom_w
 			
 		txtMsg = urwid.Text(ss)
-		btnB1 = urwid.Button(btnName1, onBtn1)
-		btnB2 = urwid.Button(btnName2, onBtn2)
-		btnB3 = urwid.Button(btnName3, onBtn3)
+		btnB1 = urwid.Button(btnName1, onClickBtn)
+		btnB2 = urwid.Button(btnName2, onClickBtn)
+		btnB3 = urwid.Button(btnName3, onClickBtn)
 		popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', urwid.Columns([btnB1, btnB2, btnB3]))]), title)
 		g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 40, 'middle', 5)
 		
