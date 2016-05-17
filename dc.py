@@ -219,8 +219,13 @@ class mListBox(urwid.ListBox):
 def refreshBtnList(content, listBox, onClick):
 	del listBox.body[:]
 	if content.strip() == "":
-		content = "< Nothing >"
-	listBox.body += Urwid.makeBtnList(content.split("\n"), onClick)
+		contentList = ["< Nothing >"]
+		listBox.itemCount = 0
+	else:
+		contentList = content.split("\n")
+		listBox.itemCount = len(contentList)
+		
+	listBox.body += Urwid.makeBtnList(contentList, onClick)
 
 
 class cDialog():
@@ -671,6 +676,10 @@ def urwidGitStatus():
 	
 	main = mMainStatusDialog()
 	main.refreshFileList()
+	if main.widgetFileList.itemCount == 0:
+		print("No modified or untracked files")
+		return
+		
 	g.dialog = main
 
 	# (name, fg, bg, mono, fgHigh, bgHigh)
