@@ -295,6 +295,11 @@ class mMainStatusDialog(cDialog):
 	def refreshFileList(self, focusMove=0):
 		fileList = system("git -c color.status=always status -s")
 		
+		# quoted octal notation to utf8
+		fileList = bytes(fileList, "utf-8").decode("unicode_escape")
+		bb = fileList.encode("ISO-8859-1")
+		fileList = bb.decode()
+		
 		focusIdx = self.widgetFileList.focus_position + focusMove
 		refreshBtnList(fileList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
 		if focusIdx >= len(self.widgetFileList.body):
