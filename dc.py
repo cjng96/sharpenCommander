@@ -250,7 +250,7 @@ class mMainStatusDialog(cDialog):
 		self.widgetFileList.body.set_focus_changed_callback(lambda new_focus: self.onFileFocusChanged(new_focus))
 		self.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(["< Nothing to display >"])))
 
-		self.headerText = urwid.Text(">> dc V%s - q(Quit),[/](Prev/Next file),A(Add),P(Prompt),R(Reset),D(drop),C(Commit),I(Ignore)" % g.version)
+		self.headerText = urwid.Text(">> dc V%s - q/F4(Quit),[/](Prev/Next file),A(Add),P(Prompt),R(Reset),D(drop),C(Commit),I(Ignore)" % g.version)
 		self.widgetFrame = urwid.Pile([(8, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
 
@@ -403,6 +403,8 @@ class mMainStatusDialog(cDialog):
 			Urwid.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 
 class mGitCommitDialog(cDialog):
+	themes = [("greenfg", "greenfg_f"), ("std", "std_f")]
+	
 	def __init__(self, onExit):
 		super().__init__()
 
@@ -421,18 +423,19 @@ class mGitCommitDialog(cDialog):
 
 	def onMsgChanged(self, edit, text):
 		pass
+		
+	def _applyFileColorTheme(self, widget, isFocus=0):
+		theme = self.themes[0 if widget.base_widget.data == "s" else 1]
+		widget.base_widget._label.set_text((theme[isFocus], widget.base_widget.origText))
+	
 
 	def onFileFocusChanged(self, new_focus):
-		themes = [("greenfg", "greenfg_f"), ("std", "std_f")]
-		
 		# old widget
 		widget = self.widgetFileList.focus
-		theme = themes[0 if widget.base_widget.data == "s" else 1]
-		widget.base_widget._label.set_text((theme[0], widget.base_widget.origText))
+		self._applyFileColorTheme(widget, 0)
 
 		widget = self.widgetFileList.body[new_focus]
-		theme = themes[0 if widget.base_widget.data == "s" else 1]
-		widget.base_widget._label.set_text((theme[1], widget.base_widget.origText))
+		self._applyFileColorTheme(widget, 1)
 
 	def onFileSelected(self, btn):
 		# why btn.get_label() is impossible?
@@ -443,7 +446,7 @@ class mGitCommitDialog(cDialog):
 		# display
 		btnType = btn.base_widget.data
 		pp = os.path.join(g.relRoot, self.selectFileName)
-		ss = system("git diff %s --color %s" % ("" if btnType == "c" else "--staged", pp))
+		ss = system("git diff %s --color \"%s\"" % ("" if btnType == "c" else "--staged", pp))
 		ss = ss.replace("\t", "    ")
 			
 		del self.widgetContent.body[:]
@@ -467,6 +470,9 @@ class mGitCommitDialog(cDialog):
 		self.widgetFileList.body += Urwid.makeBtnList(fileList.split("\n"), 
 			lambda btn: self.onFileSelected(btn), 
 			lambda btn: setattr(btn, "data", "c"))
+			
+		for widget in self.widgetFileList.body:
+			self._applyFileColorTheme(widget, 0)
 			
 		if len(self.widgetFileList.body) == 0:
 			self.widgetFileList.body += Urwid.makeBtnList(["< Nothing >"], None)
