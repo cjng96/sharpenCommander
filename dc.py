@@ -247,6 +247,13 @@ class mMainStatusDialog(cDialog):
 		self.widgetFrame = urwid.Pile([(8, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
 
+		g.gitRoot = system("git rev-parse --show-toplevel")
+		g.curPath = os.getcwd()
+		g.relRoot = "./"
+		if g.gitRoot != g.curPath:
+			g.relRoot = os.path.relpath(g.gitRoot, g.curPath)
+			
+
 	def onFileFocusChanged(self, new_focus):
 		# old widget
 		widget = self.widgetFileList.focus
@@ -395,7 +402,6 @@ class mGitCommitDialog(cDialog):
 		pass
 
 	def onFileFocusChanged(self, new_focus):
-	
 		themes = [("greenfg", "greenfg_f"), ("std", "std_f")]
 		
 		# old widget
@@ -415,7 +421,8 @@ class mGitCommitDialog(cDialog):
 		
 		# display
 		btnType = btn.base_widget.data
-		ss = system("git diff %s --color %s" % ("" if btnType == "c" else "--staged", self.selectFileName))
+		pp = os.path.join(g.relRoot, self.selectFileName)
+		ss = system("git diff %s --color %s" % ("" if btnType == "c" else "--staged", pp))
 		ss = ss.replace("\t", "    ")
 			
 		del self.widgetContent.body[:]
