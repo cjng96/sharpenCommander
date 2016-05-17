@@ -282,7 +282,12 @@ class mMainStatusDialog(cDialog):
 
 	def refreshFileList(self):
 		fileList = system("git -c color.status=always status -s")
+		
+		focusIdx = self.widgetFileList.focus_position
 		refreshBtnList(fileList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
+		if focusIdx >= len(self.widgetFileList.body):
+			focusIdx = len(self.widgetFileList.body)-1
+		self.widgetFileList.focus_position = focusIdx
 	
 		self.onFileSelected(self.widgetFileList.focus)	# auto display
 
