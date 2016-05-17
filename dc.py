@@ -395,6 +395,12 @@ class mMainStatusDialog(cDialog):
 				g.loop.widget = self.mainWidget
 				self.refreshFileList()
 				
+				# exit
+				if self.widgetFileList.itemCount == 0:
+					g.loop.stop()
+					print("No modified or untracked files")
+					sys.exit(0)
+				
 			dlg = mGitCommitDialog(onExit)
 			g.dialog = dlg
 			g.loop.widget = dlg.mainWidget
