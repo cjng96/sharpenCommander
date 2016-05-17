@@ -235,6 +235,13 @@ class cDialog():
 	def unhandled(self, key):
 		pass 
 	
+def strSplit2(str, ch):
+	pt = str.find(ch)
+	if pt == -1:
+		return "", str
+	
+	return str[:pt], str[pt+len(ch):]
+	
 class mMainStatusDialog(cDialog):
 	def __init__(self):
 		super().__init__()
@@ -286,7 +293,7 @@ class mMainStatusDialog(cDialog):
 		ss = ss.replace("\t", "    ")
 			
 		del self.widgetContent.body[:]
-		self.widgetContent.body += Urwid.makeTextList(ss.split("\n"))
+		self.widgetContent.body += Urwid.makeTextList(ss.splitlines())
 		self.widgetFrame.set_focus(self.widgetContent)
 
 	def refreshFileContentCur(self):
@@ -300,8 +307,16 @@ class mMainStatusDialog(cDialog):
 		bb = fileList.encode("ISO-8859-1")
 		fileList = bb.decode()
 		
+		# remove "" in file name
+		fileList2 = ""
+		for line in fileList.splitlines():
+			fileType, fileName = strSplit2(line, " ")
+			if fileName.startswith("\"") and fileName.endswith("\""):
+				fileName = fileName[1:-1]  
+			fileList2 += fileType + " " + fileName + "\n"
+		
 		focusIdx = self.widgetFileList.focus_position + focusMove
-		refreshBtnList(fileList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
+		refreshBtnList(fileList2, self.widgetFileList, lambda btn: self.onFileSelected(btn))
 		if focusIdx >= len(self.widgetFileList.body):
 			focusIdx = len(self.widgetFileList.body)-1
 		self.widgetFileList.focus_position = focusIdx
