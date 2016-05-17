@@ -205,7 +205,16 @@ class mListBox(urwid.ListBox):
 			return
 			
 		self.body.set_focus(self.body.get_prev(cur[1])[1])
-
+		
+	def mouse_event(self, size, event, button, col, row, focus):
+		if event == "mouse press":
+			if button == 4:	# up
+				for i in range(3):
+					self.scrollUp()
+			
+			elif button == 5:	# down
+				for i in range(3):
+					self.scrollDown()
 
 def refreshBtnList(content, listBox, onClick):
 	del listBox.body[:]
