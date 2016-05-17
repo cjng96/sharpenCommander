@@ -304,7 +304,7 @@ class mMainStatusDialog(cDialog):
 		self.onFileSelected(self.widgetFileList.focus)	# auto display
 
 	def unhandled(self, key):
-		if key == 'f8' or key == "q":
+		if key == 'f4' or key == "q":
 			raise urwid.ExitMainLoop()
 		elif key == 'k':
 			self.widgetContent.scrollUp()
@@ -454,7 +454,7 @@ class mGitCommitDialog(cDialog):
 			self.onFileSelected(self.widgetFileList.focus)	# auto display
 
 	def unhandled(self, key):
-		if key == "Q":
+		if key == "q" or key == "Q" or key == "f4":
 			self.onExit()
 		elif key == 'k':
 			self.widgetContent.scrollUp()
