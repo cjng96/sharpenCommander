@@ -238,7 +238,7 @@ class mMainStatusDialog(cDialog):
 		self.widgetFileList.body.set_focus_changed_callback(lambda new_focus: self.onFileFocusChanged(new_focus))
 		self.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(["< Nothing to display >"])))
 
-		self.headerText = urwid.Text(">> dc V%s - q(Quit),a/A(Add/prompt),r/R(Reset/drop),c/C(Commit/All), i(Ignore),[/](Prev/Next file)" % g.version)
+		self.headerText = urwid.Text(">> dc V%s - q(Quit),[/](Prev/Next file),A(Add),P(Prompt),R(Reset),D(drop),C(Commit),I(Ignore)" % g.version)
 		self.widgetFrame = urwid.Pile([(8, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
 
@@ -301,10 +301,12 @@ class mMainStatusDialog(cDialog):
 			self.refreshFileContentCur()
 			
 		elif key == "A":
-			def onAdd():
-				system("git add %s" % fname)
-				self.refreshFileList()
-					
+			btn = self.widgetFileList.focus
+			fname = getFileNameFromBtn(btn)
+			system("git add %s" % fname)
+			self.refreshFileList()
+			
+		elif key == "P":
 			def onPrompt():
 				g.loop.stop()
 				systemRet("git add -p %s" % fname)
@@ -313,16 +315,13 @@ class mMainStatusDialog(cDialog):
 					
 			btn = self.widgetFileList.focus
 			fname = getFileNameFromBtn(btn)
-			Urwid.popupAsk3("Git add", "Do you want to add a file[%s]?" % fname, "Add", "Prompt", "Cancel", onAdd, onPrompt)
+			Urwid.popupAsk("Git add", "Do you want to add a file via prompt[%s]?" % fname, onPrompt)
 
 		elif key == "R":
-			def onReset():
-				system("git reset %s" % fname)
-				self.refreshFileList()
-					
 			btn = self.widgetFileList.focus
 			fname = getFileNameFromBtn(btn)
-			Urwid.popupAsk("Git reset", "Do you want to reset a file[%s]?" % fname, onReset)
+			system("git reset %s" % fname)
+			self.refreshFileList()
 			
 		elif key == "D":
 			def onDrop():
@@ -698,17 +697,6 @@ def urwidGitStatus():
 		('redbg', 'black', 'dark red'),
 		
 		('reveal focus', "black", "dark cyan", "standout"),
-		
-		('body','black','light gray', 'standout'),
-		('reverse','light gray','black'),
-		('header','white','dark red', 'bold'),
-		('important','dark blue','light gray',('standout','underline')),
-		('editfc','white', 'dark blue', 'bold'),
-		('editbx','light gray', 'dark blue'),
-		('editcp','black','light gray', 'standout'),
-		('bright','dark gray','light gray', ('bold','standout')),
-		('buttn','black','dark cyan'),
-		('buttnf','white','dark blue','bold'),
 		]
 		
 	# use appropriate Screen class
@@ -758,7 +746,6 @@ def run():
 	if not os.path.isfile(os.path.join(pp, "path.py")):
 		raise ExcFail("No path.py file in ~/.devcmd")
 
-		
 	sys.path.append(pp)
 	m = __import__("path")
 	g.lstPath = m.pathList
@@ -782,7 +769,6 @@ def run():
 	elif target == "config":
 		g.savePath("~/.devcmd")
 		return
-		
 		
 	#print("target - %s" % target)
 	g.cd(target)
