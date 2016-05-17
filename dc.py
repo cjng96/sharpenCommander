@@ -281,7 +281,7 @@ class mMainStatusDialog(cDialog):
 				ss = "Error to load"
 				
 		else:
-			ss = system("git diff --color %s" % self.selectFileName)
+			ss = system("git diff --color \"%s\"" % self.selectFileName)
 			
 		ss = ss.replace("\t", "    ")
 			
@@ -493,7 +493,7 @@ class mGitCommitDialog(cDialog):
 			
 		elif key == "D":
 			def onDrop():
-				system("git checkout -- %s" % fname)
+				system("git checkout --\"%s\"" % fname)
 				self.refreshFileList()
 					
 			btn = self.widgetFileList.focus
@@ -546,7 +546,9 @@ class Urwid:
 
 	def terminal2markup(ss, invert=0):
 		#source = "\033[31mFOO\033[0mBAR"
-		table = {"[1":("bold",'bold_f'), 
+		table = {"[1":("bold",'bold_f'), "[4":("underline",'underline_f'),
+			"[22":("std",'std_f'),
+			"[24":("std",'std_f'),
 			"[31":('redfg','redfg_f'), "[32":('greenfg', "greenfg_f"), 
 			"[33":('yellowfg', "yellowfg_f"), "[36":('cyanfg', "cyanfg_f"), 
 			"[41":("redbg", "regbg_f"),
@@ -582,7 +584,6 @@ class Urwid:
 		outList = []
 		for line in lstStr:
 			line2 = Urwid.terminal2markup(line)
-			#g.log.write("ma - %s\n -> %s\n" % (line, line2))
 			outList.append(urwid.Text(line2))
 		return outList
 		
@@ -697,6 +698,8 @@ def urwidGitStatus():
 		("reset_f", "std_f"),
 		('bold', 'light gray,bold', 'black'),
 		('bold_f', 'light gray,bold', 'dark cyan'),
+		('underline', 'light gray,underline', 'black'),
+		('underline_f', 'light gray,underline', 'dark cyan'),
 
 		('redfg', 'dark red', 'black'),
 		('redfg_b', 'bold,dark red', 'black'),
