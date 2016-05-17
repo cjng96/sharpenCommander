@@ -809,7 +809,7 @@ def run():
 	g.lstPath = m.pathList
 	
 	if len(sys.argv) == 1:
-		target = "~"
+		target = "st"
 	else:
 		target = sys.argv[1]
 		
