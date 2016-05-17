@@ -711,10 +711,23 @@ def urwidGitStatus():
 	g.loop.run()
 		
 		
+def programPath(sub=None):
+  pp = os.path.dirname(os.path.realpath(sys.argv[0]))
+  if sub != None:
+    pp = os.path.join(pp, sub)
+  return pp
+
+import datetime		
 
 g = Global()
 g.version = "1.0"
-g.log = open("log.log", "w", encoding="UTF-8")
+g._log = programPath("dc.log")
+def logFunc(msg):
+	timeStr = datetime.datetime.now().strftime("%m%d %H%M%S")
+	with open(g._log, "a+", encoding="UTF-8") as fp:
+		fp.write(timeStr + " " + msg + "\n")
+	
+g.log = logFunc
 
 g.loop = None	# urwid
 
