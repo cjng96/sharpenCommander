@@ -285,10 +285,10 @@ class mMainStatusDialog(cDialog):
 	def refreshFileContentCur(self):
 		self.onFileSelected(self.widgetFileList.focus)
 
-	def refreshFileList(self):
+	def refreshFileList(self, focusMove=0):
 		fileList = system("git -c color.status=always status -s")
 		
-		focusIdx = self.widgetFileList.focus_position
+		focusIdx = self.widgetFileList.focus_position + focusMove
 		refreshBtnList(fileList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
 		if focusIdx >= len(self.widgetFileList.body):
 			focusIdx = len(self.widgetFileList.body)-1
@@ -314,7 +314,7 @@ class mMainStatusDialog(cDialog):
 			btn = self.widgetFileList.focus
 			fname = getFileNameFromBtn(btn)
 			system("git add %s" % fname)
-			self.refreshFileList()
+			self.refreshFileList(1)
 			
 		elif key == "P":
 			def onPrompt():
