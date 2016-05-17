@@ -282,10 +282,11 @@ class mMainStatusDialog(cDialog):
 			ss = label
 		elif label.startswith("?? "):
 			try:
-				ss = open(self.selectFileName, "r", encoding="UTF-8").read()
+				with open(self.selectFileName, "r", encoding="UTF-8") as fp:
+					ss = fp.read()
 			except UnicodeDecodeError:
 				#Urwid.popupMsg("Encoding", "Encoding error[%s]" % self.selectFileName);
-				ss = "Error to load"
+				ss = "No utf8 file[size:%d]" % os.path.getsize(self.selectFileName) 
 				
 		else:
 			ss = system("git diff --color \"%s\"" % self.selectFileName)
