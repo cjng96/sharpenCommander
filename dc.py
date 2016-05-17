@@ -5,6 +5,7 @@ import subprocess
 
 import os
 import sys
+import select
 
 import tool
 from tool import git, system, systemSafe, systemRet
@@ -241,6 +242,70 @@ def strSplit2(str, ch):
 		return "", str
 	
 	return str[:pt], str[pt+len(ch):]
+	
+
+class mDlgMainFind(cDialog):
+	def __init__(self, content):
+		super().__init__()
+		self.content = content
+
+		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(Urwid.makeBtnList(["< No files >"], None)))
+		self.widgetFileList.body.set_focus_changed_callback(lambda new_focus: self.onFileFocusChanged(new_focus))
+		self.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(["< Nothing to display >"])))
+
+		self.headerText = urwid.Text(">> dc V%s - find - q/F4(Quit),<-/->(Prev/Next file),Enter(goto)" % g.version)
+		self.widgetFrame = urwid.Pile([(15, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
+		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
+
+	def onFileFocusChanged(self, new_focus):
+		# old widget
+		widget = self.widgetFileList.focus
+		markup = Urwid.terminal2markup(widget.base_widget.origText, 0)
+		widget.base_widget._label.set_text(markup)
+
+		widget = self.widgetFileList.body[new_focus]
+		markup = Urwid.terminal2markup(widget.base_widget.origText, 1)
+		widget.base_widget._label.set_text(markup)
+
+		self.selectFileName = getFileNameFromBtn(widget)
+
+		try:
+			with open(self.selectFileName, "r", encoding="UTF-8") as fp:
+				ss = fp.read()
+		except UnicodeDecodeError:
+			ss = "No utf8 file[size:%d]" % os.path.getsize(self.selectFileName) 
+			
+		ss = ss.replace("\t", "    ")
+			
+		del self.widgetContent.body[:]
+		self.widgetContent.body += Urwid.makeTextList(ss.splitlines())
+		self.widgetFrame.set_focus(self.widgetContent)
+
+
+	def onFileSelected(self, btn):
+		self.selectFileName = getFileNameFromBtn(btn)
+		pp = os.path.dirname(os.path.join(os.getcwd(), self.selectFileName))
+		g.savePath(pp)
+		raise urwid.ExitMainLoop()
+
+	def refreshFileList(self, focusMove=0):
+		refreshBtnList(self.content, self.widgetFileList, lambda btn: self.onFileSelected(btn))
+		#self.onFileSelected(self.widgetFileList.focus)	# auto display
+
+	def unhandled(self, key):
+		g.log("key - %s" % key)
+		
+		if key == 'f4' or key == "q":
+			raise urwid.ExitMainLoop()
+		elif key == 'left' or key == "[":
+			self.widgetFileList.focusPrevious()
+			self.refreshFileContentCur()
+		elif key == 'right' or key == "]":
+			self.widgetFileList.focusNext()
+			self.refreshFileContentCur()
+		elif key == "h":
+			Urwid.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
+	
 	
 class mMainStatusDialog(cDialog):
 	def __init__(self):
@@ -699,7 +764,6 @@ class Urwid:
 		g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 40, 'middle', 5)
 
 
-
 def urwidUnhandled(key):
 	g.dialog.unhandled(key)
 		
@@ -709,7 +773,6 @@ def inputFilter(keys, raw):
 def getFileNameFromBtn(btn):
 	label = btn.base_widget.get_label()
 	return label[2:].strip()
-
 
 def urwidGitStatus():
 	lstFile = ""
@@ -723,8 +786,43 @@ def urwidGitStatus():
 		
 	g.dialog = main
 
-	# (name, fg, bg, mono, fgHigh, bgHigh)
-	palette = [
+	# use appropriate Screen class
+	#if urwid.web_display.is_web_request():
+	#	screen = urwid.web_display.Screen()
+	#else:
+	#	screen = urwid.raw_display.Screen()
+	screen = urwid.raw_display.Screen()
+
+	g.loop = urwid.MainLoop(main.mainWidget, g.palette, screen,
+		unhandled_input=urwidUnhandled, input_filter=inputFilter)
+	g.loop.run()
+		
+		
+def programPath(sub=None):
+  pp = os.path.dirname(os.path.realpath(sys.argv[0]))
+  if sub != None:
+    pp = os.path.join(pp, sub)
+  return pp
+
+import datetime		
+
+g = Global()
+g.version = "1.0"
+g._log = programPath("dc.log")
+def logFunc(msg):
+	timeStr = datetime.datetime.now().strftime("%m%d %H%M%S")
+	with open(g._log, "a+", encoding="UTF-8") as fp:
+		fp.write(timeStr + " " + msg + "\n")
+	
+g.log = logFunc
+
+g.loop = None	# urwid
+
+g.dialog = None
+
+
+# (name, fg, bg, mono, fgHigh, bgHigh)
+g.palette = [
 		('std', 'light gray', 'black'),
 		('std_f', 'black', 'dark cyan'),
 		('reset', 'std'),
@@ -755,40 +853,6 @@ def urwidGitStatus():
 		
 		('reveal focus', "black", "dark cyan", "standout"),
 		]
-		
-	# use appropriate Screen class
-	#if urwid.web_display.is_web_request():
-	#	screen = urwid.web_display.Screen()
-	#else:
-	#	screen = urwid.raw_display.Screen()
-	screen = urwid.raw_display.Screen()
-
-	g.loop = urwid.MainLoop(main.mainWidget, palette, screen,
-		unhandled_input=urwidUnhandled, input_filter=inputFilter)
-	g.loop.run()
-		
-		
-def programPath(sub=None):
-  pp = os.path.dirname(os.path.realpath(sys.argv[0]))
-  if sub != None:
-    pp = os.path.join(pp, sub)
-  return pp
-
-import datetime		
-
-g = Global()
-g.version = "1.0"
-g._log = programPath("dc.log")
-def logFunc(msg):
-	timeStr = datetime.datetime.now().strftime("%m%d %H%M%S")
-	with open(g._log, "a+", encoding="UTF-8") as fp:
-		fp.write(timeStr + " " + msg + "\n")
-	
-g.log = logFunc
-
-g.loop = None	# urwid
-
-g.dialog = None
 
 
 def winTest():
@@ -799,10 +863,12 @@ def winTest():
 	print("%d %x %x %x %x" % (st, ss[0], ss[1], ss[2], ss[3]))
 	sys.exit(0)
 
+def getNonblocingInput():
+	if select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], []):
+		return sys.stdin.read(255)
 
 def run():
 	#winTest()
-	
 	try:
 		os.remove("/tmp/cmdDevTool.path")
 	except OSError:
@@ -815,6 +881,20 @@ def run():
 		
 	if not os.path.isfile(os.path.join(pp, "path.py")):
 		raise ExcFail("No path.py file in ~/.devcmd")
+
+	# under pipe line
+	ss = getNonblocingInput()
+	if ss != None:
+		ss = ss.strip("\n")
+		if ss == "":
+			print("Empty path in pipe")
+			return
+		else:
+			#ss = os.path.dirname(ss)
+			#print("goto: " + ss)
+			#g.savePath(ss)
+			pass
+		return
 
 	sys.path.append(pp)
 	m = __import__("path")
@@ -839,6 +919,28 @@ def run():
 	elif target == "config":
 		g.savePath("~/.devcmd")
 		return
+	elif target == "which":
+		ss, status = systemSafe(" ".join(['"' + c + '"' for c in sys.argv[1:]]))
+		print(ss)
+		print("goto which path...")
+		g.savePath(os.path.dirname(ss))
+		return
+	
+	elif target == "find":
+		ss, status = systemSafe(" ".join(['"' + c + '"' for c in sys.argv[1:]]))
+		ss = ss.strip(" \n")
+		if ss == "":
+			print("No found files")
+		
+		dlg = mDlgMainFind(ss)
+		dlg.refreshFileList()
+			
+		g.dialog = dlg
+		g.loop = urwid.MainLoop(dlg.mainWidget, g.palette, urwid.raw_display.Screen(),
+			unhandled_input=urwidUnhandled, input_filter=inputFilter)
+		g.loop.run()
+		return
+				
 		
 	#print("target - %s" % target)
 	g.cd(target)
