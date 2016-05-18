@@ -15,20 +15,20 @@ function goPath()
 }
 function dc()
 {
-	python3 $DEV_CMD_PATH/dc.py "$1" "$2" "$3" "$4" $5 $6 $7 $8 $9
+	python3 $DEV_CMD_PATH/dc.py "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9"
 	goPath
 		
 }
 function dcf()
 {
-	python3 $DEV_CMD_PATH/dc.py findg "$1" "$2"
+	python3 $DEV_CMD_PATH/dc.py findg "$1" "$2" "$3" "$4" "$5"
 	goPath
 }
 
 
 function dcd()
 {
-	python3 -m pudb.run $DEV_CMD_PATH/dc.py $1 $2 $3 $4 $5 $6 $7 $8 $9
+	python3 -m pudb.run $DEV_CMD_PATH/dc.py "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9"
 	goPath
 }
 
