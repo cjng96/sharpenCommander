@@ -311,10 +311,10 @@ class mDlgMainFind(cDialog):
 		
 	def recvData(self, data):
 		if g.sub.poll() != None:
-			# recvData받는중에 이게 참인 경우가 많다.
+			# cygwin에서 recvData받는중에 이게 참인 경우가 많다. - 리눅스는 바로 전달되서 이게 없다.
 			self.headerText.set_text(self.header+"!!!")
 			
-		# cygwin에서는 발생 안함
+		# cygwin에서는 발생 안함 - 리눅스도 안함
 		if len(data) == 0:
 			raise Exception("Crash len(data)==0!!!")
 			self.headerText.set_caption(self.headerText.set_caption()[:-3]+"!!")
