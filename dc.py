@@ -295,16 +295,12 @@ class mDlgMainFind(cDialog):
 		#self.onFileSelected(self.widgetFileList.focus)	# auto display
 
 	def unhandled(self, key):
-		g.log("key - %s" % key)
-		
 		if key == 'f4' or key == "q":
 			raise urwid.ExitMainLoop()
 		elif key == 'left' or key == "[":
 			self.widgetFileList.focusPrevious()
-			self.refreshFileContentCur()
 		elif key == 'right' or key == "]":
 			self.widgetFileList.focusNext()
-			self.refreshFileContentCur()
 		elif key == "h":
 			Urwid.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 	
