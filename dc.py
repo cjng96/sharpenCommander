@@ -260,11 +260,13 @@ class mDlgMainFind(cDialog):
 	def onFileFocusChanged(self, new_focus):
 		# old widget
 		widget = self.widgetFileList.focus
-		markup = Urwid.terminal2markup(widget.base_widget.origText, 0)
+		#markup = Urwid.terminal2markup(widget.base_widget.origText, 0)
+		markup = ("std", widget.base_widget.origText)
 		widget.base_widget._label.set_text(markup)
 
 		widget = self.widgetFileList.body[new_focus]
-		markup = Urwid.terminal2markup(widget.base_widget.origText, 1)
+		#markup = Urwid.terminal2markup(widget.base_widget.origText, 1)
+		markup = ("std_f", widget.base_widget.origText)
 		widget.base_widget._label.set_text(markup)
 
 		self.selectFileName = getFileNameFromBtn(widget)
