@@ -740,7 +740,7 @@ class Urwid:
 	def makeBtn(text, onClick, isFocus=False, doApply=None):
 		text2 = Urwid.terminal2markup(text, 1 if isFocus else 0)
 		btn = mButton(text2, onClick)
-		btn.origText = text2
+		btn.origText = text
 		
 		if doApply != None:
 			doApply(btn)
