@@ -725,6 +725,9 @@ class Urwid:
 			if text != "":	# skip empty string
 				markup.append((table[attr][invert], text))
 			
+		if len(markup) == 0:
+			return ""
+			
 		return markup
 		
 	def genEdit(label, text, fn):
