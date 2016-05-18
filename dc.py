@@ -176,6 +176,10 @@ class mButton(urwid.Button):
 		#self.set_label(label)
 
 class mListBox(urwid.ListBox):
+
+	def __init__(self, body):
+		super().__init__(body)
+		
 	def focusNext(self):
 		cur = self.body.get_focus()
 		if cur[1] >= len(self.body)-1:
@@ -216,6 +220,10 @@ class mListBox(urwid.ListBox):
 			elif button == 5:	# down
 				for i in range(3):
 					self.scrollDown()
+					
+	def inputFilter(self, keys, raw):
+		return keys
+
 
 def refreshBtnList(content, listBox, onClick):
 	del listBox.body[:]
@@ -286,12 +294,20 @@ class mDlgMainFind(cDialog):
 		self.widgetContent.body += Urwid.makeTextList(ss.splitlines())
 		self.widgetFrame.set_focus(self.widgetContent)
 
-
 	def onFileSelected(self, btn):
 		self.selectFileName = getFileNameFromBtn(btn)
 		pp = os.path.dirname(os.path.join(os.getcwd(), self.selectFileName))
 		g.savePath(pp)
 		raise urwid.ExitMainLoop()
+		
+	def inputFilter(self, keys, raw):
+		if "enter" not in keys:
+			return keys
+
+		#idx = keys.index("enter")
+		self.onFileSelected(self.widgetFileList.focus)
+		#return keys[:idx-1]+keys[idx+1:]
+		
 		
 	def recvData(self, data):
 		if g.sub.poll() != None:
@@ -812,8 +828,12 @@ class Urwid:
 def urwidUnhandled(key):
 	g.dialog.unhandled(key)
 		
-def inputFilter(keys, raw):
-	return keys
+def urwidInputFilter(keys, raw):
+	op = getattr(g.dialog, "inputFilter", None)
+	if not callable(op):
+		return keys
+		
+	return g.dialog.inputFilter(keys, raw)
 
 def getFileNameFromBtn(btn):
 	label = btn.base_widget.get_label()
@@ -839,7 +859,7 @@ def urwidGitStatus():
 	screen = urwid.raw_display.Screen()
 
 	g.loop = urwid.MainLoop(main.mainWidget, g.palette, screen,
-		unhandled_input=urwidUnhandled, input_filter=inputFilter)
+		unhandled_input=urwidUnhandled, input_filter=urwidInputFilter)
 	g.loop.run()
 		
 def urwidFind(cmds):
@@ -847,7 +867,7 @@ def urwidFind(cmds):
 		
 	g.dialog = dlg
 	g.loop = urwid.MainLoop(dlg.mainWidget, g.palette, urwid.raw_display.Screen(),
-		unhandled_input=urwidUnhandled, input_filter=inputFilter)
+		unhandled_input=urwidUnhandled, input_filter=urwidInputFilter)
 		
 	writeFd = g.loop.watch_pipe(lambda data: dlg.recvData(data))
 	g.sub = subprocess.Popen(cmds, bufsize=0, stdout=writeFd, close_fds=True)
@@ -939,6 +959,7 @@ def run():
 		raise ExcFail("No path.py file in ~/.devcmd")
 
 	# under pipe line
+	'''
 	ss = getNonblocingInput()
 	if ss != None:
 		ss = ss.strip("\n")
@@ -951,6 +972,7 @@ def run():
 			#g.savePath(ss)
 			pass
 		return
+	'''
 
 	sys.path.append(pp)
 	m = __import__("path")
