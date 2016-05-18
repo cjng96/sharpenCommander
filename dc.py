@@ -252,7 +252,7 @@ class mDlgMainFind(cDialog):
 		self.widgetFileList.body.set_focus_changed_callback(lambda new_focus: self.onFileFocusChanged(new_focus))
 		self.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(["< Nothing to display >"])))
 
-		self.header = ">> dc V%s - find - q/F4(Quit),<-/->(Prev/Next file),Enter(goto)..." % g.version
+		self.header = ">> dc V%s - find - q/F4(Quit),<-/->(Prev/Next file),Enter(goto),E(edit)..." % g.version
 		self.headerText = urwid.Text(self.header)
 		self.widgetFrame = urwid.Pile([(15, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
@@ -292,10 +292,6 @@ class mDlgMainFind(cDialog):
 		pp = os.path.dirname(os.path.join(os.getcwd(), self.selectFileName))
 		g.savePath(pp)
 		raise urwid.ExitMainLoop()
-
-	def refreshFileList(self, focusMove=0):
-		refreshBtnList(self.content, self.widgetFileList, lambda btn: self.onFileSelected(btn))
-		#self.onFileSelected(self.widgetFileList.focus)	# auto display
 		
 	def recvData(self, data):
 		if g.sub.poll() != None:
@@ -339,6 +335,14 @@ class mDlgMainFind(cDialog):
 			self.widgetFileList.focusPrevious()
 		elif key == 'right' or key == "]":
 			self.widgetFileList.focusNext()
+		elif key == "e" or key == "E":
+			btn = self.widgetFileList.focus
+			fname = getFileNameFromBtn(btn)
+
+			g.loop.stop()
+			systemRet("vim %s" % fname)
+			g.loop.start()
+			
 		elif key == "h":
 			Urwid.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 	
@@ -945,7 +949,7 @@ def run():
 		target = "st"
 	else:
 		target = sys.argv[1]
-		
+
 	if target == "push":
 		print("fetching first...")
 		git.fetch()
