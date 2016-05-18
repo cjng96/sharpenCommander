@@ -842,6 +842,17 @@ def urwidGitStatus():
 		unhandled_input=urwidUnhandled, input_filter=inputFilter)
 	g.loop.run()
 		
+def urwidFind(cmds):
+	dlg = mDlgMainFind()
+		
+	g.dialog = dlg
+	g.loop = urwid.MainLoop(dlg.mainWidget, g.palette, urwid.raw_display.Screen(),
+		unhandled_input=urwidUnhandled, input_filter=inputFilter)
+		
+	writeFd = g.loop.watch_pipe(lambda data: dlg.recvData(data))
+	g.sub = subprocess.Popen(cmds, bufsize=0, stdout=writeFd, close_fds=True)
+	g.loop.run()
+
 		
 def programPath(sub=None):
   pp = os.path.dirname(os.path.realpath(sys.argv[0]))
@@ -972,21 +983,19 @@ def run():
 		return
 	
 	elif target == "find":
-		dlg = mDlgMainFind()
-			
-		g.dialog = dlg
-		g.loop = urwid.MainLoop(dlg.mainWidget, g.palette, urwid.raw_display.Screen(),
-			unhandled_input=urwidUnhandled, input_filter=inputFilter)
-			
-		writeFd = g.loop.watch_pipe(lambda data: dlg.recvData(data))
+		# dc find . -name "*.py"
+
 		#cmds = shlex.split(cmdLine)
 		# find with shell=true not working on cygwin
 		cmds = ["/usr/bin/find"] + [c for c in sys.argv[2:]]
-		g.sub = subprocess.Popen(cmds, bufsize=0, stdout=writeFd, close_fds=True)
-		
-		g.loop.run()
-		#sub.kill()
+		urwidFind(cmds)
 		return
+		
+	elif target == "findg":
+		cmds = ["/usr/bin/find", ".", "-name", sys.argv[2]]
+		urwidFind(cmds)
+		return
+	
 		
 	#print("target - %s" % target)
 	g.cd(target)
