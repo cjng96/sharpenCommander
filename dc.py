@@ -245,17 +245,20 @@ def strSplit2(str, ch):
 	
 
 class mDlgMainFind(cDialog):
-	def __init__(self, content):
+	def __init__(self):
 		super().__init__()
-		self.content = content
 
-		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(Urwid.makeBtnList(["< No files >"], None)))
+		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(Urwid.makeBtnList([], None)))
 		self.widgetFileList.body.set_focus_changed_callback(lambda new_focus: self.onFileFocusChanged(new_focus))
 		self.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(["< Nothing to display >"])))
 
-		self.headerText = urwid.Text(">> dc V%s - find - q/F4(Quit),<-/->(Prev/Next file),Enter(goto)" % g.version)
+		self.header = ">> dc V%s - find - q/F4(Quit),<-/->(Prev/Next file),Enter(goto)..." % g.version
+		self.headerText = urwid.Text(self.header)
 		self.widgetFrame = urwid.Pile([(15, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
+		
+		self.cbFileSelect = lambda btn: self.onFileSelected(btn)
+		self.content = ""
 
 	def onFileFocusChanged(self, new_focus):
 		# old widget
@@ -293,6 +296,41 @@ class mDlgMainFind(cDialog):
 	def refreshFileList(self, focusMove=0):
 		refreshBtnList(self.content, self.widgetFileList, lambda btn: self.onFileSelected(btn))
 		#self.onFileSelected(self.widgetFileList.focus)	# auto display
+		
+	def recvData(self, data):
+		if g.sub.poll() != None:
+			# recvData받는중에 이게 참인 경우가 많다.
+			self.headerText.set_text(self.header+"!!!")
+			
+		# cygwin에서는 발생 안함
+		if len(data) == 0:
+			raise Exception("Crash len(data)==0!!!")
+			self.headerText.set_caption(self.headerText.set_caption()[:-3]+"!!")
+			
+			# eof
+			if len(self.widgetFileList.body) == 0:
+				Urwid.makeBtn("< No files >", self.cbFileSelect, True)
+				return False
+				
+		ss = data.decode("UTF-8")
+		self.content += ss
+		pt = self.content.rfind("\n")
+		if pt == -1:
+			return True
+
+		ss = self.content[:pt]
+		self.content = self.content[pt:]
+		
+		for line in ss.splitlines():
+			line = line.strip()
+			if line == "":
+				continue
+			
+			btn = Urwid.makeBtn(line, self.cbFileSelect, len(self.widgetFileList.body) == 0)  
+			self.widgetFileList.body.append(btn)
+			
+		return True
+			
 
 	def unhandled(self, key):
 		if key == 'f4' or key == "q":
@@ -689,17 +727,22 @@ class Urwid:
 		for line in lstStr:
 			if line.strip() == "":
 				continue
-			line2 = Urwid.terminal2markup(line, 1 if isFirst else 0)
-			isFirst = False
-			btn = mButton(line2, onClick)
-			btn.origText = line
-			
-			if doApply != None:
-				doApply(btn)
 				
-			btn = urwid.AttrMap(btn, None, "reveal focus")
+			btn = Urwid.makeBtn(line, onClick, isFirst, doApply)
+			isFirst = False
 			outList.append(btn)
 		return outList
+		
+	def makeBtn(text, onClick, isFocus=False, doApply=None):
+		text2 = Urwid.terminal2markup(text, 1 if isFocus else 0)
+		btn = mButton(text2, onClick)
+		btn.origText = text2
+		
+		if doApply != None:
+			doApply(btn)
+			
+		btn = urwid.AttrMap(btn, None, "reveal focus")
+		return btn
 		
 	def popupMsg(title, ss):
 		def onCloseBtn(btn):
@@ -925,20 +968,21 @@ def run():
 		return
 	
 	elif target == "find":
-		ss, status = systemSafe(" ".join(['"' + c + '"' for c in sys.argv[1:]]))
-		ss = ss.strip(" \n")
-		if ss == "":
-			print("No found files")
-		
-		dlg = mDlgMainFind(ss)
-		dlg.refreshFileList()
+		dlg = mDlgMainFind()
 			
 		g.dialog = dlg
 		g.loop = urwid.MainLoop(dlg.mainWidget, g.palette, urwid.raw_display.Screen(),
 			unhandled_input=urwidUnhandled, input_filter=inputFilter)
+			
+		writeFd = g.loop.watch_pipe(lambda data: dlg.recvData(data))
+		#cmds = shlex.split(cmdLine)
+		# find with shell=true not working on cygwin
+		cmds = ["/usr/bin/find"] + [c for c in sys.argv[2:]]
+		g.sub = subprocess.Popen(cmds, bufsize=0, stdout=writeFd, close_fds=True)
+		
 		g.loop.run()
+		#sub.kill()
 		return
-				
 		
 	#print("target - %s" % target)
 	g.cd(target)
