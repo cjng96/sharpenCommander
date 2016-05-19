@@ -265,7 +265,7 @@ class mDlgMainAck(cDialog):
 
 		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(Urwid.makeBtnList([], None)))
 		self.widgetFileList.body.set_focus_changed_callback(lambda new_focus: self.onFileFocusChanged(new_focus))
-		self.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(["< Nothing to display >"])))
+		self.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList([])))
 
 		self.header = ">> dc V%s - ack-grep - q/F4(Quit),<-/->(Prev/Next file),Enter(goto),E(edit)..." % g.version
 		self.headerText = urwid.Text(self.header)
@@ -298,9 +298,18 @@ class mDlgMainAck(cDialog):
 		if "left" in keys:
 			self.widgetFileList.focusPrevious()
 			return [ c for c in keys if c != "left" ]
+			
 		if "right" in keys:
 			self.widgetFileList.focusNext()
 			return [ c for c in keys if c != "right" ]
+			
+		if "down" in keys:
+			self.widgetContent.scrollDown()
+			return [ c for c in keys if c != "down" ]
+
+		if "up" in keys:
+			self.widgetContent.scrollUp()
+			return [ c for c in keys if c != "up" ]
 			
 		if "enter" not in keys:
 			return keys
@@ -326,7 +335,8 @@ class mDlgMainAck(cDialog):
 				self.lstContent.append(afile)
 				
 				btn = Urwid.genBtnMarkup(afile.getTitleMarkup(False), self.cbFileSelect, len(self.widgetFileList.body) == 0)
-				btn.afile = afile  
+				btn.afile = afile
+				afile.btn = btn
 				afile.position = len(self.widgetContent.body)
 				self.widgetFileList.body.append(btn)
 				
@@ -341,6 +351,8 @@ class mDlgMainAck(cDialog):
 				# update content
 				txt = Urwid.genText(line)
 				self.widgetContent.body.append(txt)
+				
+				self.btnUpdate(afile.btn, afile.position == 0)
 			
 		return True
 			
@@ -352,9 +364,15 @@ class mDlgMainAck(cDialog):
 			self.widgetFileList.focusPrevious()
 		elif key == 'right' or key == "]":
 			self.widgetFileList.focusNext()
+
+		elif key == "k":
+			self.widgetContent.scrollUp()
+
+		elif key == "j":
+			self.widgetContent.scrollDown()
+
 		elif key == "e" or key == "E":
 			btn = self.widgetFileList.focus
-			
 			g.loop.stop()
 			systemRet("vim %s" % btn.afile.fname)
 			g.loop.start()
@@ -462,7 +480,7 @@ class mDlgMainFind(cDialog):
 			Urwid.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 	
 	
-class mDlgGitStatus(cDialog):
+class mDlgMainGitStatus(cDialog):
 	def __init__(self):
 		super().__init__()
 
@@ -1004,7 +1022,7 @@ def gitFileBtnType(btn):
 	return label[:2]
 
 def urwidGitStatus():
-	main = mDlgGitStatus()
+	main = mDlgMainGitStatus()
 	main.refreshFileList()
 	if main.widgetFileList.itemCount == 0:
 		print("No modified or untracked files")
