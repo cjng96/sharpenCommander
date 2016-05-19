@@ -202,6 +202,7 @@ class mListBox(urwid.ListBox):
 			return
 			
 		nextRow = self.body.get_next(cur[1])
+			
 		self.body.set_focus(nextRow[1])
 			
 	def scrollUp(self):
@@ -317,7 +318,7 @@ class mDlgMainAck(cDialog):
 		self.onFileSelected(self.widgetFileList.focus)
 		
 	def recvData(self, data):
-		ss = data.decode("UTF-8")
+		ss = data.decode("UTF-8", "ignore")
 		self.buf += ss
 		pt = self.buf.rfind("\n")
 		if pt == -1:
