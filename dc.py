@@ -244,15 +244,6 @@ class cDialog():
 		
 	def inputFilter(self, keys, raw):
 		return keys
-		
-	
-def strSplit2(str, ch):
-	pt = str.find(ch)
-	if pt == -1:
-		return "", str
-	
-	return str[:pt], str[pt+len(ch):]
-	
 
 class AckFile:
 	def __init__(self, fnameTerminal):
@@ -301,6 +292,9 @@ class mDlgMainAck(cDialog):
 		raise urwid.ExitMainLoop()
 		
 	def inputFilter(self, keys, raw):
+		if g.loop.widget != g.dialog.mainWidget:
+			return keys
+	
 		if "left" in keys:
 			self.widgetFileList.focusPrevious()
 			return [ c for c in keys if c != "left" ]
@@ -468,7 +462,7 @@ class mDlgMainFind(cDialog):
 			Urwid.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 	
 	
-class mMainStatusDialog(cDialog):
+class mDlgGitStatus(cDialog):
 	def __init__(self):
 		super().__init__()
 
@@ -537,7 +531,7 @@ class mMainStatusDialog(cDialog):
 		# remove "" in file name
 		fileList2 = ""
 		for line in fileList.splitlines():
-			fileType, fileName = strSplit2(line, " ")
+			fileType, fileName = line.split(" ", 1)
 			if fileName.startswith("\"") and fileName.endswith("\""):
 				fileName = fileName[1:-1]  
 			fileList2 += fileType + " " + fileName + "\n"
@@ -551,6 +545,9 @@ class mMainStatusDialog(cDialog):
 		self.onFileSelected(self.widgetFileList.focus)	# auto display
 
 	def inputFilter(self, keys, raw):
+		if g.loop.widget != g.dialog.mainWidget:
+			return keys
+		
 		if "left" in keys:
 			self.widgetFileList.focusPrevious()
 			self.refreshFileContentCur()
@@ -605,9 +602,16 @@ class mMainStatusDialog(cDialog):
 				system("git checkout -- %s" % fname)
 				self.refreshFileList()
 					
+			def onDelete():
+				os.remove(fname)
+				self.refreshFileList()
+					
 			btn = self.widgetFileList.focus
 			fname = getFileNameFromBtn(btn)
-			Urwid.popupAsk("Git reset(f)", "Do you want to drop file[%s]s modification?" % fname, onDrop)
+			if gitFileBtnType(btn) == "??":
+				Urwid.popupAsk("Git reset(f)", "Do you want to delete file[%s]?" % fname, onDelete)
+			else:
+				Urwid.popupAsk("Git reset(f)", "Do you want to drop file[%s]s modification?" % fname, onDrop)
 		
 		elif key == "E":
 			btn = self.widgetFileList.focus
@@ -994,8 +998,14 @@ def getFileNameFromBtn(btn):
 	label = btn.base_widget.get_label()
 	return label[2:].strip()
 
+# "??" - untracked file
+def gitFileBtnType(btn):
+	label = btn.base_widget.get_label()
+	return label[:2]
+	
+
 def urwidGitStatus():
-	main = mMainStatusDialog()
+	main = mDlgGitStatus()
 	main.refreshFileList()
 	if main.widgetFileList.itemCount == 0:
 		print("No modified or untracked files")
