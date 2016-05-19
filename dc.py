@@ -607,7 +607,7 @@ class mDlgMainGitStatus(cDialog):
 		elif key == "P":
 			def onPrompt():
 				g.loop.stop()
-				systemRet("git add -p %s" % fname)
+				systemRet("git add -p \"%s\"" % fname)
 				g.loop.start()
 				self.refreshFileList()
 					
@@ -618,12 +618,12 @@ class mDlgMainGitStatus(cDialog):
 		elif key == "R":
 			btn = self.widgetFileList.focus
 			fname = gitFileBtnName(btn)
-			system("git reset %s" % fname)
+			system("git reset \"%s\"" % fname)
 			self.refreshFileList()
 			
 		elif key == "D":
 			def onDrop():
-				system("git checkout -- %s" % fname)
+				system("git checkout -- \"%s\"" % fname)
 				self.refreshFileList()
 					
 			def onDelete():
@@ -769,12 +769,12 @@ class mGitCommitDialog(cDialog):
 			
 		elif key == "A":
 			def onAdd():
-				system("git add %s" % fname)
+				system("git add \"%s\"" % fname)
 				self.refreshFileList()
 					
 			def onPrompt():
 				g.loop.stop()
-				systemRet("git add -p %s" % fname)
+				systemRet("git add -p \"%s\"" % fname)
 				g.loop.start()
 				self.refreshFileList()
 					
@@ -784,7 +784,7 @@ class mGitCommitDialog(cDialog):
 
 		elif key == "R":
 			def onReset():
-				system("git reset %s" % fname)
+				system("git reset \"%s\"" % fname)
 				self.refreshFileList()
 					
 			btn = self.widgetFileList.focus
@@ -793,7 +793,7 @@ class mGitCommitDialog(cDialog):
 			
 		elif key == "D":
 			def onDrop():
-				system("git checkout --\"%s\"" % fname)
+				system("git checkout -- \"%s\"" % fname)
 				self.refreshFileList()
 					
 			btn = self.widgetFileList.focus
