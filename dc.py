@@ -393,7 +393,7 @@ class mDlgMainFind(cDialog):
 		markup = ("std_f", widget.base_widget.origText)
 		widget.base_widget._label.set_text(markup)
 
-		self.selectFileName = getFileNameFromBtn(widget)
+		self.selectFileName = gitFileBtnName(widget)
 
 		try:
 			with open(self.selectFileName, "r", encoding="UTF-8") as fp:
@@ -408,7 +408,7 @@ class mDlgMainFind(cDialog):
 		self.widgetFrame.set_focus(self.widgetContent)
 
 	def onFileSelected(self, btn):
-		self.selectFileName = getFileNameFromBtn(btn)
+		self.selectFileName = gitFileBtnName(btn)
 		pp = os.path.dirname(os.path.join(os.getcwd(), self.selectFileName))
 		g.savePath(pp)
 		raise urwid.ExitMainLoop()
@@ -452,7 +452,7 @@ class mDlgMainFind(cDialog):
 			self.widgetFileList.focusNext()
 		elif key == "e" or key == "E":
 			btn = self.widgetFileList.focus
-			fname = getFileNameFromBtn(btn)
+			fname = gitFileBtnName(btn)
 
 			g.loop.stop()
 			systemRet("vim %s" % fname)
@@ -494,7 +494,7 @@ class mDlgGitStatus(cDialog):
 	def onFileSelected(self, btn):
 		# why btn.get_label() is impossible?
 		label = btn.base_widget.get_label()
-		self.selectFileName = getFileNameFromBtn(btn)
+		self.selectFileName = gitFileBtnName(btn)
 		#g.headerText.set_text("file - " + label)
 		
 		# display
@@ -576,7 +576,7 @@ class mDlgGitStatus(cDialog):
 			
 		elif key == "A":
 			btn = self.widgetFileList.focus
-			fname = getFileNameFromBtn(btn)
+			fname = gitFileBtnName(btn)
 			system("git add %s" % fname)
 			self.refreshFileList(1)
 			
@@ -588,12 +588,12 @@ class mDlgGitStatus(cDialog):
 				self.refreshFileList()
 					
 			btn = self.widgetFileList.focus
-			fname = getFileNameFromBtn(btn)
+			fname = gitFileBtnName(btn)
 			Urwid.popupAsk("Git add", "Do you want to add a file via prompt[%s]?" % fname, onPrompt)
 
 		elif key == "R":
 			btn = self.widgetFileList.focus
-			fname = getFileNameFromBtn(btn)
+			fname = gitFileBtnName(btn)
 			system("git reset %s" % fname)
 			self.refreshFileList()
 			
@@ -607,7 +607,7 @@ class mDlgGitStatus(cDialog):
 				self.refreshFileList()
 					
 			btn = self.widgetFileList.focus
-			fname = getFileNameFromBtn(btn)
+			fname = gitFileBtnName(btn)
 			if gitFileBtnType(btn) == "??":
 				Urwid.popupAsk("Git reset(f)", "Do you want to delete file[%s]?" % fname, onDelete)
 			else:
@@ -615,7 +615,7 @@ class mDlgGitStatus(cDialog):
 		
 		elif key == "E":
 			btn = self.widgetFileList.focus
-			fname = getFileNameFromBtn(btn)
+			fname = gitFileBtnName(btn)
 
 			g.loop.stop()
 			systemRet("vim %s" % fname)
@@ -755,7 +755,7 @@ class mGitCommitDialog(cDialog):
 				self.refreshFileList()
 					
 			btn = self.widgetFileList.focus
-			fname = getFileNameFromBtn(btn)
+			fname = gitFileBtnName(btn)
 			Urwid.popupAsk3("Git add", "Do you want to add a file[%s]?" % fname, "Add", "Prompt", "Cancel", onAdd, onPrompt)
 
 		elif key == "R":
@@ -764,7 +764,7 @@ class mGitCommitDialog(cDialog):
 				self.refreshFileList()
 					
 			btn = self.widgetFileList.focus
-			fname = getFileNameFromBtn(btn)
+			fname = gitFileBtnName(btn)
 			Urwid.popupAsk("Git reset", "Do you want to reset a file[%s]?" % fname, onReset)
 			
 		elif key == "D":
@@ -773,12 +773,12 @@ class mGitCommitDialog(cDialog):
 				self.refreshFileList()
 					
 			btn = self.widgetFileList.focus
-			fname = getFileNameFromBtn(btn)
+			fname = gitFileBtnName(btn)
 			Urwid.popupAsk("Git reset(f)", "Do you want to drop file[%s]s modification?" % fname, onDrop)
 		
 		elif key == "E":
 			btn = self.widgetFileList.focus
-			fname = getFileNameFromBtn(btn)
+			fname = gitFileBtnName(btn)
 
 			g.loop.stop()
 			systemRet("vim %s" % fname)
@@ -994,7 +994,7 @@ def urwidInputFilter(keys, raw):
 		
 	return g.dialog.inputFilter(keys, raw)
 
-def getFileNameFromBtn(btn):
+def gitFileBtnName(btn):
 	label = btn.base_widget.get_label()
 	return label[2:].strip()
 
@@ -1002,7 +1002,6 @@ def getFileNameFromBtn(btn):
 def gitFileBtnType(btn):
 	label = btn.base_widget.get_label()
 	return label[:2]
-	
 
 def urwidGitStatus():
 	main = mDlgGitStatus()
@@ -1010,7 +1009,7 @@ def urwidGitStatus():
 	if main.widgetFileList.itemCount == 0:
 		print("No modified or untracked files")
 		return
-		
+	
 	g.dialog = main
 	g.loop = urwid.MainLoop(main.mainWidget, g.palette, urwid.raw_display.Screen(),
 		unhandled_input=urwidUnhandled, input_filter=urwidInputFilter)
