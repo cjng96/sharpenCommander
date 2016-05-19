@@ -49,7 +49,7 @@ class Gr:
 		self.repoList = dict(name="test", path="")
 		
 	def repoAllName(self):
-		return [repo["name"][0] for repo in self.repoList]
+		return [repo["name"][0] for repo in self.repoList if repo["repo"] == 1]
 		
 		
 	def log(self, lv, msg):
