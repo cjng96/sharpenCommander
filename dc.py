@@ -7,6 +7,8 @@ import os
 import sys
 import select
 
+from enum import Enum
+
 import tool
 from tool import git, system, systemSafe, systemRet
 
@@ -44,16 +46,54 @@ dc - devCmd
  
 '''
 
+
+Color = Enum('color', 'blue red')
+
+class Ansi:
+	redBold = "\033[1;31m"
+	red = "\033[0;31m"
+	blueBold = "\033[1;34m"
+	blue = "\033[0;34m"
+	clear = "\033[0m"
+	
+class NoExistErr(Exception):
+	def __init__(self, path, msg):
+		self.path = path
+		super().__init__(msg)	
+
 class ExcFail(Exception):
 	def __init__(self, msg):
 		super().__init__(msg)
 		
-
-
 class Global:
 	def __init__(self):
 		self.lstPath = []
 		self.isPrintSystem = False
+		
+	def init(self):
+		pp = os.path.expanduser("~/.devcmd")
+		if not os.path.isdir(pp):
+			print("No .devcmd folder. generate it...")
+			os.mkdir(pp)
+			
+		self.configPath = os.path.join(pp, "path.py")	
+		
+		if not os.path.isfile(g.configPath):
+			raise ExcFail("No path.py file in ~/.devcmd")
+
+		sys.path.append(pp)
+		m = __import__("path")
+		g.lstPath = m.pathList
+		
+		for item in g.lstPath:
+			if "path" not in item:
+				continue
+				
+			item["path"] = os.path.expanduser(item["path"])
+			name = item["name"]
+			if type(name) is str:
+				item["name"] = [name]
+
 		
 	def savePath(self, pp):
 		with open("/tmp/cmdDevTool.path", "wb") as f:
@@ -1090,6 +1130,184 @@ def programPath(sub=None):
   if sub != None:
     pp = os.path.join(pp, sub)
   return pp
+  
+  
+  
+
+
+class Gr:
+	def __init__(self):
+		self.repoList = [dict(name=["test"], path="")]
+		
+	def init(self):
+		self.repoList = [repo for repo in g.lstPath if "repo" in repo and repo["repo"] != 0]
+		
+	def repoAllName(self):
+		return [repo["name"][0] for repo in self.repoList]
+		
+		
+	def log(self, lv, msg):
+		if lv == 0:
+			print("%s%s%s" % (Ansi.redBold, msg, Ansi.clear))
+		elif lv == 1:
+			print("%s%s%s" % (Ansi.blueBold, msg, Ansi.clear))
+		else:
+			print("%s" % (msg))
+			
+	def log2(self, color, name, msg):
+		ansiBold = Ansi.blueBold if Color.blue == color else Ansi.redBold
+		ansiNor = Ansi.blue if Color.blue == color else Ansi.red
+		print("%s%s -> %s%s%s" % (ansiBold, name, ansiNor, msg, Ansi.clear))
+
+	def getRepo(self, name):
+		for repo in self.repoList:
+			if name in repo["name"]:
+				return repo
+		raise Exception("Can't find repo[name:%s]" % name)
+
+	def getRepoPath(self, name):
+		repo = self.getRepo(name)
+		path = repo["path"]
+		return path
+				
+	def changePath(self, name):
+		path = self.getRepoPath(name)
+		if not os.path.isdir(path):
+			raise NoExistErr(path, "%s(%s) -> doesn't exist"  % (name, path))
+
+		os.chdir(path)
+		ss = "path:%s" % (path)
+		return ss
+
+				
+	def checkSameWith(self, name, branchName, remoteBranch):
+		rev = git.rev(branchName)
+		rev2 = git.rev("remotes/"+remoteBranch)
+		isSame = rev == rev2
+		if isSame:
+			self.log2(Color.blue, name, "%s is same to %s"  % (branchName, remoteBranch))
+			return True
+		else:
+			commonRev = git.commonParentRev(branchName, remoteBranch)
+			#print("common - %s" % commonRev)
+			if commonRev != rev2:
+				self.log2(Color.red, name, "%s(%s) - origin/master(%s) -->> Different" % (branchName, rev, rev2))
+				return False
+		
+			# 오히려 앞선경우다. True로 친다.
+			gap = git.commitGap(branchName, remoteBranch)
+			self.log2(Color.red, name, "Your local branch(%s) is forward than %s[%d commits]" % (branchName, remoteBranch, gap))
+			
+			# print commit log
+			#ss = system("git log --oneline --graph --all --decorate --abbrev-commit %s..%s" % (remoteBranch, branchName))
+			ss = git.commitLogBetween(branchName, remoteBranch)
+			print(ss)
+			
+			return True
+
+	def stashCheck(self, name):
+		uname = "###groupRepo###"
+		stashName = git.stashGetNameSafe(uname)
+		if stashName != None:
+			self.log2(Color.red, name, "YOU HAVE STASH ITEM. PROCESS IT FIRST")
+			return False
+
+		return True
+
+
+	def statusComponent(self, name):
+		try:
+			path = self.changePath(name)
+		except NoExistErr as e:
+			self.log2(Color.red, name, "%s DOESN'T exist" % e.path)
+			return
+
+		if not self.stashCheck(name):
+			return
+
+		
+		branchName = git.getCurrentBranch()
+		remoteBranch = git.getTrackingBranch()
+		if remoteBranch == None:
+			self.log2(Color.red, name, "%s DONT'T HAVE TRACKING branch" % branchName)
+			return
+		
+
+		isSame = self.checkSameWith(name, branchName, remoteBranch)
+		if isSame:
+			# check staged file and untracked file
+			ss = system("git status -s")
+			if ss != "":
+				print(ss)
+		else:
+			diffList = git.checkFastForward(branchName, remoteBranch)
+			if len(diffList) == 0:
+				self.log2(Color.blue, name, "Be able to fast-forward... - %s" % path)
+			else:
+				self.log2(Color.red, name, "NOT be able to fast forward - %s" % path)
+			
+			#ss = system("git st")
+			#print(ss)
+			
+	def mergeSafe(self, name):
+		try:
+			path = self.changePath(name)
+		except NoExistErr as e:
+			self.log2(Color.red, name, "%s DOESN'T exist" % e.path)
+			return
+
+		if not self.stashCheck(name):
+			return
+
+		branchName = git.getCurrentBranch()
+		remoteBranch = git.getTrackingBranch()
+		if remoteBranch == None:
+			self.log2(Color.red, name, "%s DONT'T HAVE TRACKING branch" % branchName)
+			return
+		
+		isSame = self.checkSameWith(name, branchName, remoteBranch)
+		if isSame:
+			return
+	
+		repo = self.getRepo(name)
+		if "type" in repo and repo["type"] == "bin":
+			self.log2(Color.blue, name, "merge with %s - %s - bin type" % (remoteBranch, path))
+		
+			uname = "###groupRepo###"	
+			ss = system("git stash save -u \"%s\"" % uname)
+			print(ss)
+			ss = system("git merge %s" % remoteBranch)
+			print(ss)
+			stashName = git.stashGetNameSafe(uname)
+			ss = system("git stash pop %s" % stashName)
+			print(ss)
+			return
+	
+		diffList = git.checkFastForward(branchName, remoteBranch)
+		if len(diffList) != 0:
+			self.log2(Color.red, name, "NOT be able to fast forward - %s" % path)
+		else:			
+			self.log2(Color.blue, name, "merge with %s - %s" % (remoteBranch, path))
+			ss = system("git rebase %s" % remoteBranch)
+			print(ss)
+            
+            
+            
+	def fetch(self, name):
+		try:
+			path = gr.changePath(name)
+		except NoExistErr as e:
+			self.log2(Color.red, name, "%s DOESN'T exist" % e.path)
+			return
+
+		self.log2(Color.blue, name, "fetch --prune - %s" % path)
+		system("git fetch --prune")
+
+
+gr = Gr()
+  
+  
+  
 
 import datetime		
 
@@ -1107,6 +1325,7 @@ g.loop = None	# urwid
 
 g.dialog = None
 
+g.configPath = ""	 # ~/.devcmd/path.py
 
 # (name, fg, bg, mono, fgHigh, bgHigh)
 g.palette = [
@@ -1159,6 +1378,9 @@ def winTest():
 def getNonblocingInput():
 	if select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], []):
 		return sys.stdin.read(255)
+		
+
+
 
 def run():
 	#winTest()
@@ -1166,14 +1388,6 @@ def run():
 		os.remove("/tmp/cmdDevTool.path")
 	except OSError:
 		pass
-		
-	pp = os.path.expanduser("~/.devcmd")
-	if not os.path.isdir(pp):
-		print("No .devcmd folder. generate it...")
-		os.mkdir(pp)
-		
-	if not os.path.isfile(os.path.join(pp, "path.py")):
-		raise ExcFail("No path.py file in ~/.devcmd")
 
 	# under pipe line
 	'''
@@ -1190,10 +1404,9 @@ def run():
 			pass
 		return
 	'''
+				
+	g.init()
 
-	sys.path.append(pp)
-	m = __import__("path")
-	g.lstPath = m.pathList
 	
 	if len(sys.argv) == 1:
 		target = "st"
@@ -1260,7 +1473,29 @@ def run():
 		urwidAck(cmds)
 		return
 		
-	
+	elif target == "st":
+		gr.init()
+		for comp in gr.repoAllName():
+			gr.statusComponent(comp)
+	elif target == "fetch":
+		gr.init()
+		for comp in gr.repoAllName():
+			gr.fetch(comp)
+	elif target == "merge":
+		gr.init()
+		for comp in gr.repoAllName():
+			gr.mergeSafe(comp)
+	elif target == "update":
+		gr.init()
+		print("fetch......")
+		for comp in gr.repoAllName():
+			gr.fetch(comp)
+		print("merge......")
+		for comp in gr.repoAllName():
+			gr.mergeSafe(comp)
+		print("status......")
+		for comp in gr.repoAllName():
+			gr.statusComponent(comp)
 		
 	#print("target - %s" % target)
 	g.cd(target)
