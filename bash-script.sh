@@ -24,6 +24,11 @@ function dcf()
 	python3 $DEV_CMD_PATH/dc.py findg "$1" "$2" "$3" "$4" "$5"
 	goPath
 }
+function dcg()
+{
+	python3 $DEV_CMD_PATH/dc.py ack "$1" "$2" "$3" "$4" "$5"
+	goPath
+}
 
 
 function dcd()
