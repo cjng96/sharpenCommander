@@ -1236,7 +1236,11 @@ def run():
 		return
 		
 	elif target == "findg":
-		cmds = ["find", ".", "-name", sys.argv[2]]
+		pp = sys.argv[2]
+		if "*" not in pp:
+			pp = "*"+pp+"*"
+
+		cmds = ["find", ".", "-name", pp]
 		urwidFind(cmds)
 		return
 		
