@@ -221,8 +221,6 @@ class mListBox(urwid.ListBox):
 				for i in range(3):
 					self.scrollDown()
 					
-	def inputFilter(self, keys, raw):
-		return keys
 
 
 def refreshBtnList(content, listBox, onClick):
@@ -243,6 +241,10 @@ class cDialog():
 	
 	def unhandled(self, key):
 		pass 
+		
+	def inputFilter(self, keys, raw):
+		return keys
+		
 	
 def strSplit2(str, ch):
 	pt = str.find(ch)
@@ -250,6 +252,123 @@ def strSplit2(str, ch):
 		return "", str
 	
 	return str[:pt], str[pt+len(ch):]
+	
+
+class AckFile:
+	def __init__(self, fnameTerminal):
+		self.fname = Urwid.termianl2plainText(fnameTerminal)
+		#self.fnameMarkup = Urwid.terminal2markup(fnameTerminal, 0)
+		#self.fnameOrig = fnameTerminal
+
+		self.lstLine = []	
+		
+	def getTitleMarkup(self, focus=False):
+		themeTitle = "greenfg" if not focus else "greenfg_f"
+		themeCount = "std" if not focus else "std_f"  
+		return [(themeTitle, self.fname), (themeCount, "(%d)" % len(self.lstLine))]
+
+
+class mDlgMainAck(cDialog):
+	def __init__(self):
+		super().__init__()
+
+		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(Urwid.makeBtnList([], None)))
+		self.widgetFileList.body.set_focus_changed_callback(lambda new_focus: self.onFileFocusChanged(new_focus))
+		self.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(["< Nothing to display >"])))
+
+		self.header = ">> dc V%s - ack-grep - q/F4(Quit),<-/->(Prev/Next file),Enter(goto),E(edit)..." % g.version
+		self.headerText = urwid.Text(self.header)
+		self.widgetFrame = urwid.Pile([(15, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
+		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
+		
+		self.cbFileSelect = lambda btn: self.onFileSelected(btn)
+		self.buf = ""
+		self.lstContent = []
+		
+	def btnUpdate(self, btn, focus):
+		btn.base_widget._label.set_text(btn.afile.getTitleMarkup(focus))
+		return btn
+
+	def onFileFocusChanged(self, new_focus):
+		self.btnUpdate(self.widgetFileList.focus, False)
+		newBtn = self.btnUpdate(self.widgetFileList.body[new_focus], True)
+		
+		self.widgetContent.focus_position = newBtn.afile.position
+
+	def onFileSelected(self, btn):
+		pp = os.path.dirname(os.path.join(os.getcwd(), btn.afile.fname))
+		g.savePath(pp)
+		raise urwid.ExitMainLoop()
+		
+	def inputFilter(self, keys, raw):
+		if "left" in keys:
+			self.widgetFileList.focusPrevious()
+			return [ c for c in keys if c != "left" ]
+		if "right" in keys:
+			self.widgetFileList.focusNext()
+			return [ c for c in keys if c != "right" ]
+			
+		if "enter" not in keys:
+			return keys
+
+		self.onFileSelected(self.widgetFileList.focus)
+		
+	def recvData(self, data):
+		ss = data.decode("UTF-8")
+		self.buf += ss
+		pt = self.buf.rfind("\n")
+		if pt == -1:
+			return True
+
+		ss = self.buf[:pt]
+		self.buf = self.buf[pt:]
+		
+		for line in ss.splitlines():
+			line = line.strip()
+			
+			if line != "" and ":" not in line:	# file name
+				# new file				
+				afile = AckFile(line)
+				self.lstContent.append(afile)
+				
+				btn = Urwid.genBtnMarkup(afile.getTitleMarkup(False), self.cbFileSelect, len(self.widgetFileList.body) == 0)
+				btn.afile = afile  
+				afile.position = len(self.widgetContent.body)
+				self.widgetFileList.body.append(btn)
+				
+				txt = urwid.Text(afile.getTitleMarkup(False))
+				self.widgetContent.body.append(txt)
+				
+			else:
+				afile = self.lstContent[len(self.lstContent)-1]
+				line = line.replace("\t", "    ")
+				afile.lstLine.append(line)
+				
+				# update content
+				txt = Urwid.genText(line)
+				self.widgetContent.body.append(txt)
+			
+		return True
+			
+
+	def unhandled(self, key):
+		if key == 'f4' or key == "q":
+			raise urwid.ExitMainLoop()
+		elif key == 'left' or key == "[":
+			self.widgetFileList.focusPrevious()
+		elif key == 'right' or key == "]":
+			self.widgetFileList.focusNext()
+		elif key == "e" or key == "E":
+			btn = self.widgetFileList.focus
+			
+			g.loop.stop()
+			systemRet("vim %s" % btn.afile.fname)
+			g.loop.start()
+			
+		elif key == "h":
+			Urwid.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
+	
+		
 	
 
 class mDlgMainFind(cDialog):
@@ -310,20 +429,6 @@ class mDlgMainFind(cDialog):
 		
 		
 	def recvData(self, data):
-		if g.sub.poll() != None:
-			# cygwin에서 recvData받는중에 이게 참인 경우가 많다. - 리눅스는 바로 전달되서 이게 없다.
-			self.headerText.set_text(self.header+"!!!")
-			
-		# cygwin에서는 발생 안함 - 리눅스도 안함
-		if len(data) == 0:
-			raise Exception("Crash len(data)==0!!!")
-			self.headerText.set_caption(self.headerText.set_caption()[:-3]+"!!")
-			
-			# eof
-			if len(self.widgetFileList.body) == 0:
-				Urwid.makeBtn("< No files >", self.cbFileSelect, True)
-				return False
-				
 		ss = data.decode("UTF-8")
 		self.content += ss
 		pt = self.content.rfind("\n")
@@ -338,7 +443,7 @@ class mDlgMainFind(cDialog):
 			if line == "":
 				continue
 			
-			btn = Urwid.makeBtn(line, self.cbFileSelect, len(self.widgetFileList.body) == 0)  
+			btn = Urwid.genBtn(line, self.cbFileSelect, len(self.widgetFileList.body) == 0)  
 			self.widgetFileList.body.append(btn)
 			
 		return True
@@ -371,7 +476,7 @@ class mMainStatusDialog(cDialog):
 		self.widgetFileList.body.set_focus_changed_callback(lambda new_focus: self.onFileFocusChanged(new_focus))
 		self.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(["< Nothing to display >"])))
 
-		self.headerText = urwid.Text(">> dc V%s - q/F4(Quit),[/](Prev/Next file),A(Add),P(Prompt),R(Reset),D(drop),C(Commit),I(Ignore)" % g.version)
+		self.headerText = urwid.Text(">> dc V%s - q/F4(Quit),<-/->(Prev/Next file),A(Add),P(Prompt),R(Reset),D(drop),C(Commit),I(Ignore)" % g.version)
 		self.widgetFrame = urwid.Pile([(8, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
 
@@ -444,6 +549,19 @@ class mMainStatusDialog(cDialog):
 		self.widgetFileList.focus_position = focusIdx
 	
 		self.onFileSelected(self.widgetFileList.focus)	# auto display
+
+	def inputFilter(self, keys, raw):
+		if "left" in keys:
+			self.widgetFileList.focusPrevious()
+			self.refreshFileContentCur()
+			return [ c for c in keys if c != "left" ]
+			
+		if "right" in keys:
+			self.widgetFileList.focusNext()
+			self.refreshFileContentCur()
+			return [ c for c in keys if c != "right" ]
+			
+		return keys
 
 	def unhandled(self, key):
 		if key == 'f4' or key == "q":
@@ -697,18 +815,39 @@ class mGitCommitDialog(cDialog):
 
 
 class Urwid:
-
+	def termianl2plainText(ss):
+		#source = "\033[31mFOO\033[0mBAR"
+		st = ss.find("\x1b")
+		if st == -1:
+			return ss
+			
+		out = ""
+		items = ss.split("\x1b")
+		for at in items:
+			if at == "":
+				continue
+			attr, text = at.split("m",1)
+			if text != "":	# skip empty string
+				out += text
+			
+		return out
+		
 	def terminal2markup(ss, invert=0):
 		#source = "\033[31mFOO\033[0mBAR"
 		table = {"[1":("bold",'bold_f'), "[4":("underline",'underline_f'),
 			"[22":("std",'std_f'),
 			"[24":("std",'std_f'),
-			"[31":('redfg','redfg_f'), "[32":('greenfg', "greenfg_f"), 
-			"[33":('yellowfg', "yellowfg_f"), "[36":('cyanfg', "cyanfg_f"), 
+			"[31":('redfg','redfg_f'), 
+			"[32":('greenfg', "greenfg_f"), 
+			"[33":('yellowfg', "yellowfg_f"), 
+			"[36":('cyanfg', "cyanfg_f"), 
 			"[41":("redbg", "regbg_f"),
 			"[1;31":("redfg_b", "redfg_bf"), 
 			"[1;32":("greenfg_b", "greenfg_bf"), 
+			"[1;33":("yellowfg_b", "yellowfg_bf"), 
+			"[1;34":("bluefg_b", "bluefg_bf"), 
 			"[1;36":("cyanfg_b", "cyanfg_bf"), 
+			"[30;43":("yellowbg_b", "yellowbg_bf"), 
 			"[0":('std', "std_f"), "[":('std', "std_f")}
 		markup = []
 		st = ss.find("\x1b")
@@ -721,6 +860,8 @@ class Urwid:
 			markup.append(items[0])
 		
 		for at in items[pt:]:
+			if at == "[K":	# it...
+				continue
 			attr, text = at.split("m",1)
 			if text != "":	# skip empty string
 				markup.append((table[attr][invert], text))
@@ -730,18 +871,24 @@ class Urwid:
 			
 		return markup
 		
-	def genEdit(label, text, fn):
+	def genEdit(label, text, cbChange):
 		w = urwid.Edit(label, text)
-		urwid.connect_signal(w, 'change', fn)
-		fn(w, text)
+		urwid.connect_signal(w, 'change', cbChange)
+		cbChange(w, text)
 		#w = urwid.AttrWrap(w, 'edit')
 		return w
+		
+	def genText(terminalText):
+		line2 = Urwid.terminal2markup(terminalText)
+		txt = urwid.Text(line2)
+		#txt.origText = terminalText
+		return txt
+	
 		
 	def makeTextList(lstStr):
 		outList = []
 		for line in lstStr:
-			line2 = Urwid.terminal2markup(line)
-			outList.append(urwid.Text(line2))
+			outList.append(Urwid.genText(line))
 		return outList
 		
 	def makeBtnList(lstStr, onClick, doApply=None):
@@ -751,22 +898,27 @@ class Urwid:
 			if line.strip() == "":
 				continue
 				
-			btn = Urwid.makeBtn(line, onClick, isFirst, doApply)
+			btn = Urwid.genBtn(line, onClick, isFirst, doApply)
 			isFirst = False
 			outList.append(btn)
 		return outList
 		
-	def makeBtn(text, onClick, isFocus=False, doApply=None):
-		text2 = Urwid.terminal2markup(text, 1 if isFocus else 0)
-		btn = mButton(text2, onClick)
-		btn.origText = text
+	def genBtn(terminalText, onClick, isFocus=False, doApply=None):
+		text2 = Urwid.terminal2markup(terminalText, 1 if isFocus else 0)
+		btn = Urwid.genBtnMarkup(text2, onClick, isFocus, doApply)
+		btn.base_widget.origText = terminalText
+		return btn
+		
+	def genBtnMarkup(markup, onClick, isFocus=False, doApply=None):
+		btn = mButton(markup, onClick)
+		#btn.origText = terminalText
 		
 		if doApply != None:
 			doApply(btn)
 			
 		btn = urwid.AttrMap(btn, None, "reveal focus")
-		return btn
-		
+		return btn	
+			
 	def popupMsg(title, ss):
 		def onCloseBtn(btn):
 			g.loop.widget = g.mainLoop.widget.bottom_w
@@ -843,9 +995,6 @@ def getFileNameFromBtn(btn):
 	return label[2:].strip()
 
 def urwidGitStatus():
-	lstFile = ""
-	lstContent = ["test"]
-	
 	main = mMainStatusDialog()
 	main.refreshFileList()
 	if main.widgetFileList.itemCount == 0:
@@ -853,28 +1002,50 @@ def urwidGitStatus():
 		return
 		
 	g.dialog = main
-
-	# use appropriate Screen class
-	#if urwid.web_display.is_web_request():
-	#	screen = urwid.web_display.Screen()
-	#else:
-	#	screen = urwid.raw_display.Screen()
-	screen = urwid.raw_display.Screen()
-
-	g.loop = urwid.MainLoop(main.mainWidget, g.palette, screen,
+	g.loop = urwid.MainLoop(main.mainWidget, g.palette, urwid.raw_display.Screen(),
 		unhandled_input=urwidUnhandled, input_filter=urwidInputFilter)
 	g.loop.run()
+	
+def cbWatchPipe(dlg, data):
+	'''
+	if g.sub.poll() != None:
+		# cygwin에서 recvData받는중에 이게 참인 경우가 많다. - 리눅스는 바로 전달되서 이게 없다.
+		self.headerText.set_text(self.header+"!!!")
 		
-def urwidFind(cmds):
-	dlg = mDlgMainFind()
+	# cygwin에서는 발생 안함 - 리눅스도 안함
+	if len(data) == 0:
+		raise Exception("Crash len(data)==0!!!")
+		self.headerText.set_text(self.header+"!!!")
 		
+		# eof
+		if len(self.widgetFileList.body) == 0:
+			self.widgetFileList.body.append(Urwid.genBtn("< No files >", self.cbFileSelect, True))
+			return False
+	'''			
+			
+	dlg.recvData(data)	
+	
+	
+from distutils.spawn import find_executable
+	
+def urwidSubRun(dlg, doSubMake):
 	g.dialog = dlg
 	g.loop = urwid.MainLoop(dlg.mainWidget, g.palette, urwid.raw_display.Screen(),
 		unhandled_input=urwidUnhandled, input_filter=urwidInputFilter)
 		
-	writeFd = g.loop.watch_pipe(lambda data: dlg.recvData(data))
-	g.sub = subprocess.Popen(cmds, bufsize=0, stdout=writeFd, close_fds=True)
+	writeFd = g.loop.watch_pipe(lambda data: cbWatchPipe(dlg, data))
+	g.sub = doSubMake(writeFd)
 	g.loop.run()
+		
+def urwidFind(cmds):
+	cmds[0] = find_executable(cmds[0])
+	dlg = mDlgMainFind()
+	urwidSubRun(dlg, lambda writeFd: subprocess.Popen(cmds, bufsize=0, stdout=writeFd, close_fds=True))
+		
+def urwidAck(cmds):
+	cmds[0] = find_executable(cmds[0])
+	dlg = mDlgMainAck()
+	urwidSubRun(dlg, lambda writeFd: subprocess.Popen(cmds, bufsize=0, stdout=writeFd, close_fds=True))
 
 		
 def programPath(sub=None):
@@ -920,16 +1091,22 @@ g.palette = [
 		('greenfg_f', 'light green', 'dark cyan'),
 		('greenfg_bf', 'bold,light green', 'dark cyan'),
 		('yellowfg', 'yellow', 'black'),
+		('yellowfg_b', 'bold,yellow', 'black'),
 		('yellowfg_f', 'yellow', 'dark cyan'),
+		('yellowfg_bf', 'bold,yellow', 'dark cyan'),
 		('bluefg', 'dark blue', 'black'),
+		('bluefg_b', 'bold,dark blue', 'black'),
 		('bluefg_f', 'light blue', 'dark cyan'),
+		('bluefg_bf', 'bold,light blue', 'dark cyan'),
 		('cyanfg', 'dark cyan', 'black'),
 		('cyanfg_b', 'bold,dark cyan', 'black'),
 		('cyanfg_f', 'light gray', 'dark cyan'),
 		('cyanfg_bf', 'bold,light gray', 'dark cyan'),
 		
 		('redbg', 'black', 'dark red'),
-		
+		('yellowbg_b', 'black,bold', 'yellow'),
+		('yellowbg_bf', 'black,bold', 'dark cyan'),	# it...
+
 		('reveal focus', "black", "dark cyan", "standout"),
 		]
 
@@ -1012,14 +1189,36 @@ def run():
 
 		#cmds = shlex.split(cmdLine)
 		# find with shell=true not working on cygwin
-		cmds = ["/usr/bin/find"] + [c for c in sys.argv[2:]]
+		for idx,data in reversed(enumerate(sys.argv)):
+			if data != "":
+				sys.argv = sys.argv[:idx]
+				break
+				
+		cmds = sys.argv[1:]
 		urwidFind(cmds)
 		return
 		
 	elif target == "findg":
-		cmds = ["/usr/bin/find", ".", "-name", sys.argv[2]]
+		cmds = ["find", ".", "-name", sys.argv[2]]
 		urwidFind(cmds)
 		return
+		
+	elif target == "ack":
+		# dc ack printf
+
+		#cmds = shlex.split(cmdLine)
+		# find with shell=true not working on cygwin
+		for idx,data in reversed(list(enumerate(sys.argv))):
+			if data != "":
+				sys.argv = sys.argv[:idx+1]
+				break
+				
+		cmds = sys.argv[1:]
+		cmds.insert(1, "--group")
+		cmds.insert(1, "--color")
+		urwidAck(cmds)
+		return
+		
 	
 		
 	#print("target - %s" % target)
