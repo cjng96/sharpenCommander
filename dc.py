@@ -493,7 +493,12 @@ class mDlgMainGitStatus(cDialog):
 		self.widgetFrame = urwid.Pile([(8, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
 
-		g.gitRoot = system("git rev-parse --show-toplevel")
+		try:
+			g.gitRoot = system("git rev-parse --show-toplevel")
+		except subprocess.CalledProcessError:
+			print("Current folder is no git repo")
+			raise urwid.ExitMainLoop
+			
 		g.curPath = os.getcwd()
 		g.relRoot = "./"
 		if g.gitRoot != g.curPath:
@@ -1023,7 +1028,11 @@ def gitFileBtnType(btn):
 	return label[:2]
 
 def urwidGitStatus():
-	main = mDlgMainGitStatus()
+	try:
+		main = mDlgMainGitStatus()
+	except urwid.ExitMainLoop:
+		return
+		
 	main.refreshFileList()
 	if main.widgetFileList.itemCount == 0:
 		print("No modified or untracked files")
