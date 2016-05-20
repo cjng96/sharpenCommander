@@ -1366,7 +1366,7 @@ gr = Gr()
 import datetime		
 
 g = Global()
-g.version = "1.0"
+g.version = "1.1.0"
 g._log = programPath("dc.log")
 def logFunc(msg):
 	timeStr = datetime.datetime.now().strftime("%m%d %H%M%S")
