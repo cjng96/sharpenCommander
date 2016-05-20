@@ -83,38 +83,34 @@ class Global:
 
 		sys.path.append(pp)
 		m = __import__("path")
-		g.lstPath = m.pathList
+		g.lstPath = [ item for item in m.pathList if len(item["name"]) > 0 ]
 		
 		for item in g.lstPath:
-			if "path" not in item:
-				continue
-				
 			item["path"] = os.path.expanduser(item["path"])
 			name = item["name"]
 			if type(name) is str:
 				item["name"] = [name]
-
 		
 	def savePath(self, pp):
 		with open("/tmp/cmdDevTool.path", "wb") as f:
 			f.write(os.path.expanduser(pp).encode())
 			
+	def findItem(self, target):
+		for pp in self.lstPath:
+			lstName = pp["name"]
+
+			if target.lower() in map(str.lower, lstName):
+				return pp
+				
+		raise ExcFail("No that target[%s]" % target)
 		
 	def cd(self, target):
 		if target == "~":
 			self.savePath(target)
 			return
 	
-		for pp in self.lstPath:
-			lst = pp["name"]
-			if type(lst) == str:
-				lst = [lst] 
-
-			if target.lower() in map(str.lower, lst):
-				self.savePath(pp["path"])
-				return
-				
-		raise ExcFail("No that folder[%s]" % target)
+		item = self.findItem(target)
+		self.savePath(item["path"])
 
 	def listPath(self):
 		for pp in self.lstPath:
@@ -1147,15 +1143,17 @@ def urwidSubRun(dlg, doSubMake):
 	writeFd = g.loop.watch_pipe(lambda data: cbWatchPipe(dlg, data))
 	g.sub = doSubMake(writeFd)
 	g.loop.run()
-		
-def urwidFind(cmds):
+
+
+def doSubCmd(cmds, dlgCls, workItemIdx=-1):
 	cmds[0] = find_executable(cmds[0])
-	dlg = mDlgMainFind()
-	urwidSubRun(dlg, lambda writeFd: subprocess.Popen(cmds, bufsize=0, stdout=writeFd, close_fds=True))
-		
-def urwidAck(cmds):
-	cmds[0] = find_executable(cmds[0])
-	dlg = mDlgMainAck()
+	
+	if workItemIdx != -1 and len(sys.argv) == workItemIdx+1:
+		target = sys.argv[workItemIdx]
+		item = g.findItem(target)
+		os.chdir(item["path"])
+	
+	dlg = dlgCls()
 	urwidSubRun(dlg, lambda writeFd: subprocess.Popen(cmds, bufsize=0, stdout=writeFd, close_fds=True))
 
 		
@@ -1218,6 +1216,7 @@ class Gr:
 		for repo in self.repoList:
 			if name in repo["name"]:
 				return repo
+				
 		raise Exception("Can't find repo[name:%s]" % name)
 
 	def getRepoPath(self, name):
@@ -1433,7 +1432,15 @@ def winTest():
 def getNonblocingInput():
 	if select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], []):
 		return sys.stdin.read(255)
-		
+
+def removeEmptyArgv():		
+	#cmds = shlex.split(cmdLine)
+	# find with shell=true not working on cygwin
+	for idx,data in reversed(list(enumerate(sys.argv))):
+		if data != "":
+			sys.argv = sys.argv[:idx+1]
+			break
+
 
 def run():
 	#winTest()
@@ -1467,6 +1474,8 @@ def run():
 		target = sys.argv[1]
 		
 
+	removeEmptyArgv()
+
 	if target == "push":
 		print("fetching first...")
 		git.fetch()
@@ -1490,16 +1499,8 @@ def run():
 	
 	elif target == "find":
 		# dc find . -name "*.py"
-
-		#cmds = shlex.split(cmdLine)
-		# find with shell=true not working on cygwin
-		for idx,data in reversed(enumerate(sys.argv)):
-			if data != "":
-				sys.argv = sys.argv[:idx]
-				break
-				
 		cmds = sys.argv[1:]
-		urwidFind(cmds)
+		doSubCmd(cmds, mDlgMainFind)
 		return
 		
 	elif target == "findg":
@@ -1508,23 +1509,23 @@ def run():
 			pp = "*"+pp+"*"
 
 		cmds = ["find", ".", "-name", pp]
-		urwidFind(cmds)
+		doSubCmd(cmds, mDlgMainFind, 3)
 		return
 		
 	elif target == "ack":
 		# dc ack printf
-
-		#cmds = shlex.split(cmdLine)
-		# find with shell=true not working on cygwin
-		for idx,data in reversed(list(enumerate(sys.argv))):
-			if data != "":
-				sys.argv = sys.argv[:idx+1]
-				break
-				
 		cmds = sys.argv[1:]
 		cmds.insert(1, "--group")
 		cmds.insert(1, "--color")
-		urwidAck(cmds)
+		doSubCmd(cmds, mDlgMainAck)
+		return
+		
+	elif target == "ackg":
+		# dc ack printf
+		cmds = sys.argv[1:]
+		cmds.insert(1, "--group")
+		cmds.insert(1, "--color")
+		doSubCmd(cmds, mDlgMainAck, 3)
 		return
 		
 	elif target == "st":
