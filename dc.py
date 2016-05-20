@@ -285,6 +285,9 @@ class cDialog():
 		
 	def inputFilter(self, keys, raw):
 		return keys
+		
+	def excludeKey(self, keys, target):
+		return [ c for c in keys if c != target ]
 
 class AckFile:
 	def __init__(self, fnameTerminal):
@@ -335,27 +338,20 @@ class mDlgMainAck(cDialog):
 	def inputFilter(self, keys, raw):
 		if g.loop.widget != g.dialog.mainWidget:
 			return keys
-	
-		if "left" in keys:
-			self.widgetFileList.focusPrevious()
-			return [ c for c in keys if c != "left" ]
-			
-		if "right" in keys:
-			self.widgetFileList.focusNext()
-			return [ c for c in keys if c != "right" ]
 			
 		if "down" in keys:
 			self.widgetContent.scrollDown()
-			return [ c for c in keys if c != "down" ]
+			return self.excludeKey(keys, "down")
 
 		if "up" in keys:
 			self.widgetContent.scrollUp()
-			return [ c for c in keys if c != "up" ]
+			return self.excludeKey(keys, "up")
 			
-		if "enter" not in keys:
-			return keys
+		if "enter" in keys:
+			self.onFileSelected(self.widgetFileList.focus)
+			return self.excludeKey(keys, "enter")
 
-		self.onFileSelected(self.widgetFileList.focus)
+		return keys
 		
 	def recvData(self, data):
 		ss = data.decode("UTF-8", "ignore")
@@ -473,13 +469,12 @@ class mDlgMainFind(cDialog):
 		raise urwid.ExitMainLoop()
 		
 	def inputFilter(self, keys, raw):
-		if "enter" not in keys:
-			return keys
+		if "enter" in keys:
+			self.onFileSelected(self.widgetFileList.focus)
+			return self.excludeKey(keys, "enter")
 
-		#idx = keys.index("enter")
-		self.onFileSelected(self.widgetFileList.focus)
-		#return keys[:idx-1]+keys[idx+1:]
-		
+		return keys
+
 		
 	def recvData(self, data):
 		ss = data.decode("UTF-8")
@@ -509,6 +504,12 @@ class mDlgMainFind(cDialog):
 			self.widgetFileList.focusPrevious()
 		elif key == 'right' or key == "]":
 			self.widgetFileList.focusNext()
+
+		elif key == "k":
+			self.widgetContent.scrollUp()
+		elif key == "j":
+			self.widgetContent.scrollDown()
+		
 		elif key == "e" or key == "E":
 			btn = self.widgetFileList.focus
 			fname = gitFileBtnName(btn)
@@ -615,12 +616,12 @@ class mDlgMainGitStatus(cDialog):
 		if "left" in keys:
 			self.widgetFileList.focusPrevious()
 			self.refreshFileContentCur()
-			return [ c for c in keys if c != "left" ]
+			return self.excludeKey(keys, "left")
 			
 		if "right" in keys:
 			self.widgetFileList.focusNext()
 			self.refreshFileContentCur()
-			return [ c for c in keys if c != "right" ]
+			return self.excludeKey(keys, "right")
 			
 		return keys
 
@@ -1137,14 +1138,22 @@ def programPath(sub=None):
 
 class Gr:
 	def __init__(self):
+		self.isInit = False
 		self.repoList = [dict(name=["test"], path="")]
 		
 	def init(self):
 		self.repoList = [repo for repo in g.lstPath if "repo" in repo and repo["repo"] != 0]
+		self.isInit = True
 		
 	def repoAllName(self):
 		return [repo["name"][0] for repo in self.repoList]
 		
+	def action(self, second, action):
+		if not self.isInit:
+			self.init()
+			
+		for comp in gr.repoAllName():
+			action(self, comp)
 		
 	def log(self, lv, msg):
 		if lv == 0:
@@ -1407,11 +1416,15 @@ def run():
 				
 	g.init()
 
-	
-	if len(sys.argv) == 1:
-		target = "st"
+	second = None
+	argc = len(sys.argv)	
+	if argc == 1:
+		target = "st"	# basic cmd
 	else:
 		target = sys.argv[1]
+		if argc >= 3:
+			second = sys.argv[2]
+		
 
 	if target == "push":
 		print("fetching first...")
@@ -1474,28 +1487,23 @@ def run():
 		return
 		
 	elif target == "st":
-		gr.init()
-		for comp in gr.repoAllName():
-			gr.statusComponent(comp)
+		gr.action(second, Gr.statusComponent)
+		
 	elif target == "fetch":
-		gr.init()
-		for comp in gr.repoAllName():
-			gr.fetch(comp)
+		gr.action(second, Gr.fetch)
+		
 	elif target == "merge":
-		gr.init()
-		for comp in gr.repoAllName():
-			gr.mergeSafe(comp)
+		gr.action(second, Gr.mergeSafe)
+		
 	elif target == "update":
-		gr.init()
 		print("fetch......")
-		for comp in gr.repoAllName():
-			gr.fetch(comp)
+		gr.action(second, Gr.fetch)
+
 		print("merge......")
-		for comp in gr.repoAllName():
-			gr.mergeSafe(comp)
+		gr.action(second, Gr.mergeSafe)
+
 		print("status......")
-		for comp in gr.repoAllName():
-			gr.statusComponent(comp)
+		gr.action(second, Gr.statusComponent)
 		
 	#print("target - %s" % target)
 	g.cd(target)
