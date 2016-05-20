@@ -219,6 +219,8 @@ class mListBox(urwid.ListBox):
 
 	def __init__(self, body):
 		super().__init__(body)
+		self.isViewContent = False
+		self.maxrow = 0	# for view content
 		
 	def focusNext(self):
 		cur = self.body.get_focus()
@@ -242,7 +244,6 @@ class mListBox(urwid.ListBox):
 			return
 			
 		nextRow = self.body.get_next(cur[1])
-			
 		self.body.set_focus(nextRow[1])
 			
 	def scrollUp(self):
@@ -251,6 +252,17 @@ class mListBox(urwid.ListBox):
 			return
 			
 		self.body.set_focus(self.body.get_prev(cur[1])[1])
+		
+	def render(self, size, focus=False):
+		(maxcol, self.maxrow) = size
+		return super().render(size, focus)
+		
+	def set_focus(self, position, coming_from=None):
+		if self.isViewContent:
+			if position >= len(self.body) - self.maxrow:
+				position = len(self.body) - self.maxrow
+	
+		return super().set_focus(position,coming_from)		 
 		
 	def mouse_event(self, size, event, button, col, row, focus):
 		if event == "mouse press":
@@ -427,6 +439,7 @@ class mDlgMainFind(cDialog):
 		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(Urwid.makeBtnList([], None)))
 		self.widgetFileList.body.set_focus_changed_callback(lambda new_focus: self.onFileFocusChanged(new_focus))
 		self.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(["< Nothing to display >"])))
+		self.widgetContent.isViewContent = True
 
 		self.header = ">> dc V%s - find - q/F4(Quit),<-/->(Prev/Next file),Enter(goto),E(edit)..." % g.version
 		self.headerText = urwid.Text(self.header)
