@@ -29,6 +29,11 @@ function dcg()
 	python3 $DEV_CMD_PATH/dc.py ackg "$1" "$2" "$3" "$4" "$5"
 	goPath
 }
+function dcw()
+{
+	python3 $DEV_CMD_PATH/dc.py which "$1" "$2" "$3" "$4" "$5"
+	goPath
+}
 
 
 function dcd()
