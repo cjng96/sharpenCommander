@@ -448,6 +448,8 @@ class mDlgMainFind(cDialog):
 		markup = ("std_f", widget.base_widget.origText)
 		widget.base_widget._label.set_text(markup)
 
+		self.widgetFileList.set_focus_valign("middle")
+
 		self.selectFileName = gitFileBtnName(widget)
 
 		try:
@@ -1132,9 +1134,6 @@ def programPath(sub=None):
     pp = os.path.join(pp, sub)
   return pp
   
-  
-  
-
 
 class Gr:
 	def __init__(self):
