@@ -484,12 +484,19 @@ class mDlgMainFind(cDialog):
 		raise urwid.ExitMainLoop()
 		
 	def inputFilter(self, keys, raw):
+		if "down" in keys:
+			self.widgetContent.scrollDown()
+			return self.excludeKey(keys, "down")
+
+		if "up" in keys:
+			self.widgetContent.scrollUp()
+			return self.excludeKey(keys, "up")
+				
 		if "enter" in keys:
 			self.onFileSelected(self.widgetFileList.focus)
 			return self.excludeKey(keys, "enter")
 
 		return keys
-
 		
 	def recvData(self, data):
 		ss = data.decode("UTF-8")
@@ -510,7 +517,6 @@ class mDlgMainFind(cDialog):
 			self.widgetFileList.body.append(btn)
 			
 		return True
-			
 
 	def unhandled(self, key):
 		if key == 'f4' or key == "q":
@@ -627,16 +633,14 @@ class mDlgMainGitStatus(cDialog):
 	def inputFilter(self, keys, raw):
 		if g.loop.widget != g.dialog.mainWidget:
 			return keys
-		
-		if "left" in keys:
-			self.widgetFileList.focusPrevious()
-			self.refreshFileContentCur()
-			return self.excludeKey(keys, "left")
-			
-		if "right" in keys:
-			self.widgetFileList.focusNext()
-			self.refreshFileContentCur()
-			return self.excludeKey(keys, "right")
+
+		if "down" in keys:
+			self.widgetContent.scrollDown()
+			return self.excludeKey(keys, "down")
+
+		if "up" in keys:
+			self.widgetContent.scrollUp()
+			return self.excludeKey(keys, "up")
 			
 		return keys
 
@@ -647,10 +651,10 @@ class mDlgMainGitStatus(cDialog):
 			self.widgetContent.scrollUp()
 		elif key == 'j':
 			self.widgetContent.scrollDown()
-		elif key == "[":
+		elif key == "left" or key == "[":
 			self.widgetFileList.focusPrevious()
 			self.refreshFileContentCur()
-		elif key == "]":
+		elif key == "right" or key == "]":
 			self.widgetFileList.focusNext()
 			self.refreshFileContentCur()
 			
@@ -809,6 +813,20 @@ class mGitCommitDialog(cDialog):
 			self.onFileFocusChanged(self.widgetFileList.focus_position)
 			self.onFileSelected(self.widgetFileList.focus)	# auto display
 
+	def inputFilter(self, keys, raw):
+		if g.loop.widget != g.dialog.mainWidget:
+			return keys
+
+		if "down" in keys:
+			self.widgetContent.scrollDown()
+			return self.excludeKey(keys, "down")
+
+		if "up" in keys:
+			self.widgetContent.scrollUp()
+			return self.excludeKey(keys, "up")
+			
+		return keys
+		
 	def unhandled(self, key):
 		if key == "q" or key == "Q" or key == "f4":
 			self.onExit()
@@ -816,10 +834,10 @@ class mGitCommitDialog(cDialog):
 			self.widgetContent.scrollUp()
 		elif key == 'j':
 			self.widgetContent.scrollDown()
-		elif key == "[":
+		elif key == "left" or key == "[":
 			self.widgetFileList.focusPrevious()
 			self.refreshFileContentCur()
-		elif key == "]":
+		elif key == "right" or key == "]":
 			self.widgetFileList.focusNext()
 			self.refreshFileContentCur()
 			
