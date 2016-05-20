@@ -1178,12 +1178,28 @@ class Gr:
 	def repoAllName(self):
 		return [repo["name"][0] for repo in self.repoList]
 		
-	def action(self, second, action):
+	def action(self, action):
 		if not self.isInit:
 			self.init()
+
+		if len(sys.argv) >= 3:
+			second = sys.argv[2]
+			if second == ".":
+				# current repo
+				pp = os.getcwd()
+				for repo in gr.repoList:
+					if pp.startswith(os.path.realpath(repo["path"])):
+						second = repo["name"][0]
+						break
+				if second == ".":
+					self.log(0, "Current path[%s] is not git repo." % pp)
+					return
+				
+			action(self, second)
 			
-		for comp in gr.repoAllName():
-			action(self, comp)
+		else:
+			for comp in gr.repoAllName():
+				action(self, comp)
 		
 	def log(self, lv, msg):
 		if lv == 0:
@@ -1419,8 +1435,6 @@ def getNonblocingInput():
 		return sys.stdin.read(255)
 		
 
-
-
 def run():
 	#winTest()
 	try:
@@ -1446,14 +1460,11 @@ def run():
 				
 	g.init()
 
-	second = None
 	argc = len(sys.argv)	
 	if argc == 1:
-		target = "st"	# basic cmd
+		target = "ci"	# basic cmd
 	else:
 		target = sys.argv[1]
-		if argc >= 3:
-			second = sys.argv[2]
 		
 
 	if target == "push":
@@ -1461,7 +1472,7 @@ def run():
 		git.fetch()
 		g.gitPush()
 		return
-	elif target == "st":
+	elif target == "ci":
 		urwidGitStatus()
 		return
 	elif target == "list":
@@ -1517,23 +1528,27 @@ def run():
 		return
 		
 	elif target == "st":
-		gr.action(second, Gr.statusComponent)
+		gr.action(Gr.statusComponent)
+		return
 		
 	elif target == "fetch":
-		gr.action(second, Gr.fetch)
+		gr.action(Gr.fetch)
+		return
 		
 	elif target == "merge":
-		gr.action(second, Gr.mergeSafe)
+		gr.action(Gr.mergeSafe)
+		return
 		
 	elif target == "update":
 		print("fetch......")
-		gr.action(second, Gr.fetch)
+		gr.action(Gr.fetch)
 
 		print("merge......")
-		gr.action(second, Gr.mergeSafe)
+		gr.action(Gr.mergeSafe)
 
 		print("status......")
-		gr.action(second, Gr.statusComponent)
+		gr.action(Gr.statusComponent)
+		return
 		
 	#print("target - %s" % target)
 	g.cd(target)
