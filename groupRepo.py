@@ -278,6 +278,7 @@ import sys
 import importlib
 
 def main():
+	print("%sgroupRepo.py is deprecated. please use dc instead of it.%s" % (Ansi.redBold, msg, Ansi.clear))
 	run()
 
 
