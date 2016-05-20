@@ -26,7 +26,7 @@ function dcf()
 }
 function dcg()
 {
-	python3 $DEV_CMD_PATH/dc.py ack "$1" "$2" "$3" "$4" "$5"
+	python3 $DEV_CMD_PATH/dc.py ackg "$1" "$2" "$3" "$4" "$5"
 	goPath
 }
 
