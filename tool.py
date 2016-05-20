@@ -11,7 +11,7 @@ g = Config()
 def system(args):
 	if g.isPrintSystem:
 		print("system command - %s" % args)
-	rr = subprocess.check_output(args, shell=True).decode("UTF-8")
+	rr = subprocess.check_output(args, stderr=subprocess.STDOUT, shell=True).decode("UTF-8")
 	rr = rr.strip(' \r\n')
 	return rr
 
