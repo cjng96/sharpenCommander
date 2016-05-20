@@ -591,7 +591,10 @@ class mDlgMainGitStatus(cDialog):
 				ss = "No utf8 file[size:%d]" % os.path.getsize(self.selectFileName) 
 				
 		else:
-			ss = system("git diff --color \"%s\"" % self.selectFileName)
+			try:
+				ss = system("git diff --color \"%s\"" % self.selectFileName)
+			except subprocess.CalledProcessError as e:
+				ss = "failed to print diff for %s\n  %s" % (self.selectFileName, e)
 			
 		ss = ss.replace("\t", "    ")
 			
@@ -775,7 +778,11 @@ class mGitCommitDialog(cDialog):
 		# display
 		btnType = btn.base_widget.data
 		pp = os.path.join(g.relRoot, self.selectFileName)
-		ss = system("git diff %s --color \"%s\"" % ("" if btnType == "c" else "--staged", pp))
+		try:
+			ss = system("git diff --color %s \"%s\"" % ("" if btnType == "c" else "--staged", pp))
+		except subprocess.CalledProcessError as e:
+			ss = "failed to print diff for %s\n  %s" % (pp, e)
+			
 		ss = ss.replace("\t", "    ")
 			
 		del self.widgetContent.body[:]
