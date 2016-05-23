@@ -1191,9 +1191,10 @@ class Gr:
 			second = sys.argv[2]
 			if second == ".":
 				# current repo
-				pp = os.getcwd()
+				cur = os.getcwd() + "/"
 				for repo in gr.repoList:
-					if pp.startswith(os.path.realpath(repo["path"])):
+					repoPath = os.path.realpath(repo["path"]) 
+					if cur.startswith(repoPath+"/"):
 						second = repo["name"][0]
 						break
 				if second == ".":
