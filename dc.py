@@ -1343,7 +1343,6 @@ class Gr:
 			stashName = git.stashGetNameSafe(uname)
 			ss = system("git stash pop %s" % stashName)
 			print(ss)
-			return
 	
 		diffList = git.checkFastForward(branchName, remoteBranch)
 		if len(diffList) != 0:
@@ -1352,7 +1351,6 @@ class Gr:
 			self.log2(Color.blue, name, "merge with %s - %s" % (remoteBranch, path))
 			ss = system("git rebase %s" % remoteBranch)
 			print(ss)
-            
             
             
 	def fetch(self, name):
@@ -1530,7 +1528,7 @@ def run():
 		
 	elif target == "ackg":
 		# dc ack printf
-		cmds = sys.argv[1:]
+		cmds = ["ack"] + sys.argv[2:]
 		cmds.insert(1, "--group")
 		cmds.insert(1, "--color")
 		doSubCmd(cmds, mDlgMainAck, 3)
@@ -1557,7 +1555,7 @@ def run():
 
 		print("status......")
 		gr.action(Gr.statusComponent)
-		return
+
 		
 	#print("target - %s" % target)
 	g.cd(target)
