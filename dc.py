@@ -1488,15 +1488,19 @@ def run():
 		git.fetch()
 		g.gitPush()
 		return
+		
 	elif target == "ci":
 		urwidGitStatus()
 		return
+		
 	elif target == "list":
 		g.listPath()
 		return
+		
 	elif target == "config":
 		g.savePath("~/.devcmd")
 		return
+		
 	elif target == "which":
 		ss, status = systemSafe(" ".join(['"' + c + '"' for c in sys.argv[1:]]))
 		print(ss)
@@ -1556,6 +1560,7 @@ def run():
 
 		print("status......")
 		gr.action(Gr.statusComponent)
+		return
 
 		
 	#print("target - %s" % target)
