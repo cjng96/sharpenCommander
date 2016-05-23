@@ -628,6 +628,14 @@ class mDlgMainGitStatus(cDialog):
 		self.widgetFileList.focus_position = focusIdx
 	
 		self.onFileSelected(self.widgetFileList.focus)	# auto display
+		
+	def gitGetStagedCount(self):
+		cnt = 0
+		for item in self.widgetFileList.body:
+			ss = item.base_widget.origText
+			if "[32m" in ss:	# greenfg
+				cnt += 1
+		return cnt
 
 	def inputFilter(self, keys, raw):
 		if g.loop.widget != g.dialog.mainWidget:
@@ -726,6 +734,12 @@ class mDlgMainGitStatus(cDialog):
 					g.loop.stop()
 					print("No modified or untracked files")
 					sys.exit(0)
+					
+			# check staged data 
+			n = self.gitGetStagedCount()
+			if n == 0:
+				Urwid.popupMsg("Alert", "There is no staged file to commit")
+				return
 				
 			dlg = mGitCommitDialog(onExit)
 			g.dialog = dlg
@@ -1026,7 +1040,7 @@ class Urwid:
 			
 	def popupMsg(title, ss):
 		def onCloseBtn(btn):
-			g.loop.widget = g.mainLoop.widget.bottom_w
+			g.loop.widget = g.loop.widget.bottom_w
 			
 		txtMsg = urwid.Text(ss)
 		btnClose = urwid.Button("Close", onCloseBtn)
@@ -1562,7 +1576,6 @@ def run():
 		gr.action(Gr.statusComponent)
 		return
 
-		
 	#print("target - %s" % target)
 	g.cd(target)
 	return 1
