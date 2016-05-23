@@ -1151,14 +1151,15 @@ def urwidSubRun(dlg, doSubMake):
 	g.sub = doSubMake(writeFd)
 	g.loop.run()
 
-
-def doSubCmd(cmds, dlgCls, workItemIdx=-1):
+# workItemIdx: 지정되면 해당 번째 다음께 target이 된다.
+def doSubCmd(cmds, dlgCls, targetItemIdx=-1):
 	cmds[0] = find_executable(cmds[0])
 	
-	if workItemIdx != -1 and len(sys.argv) == workItemIdx+1:
-		target = sys.argv[workItemIdx]
+	if targetItemIdx != -1 and len(sys.argv) == targetItemIdx:
+		target = cmds[targetItemIdx]
 		item = g.findItem(target)
 		os.chdir(item["path"])
+		cmds = cmds[:targetItemIdx] + cmds[targetItemIdx+1:]
 	
 	dlg = dlgCls()
 	urwidSubRun(dlg, lambda writeFd: subprocess.Popen(cmds, bufsize=0, stdout=writeFd, close_fds=True))
@@ -1515,7 +1516,7 @@ def run():
 			pp = "*"+pp+"*"
 
 		cmds = ["find", ".", "-name", pp]
-		doSubCmd(cmds, mDlgMainFind, 3)
+		doSubCmd(cmds, mDlgMainFind, 4)
 		return
 		
 	elif target == "ack":
@@ -1531,7 +1532,7 @@ def run():
 		cmds = ["ack"] + sys.argv[2:]
 		cmds.insert(1, "--group")
 		cmds.insert(1, "--color")
-		doSubCmd(cmds, mDlgMainAck, 3)
+		doSubCmd(cmds, mDlgMainAck, 4)
 		return
 		
 	elif target == "st":
