@@ -152,9 +152,11 @@ class Global:
 					while True:
 						hr = input("\n\n*** You can rebase local to remoteBranch. want? y/n: ").lower()
 						if hr == 'y':
-							ss = git.rebase(remoteBranch)
+							ss,st = git.rebase(remoteBranch)
 							# exe result?
 							print(ss)
+							if st != 0:
+								raise Exception("rebase failed. you should do [rebase --abort][%d]" % st)
 							break
 						elif hr == "n":
 							break

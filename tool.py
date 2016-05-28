@@ -88,7 +88,7 @@ class git:
 		return system("git fetch --prune")
 		
 	def rebase(branch):
-		return system("git rebase %s" % branch)
+		return systemSafe("git rebase %s" % branch)
 	
 	def stashGetNameSafe(name):
 		ss = system("git stash list")
