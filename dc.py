@@ -669,8 +669,9 @@ class mDlgMainGitStatus(cDialog):
 			
 		elif key == "A":
 			btn = self.widgetFileList.focus
-			fname = gitFileBtnName(btn)
-			system("git add %s" % fname)
+			#fname = gitFileBtnName(btn)
+			fname = gitFileLastName(btn)
+			system("git add \"%s\"" % fname)
 			self.refreshFileList(1)
 			
 		elif key == "P":
@@ -1119,6 +1120,25 @@ def gitFileBtnName(btn):
 def gitFileBtnType(btn):
 	label = btn.base_widget.get_label()
 	return label[:2]
+
+def gitFileLastName(btn):
+	# temporal
+	return gitFileBtnName(btn)
+
+	ftype = gitFileBtnType(btn)
+	#R  b -> d
+	#R  "test a.txt" -> "t sp"
+	#A  "test b.txt"
+	#A  "tt \"k\" tt"
+	if ftype.startswith("R"):
+		# case1. a -> b
+		if not fname.endswith("\\\""):
+			pt = fname.rindex(" -> ")
+			return fname.substring(pt)
+		# case2. "test a" -> "test b"
+		pt = fname.rindex
+
+
 
 def urwidGitStatus():
 	try:
