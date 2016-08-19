@@ -6,6 +6,7 @@ import subprocess
 import os
 import sys
 import select
+import re
 
 from enum import Enum
 
@@ -1121,23 +1122,43 @@ def gitFileBtnType(btn):
 	label = btn.base_widget.get_label()
 	return label[:2]
 
-def gitFileLastName(btn):
-	# temporal
-	return gitFileBtnName(btn)
+def unwrapQutesFilename(str):
+	if str.startswith('"'):
+		# escape including qutes
+		str = str[1:-1].replace('"', '\\"')
+		return str
+	else:
+		return str
 
+def gitFileLastName(btn):
 	ftype = gitFileBtnType(btn)
+	fname = gitFileBtnName(btn)
 	#R  b -> d
 	#R  "test a.txt" -> "t sp"
 	#A  "test b.txt"
 	#A  "tt \"k\" tt"
-	if ftype.startswith("R"):
-		# case1. a -> b
-		if not fname.endswith("\\\""):
-			pt = fname.rindex(" -> ")
-			return fname.substring(pt)
-		# case2. "test a" -> "test b"
-		pt = fname.rindex
+	if not ftype.startswith("R"):
+		return unwrapQutesFilename(fname)
 
+	# case1. a -> b
+	if not fname.startswith("\""):
+		pt = fname.rindex(" -> ")
+		fname = fname.substring(pt)
+		return unwrapQutesFilename(fname)
+	else:
+		# case2. "test a" -> "test b"
+		ss = fname[:-1]
+		while True:
+			pt = ss.rfind('"')
+			if pt == 0:
+				return ss[1:]
+
+			if pt != -1:
+				if ss[pt-1] != "\\":
+					return ss[pt+1:]
+				else:
+					# TODO:
+					raise Exception("Not supported file format[%s]" % fname)
 
 
 def urwidGitStatus():
