@@ -69,8 +69,9 @@ class ExcFail(Exception):
 class Global:
 	def __init__(self):
 		self.lstPath = []
+		self.configPath = ""
 		self.isPrintSystem = False
-		
+
 	def init(self):
 		pp = os.path.expanduser("~/.devcmd")
 		if not os.path.isdir(pp):
@@ -132,7 +133,7 @@ class Global:
 	def gitPush(self):
 		currentBranch = git.getCurrentBranch()
 		remoteBranch = git.getTrackingBranch()
-		if remoteBranch == None:
+		if remoteBranch is None:
 			print("currentBranch:%s DONT have tracking branch")
 			# todo: print latest 10 commits
 
@@ -287,7 +288,7 @@ def refreshBtnList(content, listBox, onClick):
 	listBox.body += Urwid.makeBtnList(contentList, onClick)
 
 
-class cDialog():
+class cDialog(object):
 	def __init__(self):
 		self.mainWidget = None
 	
@@ -447,6 +448,7 @@ class mDlgMainFind(cDialog):
 		
 		self.cbFileSelect = lambda btn: self.onFileSelected(btn)
 		self.content = ""
+		self.selectFileName = ""
 
 	def onFileFocusChanged(self, new_focus):
 		# old widget
@@ -546,6 +548,8 @@ class mDlgMainGitStatus(cDialog):
 	def __init__(self):
 		super().__init__()
 
+		self.selectFileName = ""
+
 		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(Urwid.makeBtnList(["< No files >"], None)))
 		self.widgetFileList.body.set_focus_changed_callback(lambda new_focus: self.onFileFocusChanged(new_focus))
 		self.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(["< Nothing to display >"])))
@@ -579,19 +583,23 @@ class mDlgMainGitStatus(cDialog):
 	def onFileSelected(self, btn):
 		# why btn.get_label() is impossible?
 		label = btn.base_widget.get_label()
-		self.selectFileName = gitFileBtnName(btn)
+		#self.selectFileName = gitFileBtnName(btn)
+		self.selectFileName = gitFileLastName(btn)
 		#g.headerText.set_text("file - " + label)
 		
 		# display
 		if label == "< Nothing >":
 			ss = label
 		elif label.startswith("?? "):
-			try:
-				with open(self.selectFileName, "r", encoding="UTF-8") as fp:
-					ss = fp.read()
-			except UnicodeDecodeError:
-				#Urwid.popupMsg("Encoding", "Encoding error[%s]" % self.selectFileName);
-				ss = "No utf8 file[size:%d]" % os.path.getsize(self.selectFileName) 
+			if os.path.isdir(self.selectFileName):
+				ss = "%s is folder" % self.selectFileName
+			else:
+				try:
+					with open(self.selectFileName, "r", encoding="UTF-8") as fp:
+						ss = fp.read()
+				except UnicodeDecodeError:
+					#Urwid.popupMsg("Encoding", "Encoding error[%s]" % self.selectFileName);
+					ss = "No utf8 file[size:%d]" % os.path.getsize(self.selectFileName)
 				
 		else:
 			try:
@@ -1340,7 +1348,7 @@ class Gr:
 	def stashCheck(self, name):
 		uname = "###groupRepo###"
 		stashName = git.stashGetNameSafe(uname)
-		if stashName != None:
+		if stashName is not None:
 			self.log2(Color.red, name, "YOU HAVE STASH ITEM. PROCESS IT FIRST")
 			return False
 
@@ -1360,7 +1368,7 @@ class Gr:
 		
 		branchName = git.getCurrentBranch()
 		remoteBranch = git.getTrackingBranch()
-		if remoteBranch == None:
+		if remoteBranch is None:
 			self.log2(Color.red, name, "%s DONT'T HAVE TRACKING branch" % branchName)
 			return
 		
@@ -1393,7 +1401,7 @@ class Gr:
 
 		branchName = git.getCurrentBranch()
 		remoteBranch = git.getTrackingBranch()
-		if remoteBranch == None:
+		if remoteBranch is None:
 			self.log2(Color.red, name, "%s DONT'T HAVE TRACKING branch" % branchName)
 			return
 		
