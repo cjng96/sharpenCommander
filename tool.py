@@ -33,40 +33,48 @@ def systemRet(args):
 
 class git:
 	# if remote branch, insert "remotes/"
+	@staticmethod
 	def rev(branch):
 		ss = system("git branch -va")
 		m = re.search(r'^[*]?\s+%s\s+(\w+)' % branch, ss, re.MULTILINE)
 		rev = m.group(1)
 		return rev
 
+	@staticmethod
 	def getCurrentBranch():
 		return system("git rev-parse --abbrev-ref HEAD")
 
+	@staticmethod
 	def getTrackingBranch():
 		try:
 			return system("git rev-parse --abbrev-ref --symbolic-full-name @{u}")
 		except subprocess.CalledProcessError:
 			return None
 
+	@staticmethod
 	def commonParentRev(br1, br2):
 		commonRev = system("git merge-base %s %s" % (br1, br2))
 		return commonRev[:7]
 
+	@staticmethod
 	def printStatus():
 		ss = system("git -c color.status=always status -s")
 		print("\n"+ss+"\n")
 		
 
+	@staticmethod
 	def commitGap(brNew, brOld):
 		gap = system("git rev-list %s ^%s --count" % (brNew, brOld))
 		return int(gap)
 
+	@staticmethod
 	def commitLogBetween(brNew, brOld):
 		# color print
 		ss = system("git log --color --oneline --graph --decorate --abbrev-commit %s^..%s" % (brOld, brNew))
 		return ss
 		
 
+	@staticmethod
 	def checkFastForward( br1, br2):
 		commonRev = git.commonParentRev(br1, br2)
 		
@@ -84,12 +92,15 @@ class git:
 				
 		return lst2
 
+	@staticmethod
 	def fetch():
 		return system("git fetch --prune")
 		
+	@staticmethod
 	def rebase(branch):
 		return systemSafe("git rebase %s" % branch)
 	
+	@staticmethod
 	def stashGetNameSafe(name):
 		ss = system("git stash list")
 		print(ss)
@@ -99,6 +110,7 @@ class git:
 
 		return m.group(1)
 	
+	@staticmethod
 	def stashPop(name):
 		ss = system("git stash pop %s" % name)
 		print

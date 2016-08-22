@@ -938,6 +938,7 @@ class mGitCommitDialog(cDialog):
 
 
 class Urwid:
+	@staticmethod
 	def termianl2plainText(ss):
 		#source = "\033[31mFOO\033[0mBAR"
 		st = ss.find("\x1b")
@@ -955,6 +956,7 @@ class Urwid:
 			
 		return out
 		
+	@staticmethod
 	def terminal2markup(ss, invert=0):
 		#source = "\033[31mFOO\033[0mBAR"
 		table = {"[1":("bold",'bold_f'), "[4":("underline",'underline_f'),
@@ -994,6 +996,7 @@ class Urwid:
 			
 		return markup
 		
+	@staticmethod
 	def genEdit(label, text, cbChange):
 		w = urwid.Edit(label, text)
 		urwid.connect_signal(w, 'change', cbChange)
@@ -1001,6 +1004,7 @@ class Urwid:
 		#w = urwid.AttrWrap(w, 'edit')
 		return w
 		
+	@staticmethod
 	def genText(terminalText):
 		line2 = Urwid.terminal2markup(terminalText)
 		txt = urwid.Text(line2)
@@ -1008,12 +1012,14 @@ class Urwid:
 		return txt
 	
 		
+	@staticmethod
 	def makeTextList(lstStr):
 		outList = []
 		for line in lstStr:
 			outList.append(Urwid.genText(line))
 		return outList
 		
+	@staticmethod
 	def makeBtnList(lstStr, onClick, doApply=None):
 		outList = []
 		isFirst = True 
@@ -1026,12 +1032,14 @@ class Urwid:
 			outList.append(btn)
 		return outList
 		
+	@staticmethod
 	def genBtn(terminalText, onClick, isFocus=False, doApply=None):
 		text2 = Urwid.terminal2markup(terminalText, 1 if isFocus else 0)
 		btn = Urwid.genBtnMarkup(text2, onClick, isFocus, doApply)
 		btn.base_widget.origText = terminalText
 		return btn
 		
+	@staticmethod
 	def genBtnMarkup(markup, onClick, isFocus=False, doApply=None):
 		btn = mButton(markup, onClick)
 		#btn.origText = terminalText
@@ -1042,6 +1050,7 @@ class Urwid:
 		btn = urwid.AttrMap(btn, None, "reveal focus")
 		return btn	
 			
+	@staticmethod
 	def popupMsg(title, ss):
 		def onCloseBtn(btn):
 			g.loop.widget = g.loop.widget.bottom_w
@@ -1051,6 +1060,7 @@ class Urwid:
 		popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', btnClose)]), title)
 		g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 20, 'middle', 10)
 		
+	@staticmethod
 	def popupAsk(title, ss, onOk, onCancel = None):
 		def onClickBtn(btn):
 			if btn == btnYes:
@@ -1067,6 +1077,7 @@ class Urwid:
 		popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', urwid.Columns([btnYes, btnNo]))]), title)
 		g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 40, 'middle', 5)
 		
+	@staticmethod
 	def popupAsk3(title, ss, btnName1, btnName2, btnName3, onBtn1, onBtn2, onBtn3 = None):
 		def onClickBtn(btn):
 			if btn == btnB1:
@@ -1074,7 +1085,7 @@ class Urwid:
 			elif btn == btnB2:
 				onBtn2()
 			elif btn == btnB3:
-				if onBtn3 != None: 
+				if onBtn3 is not None:
 					onBtn3()
 					
 			g.loop.widget = g.loop.widget.bottom_w
@@ -1086,12 +1097,13 @@ class Urwid:
 		popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', urwid.Columns([btnB1, btnB2, btnB3]))]), title)
 		g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 40, 'middle', 5)
 		
+	@staticmethod
 	def popupInput(title, ss, onOk, onCancel = None):
 		def onClickBtn(btn):
 			if btn == btnOk:
 				onOk(edInput.edit_text)
 			elif btn == btnCancel:
-				if onCancel != None: 
+				if onCancel is not None:
 					onCancel()
 					
 			g.loop.widget = g.loop.widget.bottom_w
@@ -1099,7 +1111,7 @@ class Urwid:
 		edInput = urwid.Edit(ss)
 		btnOk = urwid.Button("OK", onClickBtn)
 		btnCancel = urwid.Button("Cancel", onClickBtn)
-		popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', urwid.Columns([btnOk, btnCancel]))]), title)
+		popup = urwid.LineBox(urwid.Pile([('pack', edInput), ('pack', urwid.Columns([btnOk, btnCancel]))]), title)
 		g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 40, 'middle', 5)
 
 
@@ -1224,7 +1236,7 @@ def doSubCmd(cmds, dlgCls, targetItemIdx=-1):
 		
 def programPath(sub=None):
   pp = os.path.dirname(os.path.realpath(sys.argv[0]))
-  if sub != None:
+  if sub is not None:
     pp = os.path.join(pp, sub)
   return pp
   
@@ -1256,7 +1268,7 @@ class Gr:
 						second = repo["name"][0]
 						break
 				if second == ".":
-					self.log(0, "Current path[%s] is not git repo." % pp)
+					self.log(0, "Current path[%s] is not git repo." % cur)
 					return
 				
 			action(self, second)
