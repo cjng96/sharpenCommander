@@ -669,10 +669,10 @@ class mDlgMainGitStatus(cDialog):
 			self.widgetContent.scrollUp()
 		elif key == 'j':
 			self.widgetContent.scrollDown()
-		elif key == "left" or key == "[":
+		elif key == "left" or key == "[" or key == "f11":
 			self.widgetFileList.focusPrevious()
 			self.refreshFileContentCur()
-		elif key == "right" or key == "]":
+		elif key == "right" or key == "]" or key == "f12":
 			self.widgetFileList.focusNext()
 			self.refreshFileContentCur()
 			
@@ -765,6 +765,8 @@ class mGitCommitDialog(cDialog):
 	
 	def __init__(self, onExit):
 		super().__init__()
+
+		self.selectFileName = ""
 
 		self.onExit = onExit
 		self.edInput = Urwid.genEdit("Input commit message => ", "", lambda edit,text: self.onMsgChanged(edit,text))
@@ -863,10 +865,10 @@ class mGitCommitDialog(cDialog):
 			self.widgetContent.scrollUp()
 		elif key == 'j':
 			self.widgetContent.scrollDown()
-		elif key == "left" or key == "[":
+		elif key == "left" or key == "[" or key == "f11":
 			self.widgetFileList.focusPrevious()
 			self.refreshFileContentCur()
-		elif key == "right" or key == "]":
+		elif key == "right" or key == "]" or key == "f12":
 			self.widgetFileList.focusNext()
 			self.refreshFileContentCur()
 			
