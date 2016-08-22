@@ -868,10 +868,17 @@ class mGitCommitDialog(cDialog):
 		elif key == "left" or key == "[" or key == "f11":
 			self.widgetFileList.focusPrevious()
 			self.refreshFileContentCur()
+
+			if key == "f11":
+				self.widgetFrame.set_focus(self.edInput)
+
 		elif key == "right" or key == "]" or key == "f12":
 			self.widgetFileList.focusNext()
 			self.refreshFileContentCur()
-			
+
+			if key == "f12":
+				self.widgetFrame.set_focus(self.edInput)
+
 		elif key == "A":
 			def onAdd():
 				system("git add \"%s\"" % fname)
