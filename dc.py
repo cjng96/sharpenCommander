@@ -1252,10 +1252,10 @@ def doSubCmd(cmds, dlgCls, targetItemIdx=-1):
 
 		
 def programPath(sub=None):
-  pp = os.path.dirname(os.path.realpath(sys.argv[0]))
-  if sub is not None:
-    pp = os.path.join(pp, sub)
-  return pp
+	pp = os.path.dirname(os.path.realpath(sys.argv[0]))
+	if sub is not None:
+		pp = os.path.join(pp, sub)
+	return pp
   
 
 class Gr:
