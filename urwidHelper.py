@@ -134,6 +134,10 @@ class cDialog(object):
 	def __init__(self):
 		self.mainWidget = None
 
+	def init(self):
+		# something to do
+		return True
+
 	def unhandled(self, key):
 		pass
 

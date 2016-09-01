@@ -451,8 +451,12 @@ class mDlgMainFind(cDialog):
 			
 		elif key == "h":
 			Urwid.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
-	
-	
+
+class mDlgMainDc(cDialog):
+	def __init__(self):
+		super().__init__()
+		pass
+
 class mDlgMainGitStatus(cDialog):
 	def __init__(self):
 		super().__init__()
@@ -477,7 +481,14 @@ class mDlgMainGitStatus(cDialog):
 		g.relRoot = "./"
 		if g.gitRoot != g.curPath:
 			g.relRoot = os.path.relpath(g.gitRoot, g.curPath)
-			
+
+	def init(self):
+		self.refreshFileList()
+		if self.widgetFileList.itemCount == 0:
+			print("No modified or untracked files")
+			return False
+
+		return True
 
 	def onFileFocusChanged(self, new_focus):
 		# old widget
@@ -922,29 +933,10 @@ def gitFileLastName(btn):
 					# TODO:
 					raise Exception("Not supported file format[%s]" % fname)
 
-def uiMain():
-	pass
-
-
-def urwidGitStatus():
-	try:
-		main = mDlgMainGitStatus()
-	except urwid.ExitMainLoop:
-		return
-		
-	main.refreshFileList()
-	if main.widgetFileList.itemCount == 0:
-		print("No modified or untracked files")
-		return
-	
-	g.dialog = main
-	g.loop = urwid.MainLoop(main.mainWidget, g.palette, urwid.raw_display.Screen(),
-		unhandled_input=urwidUnhandled, input_filter=urwidInputFilter)
-	g.loop.run()
 	
 def cbWatchPipe(dlg, data):
 	"""
-	if g.sub.poll() != None:
+	if g.subProc.poll() != None:
 		# cygwin에서 recvData받는중에 이게 참인 경우가 많다. - 리눅스는 바로 전달되서 이게 없다.
 		self.headerText.set_text(self.header+"!!!")
 		
@@ -963,18 +955,29 @@ def cbWatchPipe(dlg, data):
 	
 	
 from distutils.spawn import find_executable
-	
-def urwidSubRun(dlg, doSubMake):
+
+
+def uiMain(dlgClass, doSubMake=None):
+	try:
+		dlg = dlgClass()
+	except urwid.ExitMainLoop:
+		return
+
+	if not dlg.init():
+		return
+
 	g.dialog = dlg
 	g.loop = urwid.MainLoop(dlg.mainWidget, g.palette, urwid.raw_display.Screen(),
-		unhandled_input=urwidUnhandled, input_filter=urwidInputFilter)
-		
-	writeFd = g.loop.watch_pipe(lambda data: cbWatchPipe(dlg, data))
-	g.sub = doSubMake(writeFd)
+							unhandled_input=urwidUnhandled, input_filter=urwidInputFilter)
+
+	if doSubMake is not None:
+		writeFd = g.loop.watch_pipe(lambda data: cbWatchPipe(dlg, data))
+		g.subProc = doSubMake(writeFd)
+
 	g.loop.run()
 
 # workItemIdx: 지정되면 해당 번째 다음께 target이 된다.
-def doSubCmd(cmds, dlgCls, targetItemIdx=-1):
+def doSubCmd(cmds, dlgClass, targetItemIdx=-1):
 	cmds[0] = find_executable(cmds[0])
 	
 	if targetItemIdx != -1 and len(sys.argv) == targetItemIdx:
@@ -982,9 +985,8 @@ def doSubCmd(cmds, dlgCls, targetItemIdx=-1):
 		item = g.findItem(target)
 		os.chdir(item["path"])
 		cmds = cmds[:targetItemIdx] + cmds[targetItemIdx+1:]
-	
-	dlg = dlgCls()
-	urwidSubRun(dlg, lambda writeFd: subprocess.Popen(cmds, bufsize=0, stdout=writeFd, close_fds=True))
+
+	uiMain(dlgClass, lambda writeFd: subprocess.Popen(cmds, bufsize=0, stdout=writeFd, close_fds=True))
 
 
 class Gr(object):
@@ -1181,8 +1183,6 @@ class Gr(object):
 
 
 gr = Gr()
-  
-  
 
 
 def winTest():
@@ -1241,7 +1241,8 @@ def run():
 	removeEmptyArgv()
 
 	if target == "":
-		uiMain()
+		uiMain(mDlgMainDc)
+		return
 
 	elif target == "push":
 		print("fetching first...")
@@ -1250,7 +1251,7 @@ def run():
 		return
 		
 	elif target == "ci":
-		urwidGitStatus()
+		uiMain(mDlgMainGitStatus)
 		return
 		
 	elif target == "list":
