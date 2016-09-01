@@ -6,17 +6,24 @@ import subprocess
 import os
 import sys
 import select
+import datetime
 import re
 
 from enum import Enum
 
-import tool
-from tool import git, system, systemSafe, systemRet
 
 import urwid
 import urwid.raw_display
 import urwid.web_display
 from urwid.signals import connect_signal
+
+
+import tool
+from tool import git, system, systemSafe, systemRet, programPath
+
+from globalBase import *
+
+from urwidHelper import *
 
 
 
@@ -56,21 +63,30 @@ class Ansi:
 	blueBold = "\033[1;34m"
 	blue = "\033[0;34m"
 	clear = "\033[0m"
-	
-class NoExistErr(Exception):
-	def __init__(self, path, msg):
-		self.path = path
-		super().__init__(msg)	
 
-class ExcFail(Exception):
+class Err(Exception):
 	def __init__(self, msg):
 		super().__init__(msg)
-		
-class Global:
+
+
+# FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), filename)
+class ErrNoExist(Err):
+	def __init__(self, msg, path):
+		super().__init__(msg)
+		self.path = path
+
+class ErrFailure(Err):
+	def __init__(self, msg):
+		super().__init__(msg)
+
+class MyProgram(Program):
 	def __init__(self):
+		super().__init__("1.1.0", programPath("dc.log"))
 		self.lstPath = []
-		self.configPath = ""
+		self.configPath = ""    # ~/.devcmd/path.py
 		self.isPrintSystem = False
+
+		g.app = self
 
 	def init(self):
 		pp = os.path.expanduser("~/.devcmd")
@@ -81,11 +97,11 @@ class Global:
 		self.configPath = os.path.join(pp, "path.py")	
 		
 		if not os.path.isfile(g.configPath):
-			raise ExcFail("No path.py file in ~/.devcmd")
+			raise ErrFailure("No path.py file in ~/.devcmd")
 
 		sys.path.append(pp)
 		m = __import__("path")
-		g.lstPath = [ item for item in m.pathList if len(item["name"]) > 0 ]
+		self.lstPath = [ item for item in m.pathList if len(item["name"]) > 0 ]
 		
 		for item in g.lstPath:
 			item["path"] = os.path.expanduser(item["path"])
@@ -104,7 +120,7 @@ class Global:
 			if target.lower() in map(str.lower, lstName):
 				return pp
 				
-		raise ExcFail("No that target[%s]" % target)
+		raise ErrFailure("No that target[%s]" % target)
 		
 	def cd(self, target):
 		if target == "~":
@@ -123,12 +139,11 @@ class Global:
 		gap = git.commitGap(currentBranch, remoteBranch)
 		if gap == 0:
 			git.printStatus()
-			raise ExcFail("There is no commit to push")
+			raise ErrFailure("There is no commit to push")
 
 		print("There are %d commits to push" % gap)
 		ss = git.commitLogBetween(currentBranch, remoteBranch)
 		print(ss)
-		
 
 	def gitPush(self):
 		currentBranch = git.getCurrentBranch()
@@ -180,7 +195,7 @@ class Global:
 
 		target = input("\nInput remote branch name you push to: ")
 		if target == "":
-			raise ExcFail("Push is canceled")
+			raise ErrFailure("Push is canceled")
 			
 
 		# push it	
@@ -198,82 +213,6 @@ class Global:
 					break
 
 
-class mButton(urwid.Button):
-	'''
-	Button without pre/post Text
-	'''
-	def __init__(self, label, on_press=None, user_data=None):
-		self._label = urwid.wimp.SelectableIcon(label, 0)
-		
-		super(urwid.Button, self).__init__(self._label)
-		#urwid.widget.WidgetWrap.__init__(self, self._label)
-
-		# The old way of listening for a change was to pass the callback
-		# in to the constructor.  Just convert it to the new way:
-		if on_press:
-			connect_signal(self, 'click', on_press, user_data)
-
-		#self.set_label(label)
-
-class mListBox(urwid.ListBox):
-
-	def __init__(self, body):
-		super().__init__(body)
-		self.isViewContent = False
-		self.maxrow = 0	# for view content
-		
-	def focusNext(self):
-		cur = self.body.get_focus()
-		if cur[1] >= len(self.body)-1:
-			return
-			
-		nextRow = self.body.get_next(cur[1])
-		self.body.set_focus(nextRow[1])
-			
-	def focusPrevious(self):
-		cur = self.body.get_focus()
-		if cur[1] == 0:
-			return
-			
-		self.body.set_focus(self.body.get_prev(cur[1])[1])
-
-	# TODO: scroll 
-	def scrollDown(self):
-		cur = self.body.get_focus()
-		if cur[1] >= len(self.body)-1:
-			return
-			
-		nextRow = self.body.get_next(cur[1])
-		self.body.set_focus(nextRow[1])
-			
-	def scrollUp(self):
-		cur = self.body.get_focus()
-		if cur[1] == 0:
-			return
-			
-		self.body.set_focus(self.body.get_prev(cur[1])[1])
-		
-	def render(self, size, focus=False):
-		(maxcol, self.maxrow) = size
-		return super().render(size, focus)
-		
-	def set_focus(self, position, coming_from=None):
-		if self.isViewContent:
-			if position >= len(self.body) - self.maxrow:
-				position = len(self.body) - self.maxrow
-	
-		return super().set_focus(position,coming_from)		 
-		
-	def mouse_event(self, size, event, button, col, row, focus):
-		if event == "mouse press":
-			if button == 4:	# up
-				for i in range(3):
-					self.scrollUp()
-			
-			elif button == 5:	# down
-				for i in range(3):
-					self.scrollDown()
-					
 
 
 def refreshBtnList(content, listBox, onClick):
@@ -287,19 +226,6 @@ def refreshBtnList(content, listBox, onClick):
 		
 	listBox.body += Urwid.makeBtnList(contentList, onClick)
 
-
-class cDialog(object):
-	def __init__(self):
-		self.mainWidget = None
-	
-	def unhandled(self, key):
-		pass 
-		
-	def inputFilter(self, keys, raw):
-		return keys
-		
-	def excludeKey(self, keys, target):
-		return [ c for c in keys if c != target ]
 
 class AckFile:
 	def __init__(self, fnameTerminal):
@@ -428,8 +354,6 @@ class mDlgMainAck(cDialog):
 			
 		elif key == "h":
 			Urwid.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
-	
-		
 	
 
 class mDlgMainFind(cDialog):
@@ -760,6 +684,7 @@ class mDlgMainGitStatus(cDialog):
 		elif key == "h":
 			Urwid.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 
+
 class mGitCommitDialog(cDialog):
 	themes = [("greenfg", "greenfg_f"), ("std", "std_f")]
 	
@@ -928,16 +853,16 @@ class mGitCommitDialog(cDialog):
 		elif key == "ctrl a":
 			# commit all
 			def onCommit():
-				text = self.edInput.get_edit_text()
-				ss = system("git commit -a -m \"%s\"" % text[:-1])
+				tt = self.edInput.get_edit_text()
+				ss = system("git commit -a -m \"%s\"" % tt[:-1])
 				self.onExit()
 					
 			Urwid.popupAsk("Git Commit", "Do you want to commit all modification?", onCommit)
 			
 		elif key == "enter":
 			# commit
-			text = self.edInput.get_edit_text()
-			ss = system("git commit -m \"%s\"" % text)
+			tt = self.edInput.get_edit_text()
+			ss = system("git commit -m \"%s\"" % tt)
 			#print(ss)
 			self.onExit()
 
@@ -953,183 +878,6 @@ class mGitCommitDialog(cDialog):
 		elif key == "h":
 			Urwid.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 
-
-class Urwid:
-	@staticmethod
-	def termianl2plainText(ss):
-		#source = "\033[31mFOO\033[0mBAR"
-		st = ss.find("\x1b")
-		if st == -1:
-			return ss
-			
-		out = ""
-		items = ss.split("\x1b")
-		for at in items:
-			if at == "":
-				continue
-			attr, text = at.split("m",1)
-			if text != "":	# skip empty string
-				out += text
-			
-		return out
-		
-	@staticmethod
-	def terminal2markup(ss, invert=0):
-		#source = "\033[31mFOO\033[0mBAR"
-		table = {"[1":("bold",'bold_f'), "[4":("underline",'underline_f'),
-			"[22":("std",'std_f'),
-			"[24":("std",'std_f'),
-			"[31":('redfg','redfg_f'), 
-			"[32":('greenfg', "greenfg_f"), 
-			"[33":('yellowfg', "yellowfg_f"), 
-			"[36":('cyanfg', "cyanfg_f"), 
-			"[41":("redbg", "regbg_f"),
-			"[1;31":("redfg_b", "redfg_bf"), 
-			"[1;32":("greenfg_b", "greenfg_bf"), 
-			"[1;33":("yellowfg_b", "yellowfg_bf"), 
-			"[1;34":("bluefg_b", "bluefg_bf"), 
-			"[1;36":("cyanfg_b", "cyanfg_bf"), 
-			"[30;43":("yellowbg_b", "yellowbg_bf"), 
-			"[0":('std', "std_f"), "[":('std', "std_f")}
-		markup = []
-		st = ss.find("\x1b")
-		if st == -1:
-			return ss
-			
-		items = ss.split("\x1b")
-		pt = 1
-		if not ss.startswith("\x1b"):
-			markup.append(items[0])
-		
-		for at in items[pt:]:
-			if at == "[K":	# it...
-				continue
-			attr, text = at.split("m",1)
-			if text != "":	# skip empty string
-				markup.append((table[attr][invert], text))
-			
-		if len(markup) == 0:
-			return ""
-			
-		return markup
-		
-	@staticmethod
-	def genEdit(label, text, cbChange):
-		w = urwid.Edit(label, text)
-		urwid.connect_signal(w, 'change', cbChange)
-		cbChange(w, text)
-		#w = urwid.AttrWrap(w, 'edit')
-		return w
-		
-	@staticmethod
-	def genText(terminalText):
-		line2 = Urwid.terminal2markup(terminalText)
-		txt = urwid.Text(line2)
-		#txt.origText = terminalText
-		return txt
-	
-		
-	@staticmethod
-	def makeTextList(lstStr):
-		outList = []
-		for line in lstStr:
-			outList.append(Urwid.genText(line))
-		return outList
-		
-	@staticmethod
-	def makeBtnList(lstStr, onClick, doApply=None):
-		outList = []
-		isFirst = True 
-		for line in lstStr:
-			if line.strip() == "":
-				continue
-				
-			btn = Urwid.genBtn(line, onClick, isFirst, doApply)
-			isFirst = False
-			outList.append(btn)
-		return outList
-		
-	@staticmethod
-	def genBtn(terminalText, onClick, isFocus=False, doApply=None):
-		text2 = Urwid.terminal2markup(terminalText, 1 if isFocus else 0)
-		btn = Urwid.genBtnMarkup(text2, onClick, isFocus, doApply)
-		btn.base_widget.origText = terminalText
-		return btn
-		
-	@staticmethod
-	def genBtnMarkup(markup, onClick, isFocus=False, doApply=None):
-		btn = mButton(markup, onClick)
-		#btn.origText = terminalText
-		
-		if doApply != None:
-			doApply(btn)
-			
-		btn = urwid.AttrMap(btn, None, "reveal focus")
-		return btn	
-			
-	@staticmethod
-	def popupMsg(title, ss):
-		def onCloseBtn(btn):
-			g.loop.widget = g.loop.widget.bottom_w
-			
-		txtMsg = urwid.Text(ss)
-		btnClose = urwid.Button("Close", onCloseBtn)
-		popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', btnClose)]), title)
-		g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 20, 'middle', 10)
-		
-	@staticmethod
-	def popupAsk(title, ss, onOk, onCancel = None):
-		def onClickBtn(btn):
-			if btn == btnYes:
-				onOk()
-			elif btn == btnNo:
-				if onCancel != None: 
-					onCancel()
-					
-			g.loop.widget = g.loop.widget.bottom_w
-			
-		txtMsg = urwid.Text(ss)
-		btnYes = urwid.Button("Yes", onClickBtn)
-		btnNo = urwid.Button("No", onClickBtn)
-		popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', urwid.Columns([btnYes, btnNo]))]), title)
-		g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 40, 'middle', 5)
-		
-	@staticmethod
-	def popupAsk3(title, ss, btnName1, btnName2, btnName3, onBtn1, onBtn2, onBtn3 = None):
-		def onClickBtn(btn):
-			if btn == btnB1:
-				onBtn1()
-			elif btn == btnB2:
-				onBtn2()
-			elif btn == btnB3:
-				if onBtn3 is not None:
-					onBtn3()
-					
-			g.loop.widget = g.loop.widget.bottom_w
-			
-		txtMsg = urwid.Text(ss)
-		btnB1 = urwid.Button(btnName1, onClickBtn)
-		btnB2 = urwid.Button(btnName2, onClickBtn)
-		btnB3 = urwid.Button(btnName3, onClickBtn)
-		popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', urwid.Columns([btnB1, btnB2, btnB3]))]), title)
-		g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 40, 'middle', 5)
-		
-	@staticmethod
-	def popupInput(title, ss, onOk, onCancel = None):
-		def onClickBtn(btn):
-			if btn == btnOk:
-				onOk(edInput.edit_text)
-			elif btn == btnCancel:
-				if onCancel is not None:
-					onCancel()
-					
-			g.loop.widget = g.loop.widget.bottom_w
-			
-		edInput = urwid.Edit(ss)
-		btnOk = urwid.Button("OK", onClickBtn)
-		btnCancel = urwid.Button("Cancel", onClickBtn)
-		popup = urwid.LineBox(urwid.Pile([('pack', edInput), ('pack', urwid.Columns([btnOk, btnCancel]))]), title)
-		g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 40, 'middle', 5)
 
 
 def urwidUnhandled(key):
@@ -1151,13 +899,13 @@ def gitFileBtnType(btn):
 	label = btn.base_widget.get_label()
 	return label[:2]
 
-def unwrapQutesFilename(str):
-	if str.startswith('"'):
+def unwrapQutesFilename(ss):
+	if ss.startswith('"'):
 		# escape including qutes
-		str = str[1:-1].replace('"', '\\"')
-		return str
+		ss = ss[1:-1].replace('"', '\\"')
+		return ss
 	else:
-		return str
+		return ss
 
 def gitFileLastName(btn):
 	ftype = gitFileBtnType(btn)
@@ -1207,7 +955,7 @@ def urwidGitStatus():
 	g.loop.run()
 	
 def cbWatchPipe(dlg, data):
-	'''
+	"""
 	if g.sub.poll() != None:
 		# cygwin에서 recvData받는중에 이게 참인 경우가 많다. - 리눅스는 바로 전달되서 이게 없다.
 		self.headerText.set_text(self.header+"!!!")
@@ -1221,7 +969,7 @@ def cbWatchPipe(dlg, data):
 		if len(self.widgetFileList.body) == 0:
 			self.widgetFileList.body.append(Urwid.genBtn("< No files >", self.cbFileSelect, True))
 			return False
-	'''			
+	"""
 			
 	dlg.recvData(data)	
 	
@@ -1250,13 +998,6 @@ def doSubCmd(cmds, dlgCls, targetItemIdx=-1):
 	dlg = dlgCls()
 	urwidSubRun(dlg, lambda writeFd: subprocess.Popen(cmds, bufsize=0, stdout=writeFd, close_fds=True))
 
-		
-def programPath(sub=None):
-	pp = os.path.dirname(os.path.realpath(sys.argv[0]))
-	if sub is not None:
-		pp = os.path.join(pp, sub)
-	return pp
-  
 
 class Gr:
 	def __init__(self):
@@ -1322,10 +1063,10 @@ class Gr:
 	def changePath(self, name):
 		path = self.getRepoPath(name)
 		if not os.path.isdir(path):
-			raise NoExistErr(path, "%s(%s) -> doesn't exist"  % (name, path))
+			raise FileNotFoundError(path, "%s(%s) -> doesn't exist"  % (name, path))
 
 		os.chdir(path)
-		ss = "path:%s" % (path)
+		ss = "path:%s" % path
 		return ss
 
 				
@@ -1367,7 +1108,7 @@ class Gr:
 	def statusComponent(self, name):
 		try:
 			path = self.changePath(name)
-		except NoExistErr as e:
+		except ErrNoExist as e:
 			self.log2(Color.red, name, "%s DOESN'T exist" % e.path)
 			return
 
@@ -1401,7 +1142,7 @@ class Gr:
 	def mergeSafe(self, name):
 		try:
 			path = self.changePath(name)
-		except NoExistErr as e:
+		except ErrNoExist as e:
 			self.log2(Color.red, name, "%s DOESN'T exist" % e.path)
 			return
 
@@ -1443,7 +1184,7 @@ class Gr:
 	def fetch(self, name):
 		try:
 			path = gr.changePath(name)
-		except NoExistErr as e:
+		except ErrNoExist as e:
 			self.log2(Color.red, name, "%s DOESN'T exist" % e.path)
 			return
 
@@ -1454,64 +1195,6 @@ class Gr:
 gr = Gr()
   
   
-  
-
-import datetime		
-
-g = Global()
-g.version = "1.1.0"
-g._log = programPath("dc.log")
-def logFunc(msg):
-	timeStr = datetime.datetime.now().strftime("%m%d %H%M%S")
-	with open(g._log, "a+", encoding="UTF-8") as fp:
-		fp.write(timeStr + " " + msg + "\n")
-	
-g.log = logFunc
-
-g.loop = None	# urwid
-
-g.dialog = None
-
-g.configPath = ""	 # ~/.devcmd/path.py
-
-# (name, fg, bg, mono, fgHigh, bgHigh)
-g.palette = [
-		('std', 'light gray', 'black'),
-		('std_f', 'black', 'dark cyan'),
-		('reset', 'std'),
-		("reset_f", "std_f"),
-		('bold', 'light gray,bold', 'black'),
-		('bold_f', 'light gray,bold', 'dark cyan'),
-		('underline', 'light gray,underline', 'black'),
-		('underline_f', 'light gray,underline', 'dark cyan'),
-
-		('redfg', 'dark red', 'black'),
-		('redfg_b', 'bold,dark red', 'black'),
-		('redfg_f', 'light red', 'dark cyan'),
-		('redfg_bf', 'bold,light red', 'dark cyan'),
-		('greenfg', 'dark green', 'black'),
-		('greenfg_b', 'bold,dark green', 'black'),
-		('greenfg_f', 'light green', 'dark cyan'),
-		('greenfg_bf', 'bold,light green', 'dark cyan'),
-		('yellowfg', 'yellow', 'black'),
-		('yellowfg_b', 'bold,yellow', 'black'),
-		('yellowfg_f', 'yellow', 'dark cyan'),
-		('yellowfg_bf', 'bold,yellow', 'dark cyan'),
-		('bluefg', 'dark blue', 'black'),
-		('bluefg_b', 'bold,dark blue', 'black'),
-		('bluefg_f', 'light blue', 'dark cyan'),
-		('bluefg_bf', 'bold,light blue', 'dark cyan'),
-		('cyanfg', 'dark cyan', 'black'),
-		('cyanfg_b', 'bold,dark cyan', 'black'),
-		('cyanfg_f', 'light gray', 'dark cyan'),
-		('cyanfg_bf', 'bold,light gray', 'dark cyan'),
-		
-		('redbg', 'black', 'dark red'),
-		('yellowbg_b', 'black,bold', 'yellow'),
-		('yellowbg_bf', 'black,bold', 'dark cyan'),	# it...
-
-		('reveal focus', "black", "dark cyan", "standout"),
-		]
 
 
 def winTest():
@@ -1557,8 +1240,8 @@ def run():
 			pass
 		return
 	'''
-				
-	g.init()
+	prog = MyProgram()
+	prog.init()
 
 	argc = len(sys.argv)	
 	if argc == 1:
@@ -1656,7 +1339,7 @@ def run():
 if __name__ == "__main__":
 	try:
 		ret = run()
-	except ExcFail as e:
+	except ErrFailure as e:
 		print(e)
 		sys.exit(1)
 	

@@ -1,5 +1,7 @@
-import subprocess
+import os
+import sys
 import re
+import subprocess
 
 class Config:
 	def __init__(self):
@@ -30,6 +32,14 @@ def systemRet(args):
 		
 	ret = subprocess.call(args, shell=True)
 	return ret
+
+
+def programPath(sub=None):
+	pp = os.path.dirname(os.path.realpath(sys.argv[0]))
+	if sub is not None:
+		pp = os.path.join(pp, sub)
+	return pp
+
 
 class git:
 	# if remote branch, insert "remotes/"
