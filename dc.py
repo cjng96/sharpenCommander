@@ -244,7 +244,7 @@ class mDlgMainAck(cDialog):
 		self.lstContent = []
 		
 	def btnUpdate(self, btn, focus):
-		btn.base_widget._label.set_text(btn.afile.getTitleMarkup(focus))
+		btn.base_widget.set_label(btn.afile.getTitleMarkup(focus))
 		return btn
 
 	def onFileFocusChanged(self, new_focus):
@@ -363,11 +363,11 @@ class mDlgMainFind(cDialog):
 		# old widget
 		widget = self.widgetFileList.focus
 		markup = ("std", widget.base_widget.origText)
-		widget.base_widget._label.set_text(markup)
+		widget.base_widget.set_label(markup)
 
 		widget = self.widgetFileList.body[new_focus]
 		markup = ("std_f", widget.base_widget.origText)
-		widget.base_widget._label.set_text(markup)
+		widget.base_widget.set_label(markup)
 
 		self.widgetFileList.set_focus_valign("middle")
 
@@ -494,11 +494,11 @@ class mDlgMainGitStatus(cDialog):
 		# old widget
 		widget = self.widgetFileList.focus
 		markup = Urwid.terminal2markup(widget.base_widget.origText, 0)
-		widget.base_widget._label.set_text(markup)
+		widget.base_widget.set_label(markup)
 
 		widget = self.widgetFileList.body[new_focus]
 		markup = Urwid.terminal2markup(widget.base_widget.origText, 1)
-		widget.base_widget._label.set_text(markup)
+		widget.base_widget.set_label(markup)
 
 	def onFileSelected(self, btn):
 		# why btn.get_label() is impossible?
@@ -707,7 +707,7 @@ class mGitCommitDialog(cDialog):
 		
 	def _applyFileColorTheme(self, widget, isFocus=0):
 		theme = self.themes[0 if widget.base_widget.data == "s" else 1]
-		widget.base_widget._label.set_text((theme[isFocus], widget.base_widget.origText))
+		widget.base_widget.set_label((theme[isFocus], widget.base_widget.origText))
 	
 
 	def onFileFocusChanged(self, new_focus):
