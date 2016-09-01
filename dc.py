@@ -452,10 +452,50 @@ class mDlgMainFind(cDialog):
 		elif key == "h":
 			Urwid.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 
+import stat
 class mDlgMainDc(cDialog):
 	def __init__(self):
 		super().__init__()
+
+		self.curPath = os.getcwd()
+
+		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(Urwid.makeBtnList(["< No files >"], None)))
+		self.widgetFileList.body.set_focus_changed_callback(lambda newFocus: self.onFileFocusChanged(newFocus))
+		self.widgetExtraList = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(["< Nothing to display >"])))
+
+		self.headerText = urwid.Text(">> dc V%s - %s" % (g.version, self.curPath))
+		self.widgetFrame = urwid.Columns([(120, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetExtraList])
+		self.edInput = Urwid.genEdit("Input commit message => ", "", lambda edit,text: self.onMsgChanged(edit,text))
+		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText, footer=self.edInput)
+
+	def init(self):
+		self.fileRefresh()
+		return True
+
+	def onFileFocusChanged(self, newFocus):
+		# old widget
+		widget = self.widgetFileList.focus
+		markup = Urwid.terminal2markup(widget.base_widget.origText, 0)
+		widget.base_widget.set_label(markup)
+
+		widget = self.widgetFileList.body[newFocus]
+		markup = Urwid.terminal2markup(widget.base_widget.origText, 1)
+		widget.base_widget.set_label(markup)
+
+	def onMsgChanged(self, edit, text):
 		pass
+
+	def fileRefresh(self):
+		pp = os.getcwd()
+		lst = [os.path.join(pp, x) for x in os.listdir(pp)]
+		lst2 = [ (x, os.stat(x)) for x in lst]
+		lst2.sort(key=lambda s1: stat.S_ISDIR(s1[1].st_mode))
+
+		#refreshBtnList(fileList2, self.widgetFileList, lambda btn: self.onFileSelected(btn))
+		self.widgetFileList.body[:]
+		self.widgetFileList.itemCount = len(lst2)
+		self.widgetFileList.body += Urwid.makeBtnList([os.path.basename(x[0]) for x in lst2], None)
+
 
 class mDlgMainGitStatus(cDialog):
 	def __init__(self):
@@ -464,7 +504,7 @@ class mDlgMainGitStatus(cDialog):
 		self.selectFileName = ""
 
 		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(Urwid.makeBtnList(["< No files >"], None)))
-		self.widgetFileList.body.set_focus_changed_callback(lambda new_focus: self.onFileFocusChanged(new_focus))
+		self.widgetFileList.body.set_focus_changed_callback(lambda newFocus: self.onFileFocusChanged(newFocus))
 		self.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(["< Nothing to display >"])))
 
 		self.headerText = urwid.Text(">> dc V%s - q/F4(Quit),<-/->(Prev/Next file),A(Add),P(Prompt),R(Reset),D(drop),C(Commit),I(Ignore)" % g.version)
