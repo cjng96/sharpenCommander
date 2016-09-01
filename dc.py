@@ -64,20 +64,6 @@ class Ansi:
 	blue = "\033[0;34m"
 	clear = "\033[0m"
 
-class Err(Exception):
-	def __init__(self, msg):
-		super().__init__(msg)
-
-
-# FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), filename)
-class ErrNoExist(Err):
-	def __init__(self, msg, path):
-		super().__init__(msg)
-		self.path = path
-
-class ErrFailure(Err):
-	def __init__(self, msg):
-		super().__init__(msg)
 
 class MyProgram(Program):
 	def __init__(self):
@@ -86,7 +72,6 @@ class MyProgram(Program):
 		self.configPath = ""    # ~/.devcmd/path.py
 		self.isPrintSystem = False
 
-		g.app = self
 
 	def init(self):
 		pp = os.path.expanduser("~/.devcmd")
@@ -937,6 +922,9 @@ def gitFileLastName(btn):
 					# TODO:
 					raise Exception("Not supported file format[%s]" % fname)
 
+def uiMain():
+	pass
+
 
 def urwidGitStatus():
 	try:
@@ -999,7 +987,7 @@ def doSubCmd(cmds, dlgCls, targetItemIdx=-1):
 	urwidSubRun(dlg, lambda writeFd: subprocess.Popen(cmds, bufsize=0, stdout=writeFd, close_fds=True))
 
 
-class Gr:
+class Gr(object):
 	def __init__(self):
 		self.isInit = False
 		self.repoList = [dict(name=["test"], path="")]
@@ -1245,14 +1233,17 @@ def run():
 
 	argc = len(sys.argv)	
 	if argc == 1:
-		target = "ci"	# basic cmd
+		target = ""	# basic cmd
 	else:
 		target = sys.argv[1]
 		
 
 	removeEmptyArgv()
 
-	if target == "push":
+	if target == "":
+		uiMain()
+
+	elif target == "push":
 		print("fetching first...")
 		git.fetch()
 		g.gitPush()
