@@ -933,29 +933,8 @@ def gitFileLastName(btn):
 					# TODO:
 					raise Exception("Not supported file format[%s]" % fname)
 
-	
-def cbWatchPipe(dlg, data):
-	"""
-	if g.subProc.poll() != None:
-		# cygwin에서 recvData받는중에 이게 참인 경우가 많다. - 리눅스는 바로 전달되서 이게 없다.
-		self.headerText.set_text(self.header+"!!!")
-		
-	# cygwin에서는 발생 안함 - 리눅스도 안함
-	if len(data) == 0:
-		raise Exception("Crash len(data)==0!!!")
-		self.headerText.set_text(self.header+"!!!")
-		
-		# eof
-		if len(self.widgetFileList.body) == 0:
-			self.widgetFileList.body.append(Urwid.genBtn("< No files >", self.cbFileSelect, True))
-			return False
-	"""
-			
-	dlg.recvData(data)	
-	
-	
-from distutils.spawn import find_executable
 
+from distutils.spawn import find_executable
 
 def uiMain(dlgClass, doSubMake=None):
 	try:
@@ -971,8 +950,17 @@ def uiMain(dlgClass, doSubMake=None):
 							unhandled_input=urwidUnhandled, input_filter=urwidInputFilter)
 
 	if doSubMake is not None:
-		writeFd = g.loop.watch_pipe(lambda data: cbWatchPipe(dlg, data))
+		writeFd = g.loop.watch_pipe(lambda data: dlg.recvData(data))
 		g.subProc = doSubMake(writeFd)
+
+		def subCheck(_handle, _userData):
+			if g.subProc.poll() is not None:
+				dlg.headerText.set_text(dlg.header + "!!!")
+				#g.loop.remove_alarm(handle)
+			else:
+				g.subTimerHandler = g.loop.set_alarm_in(0.1, subCheck, None)
+
+		subCheck(None, None)
 
 	g.loop.run()
 
