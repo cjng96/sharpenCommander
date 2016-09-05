@@ -8,6 +8,7 @@ import sys
 import select
 import datetime
 import re
+import stat
 
 from enum import Enum
 
@@ -23,7 +24,7 @@ from tool import git, system, systemSafe, systemRet, programPath
 
 from globalBase import *
 
-from urwidHelper import *
+import urwidHelper as ur
 
 
 
@@ -209,12 +210,12 @@ def refreshBtnList(content, listBox, onClick):
 		contentList = content.split("\n")
 		listBox.itemCount = len(contentList)
 		
-	listBox.body += Urwid.makeBtnList(contentList, onClick)
+	listBox.body += ur.makeBtnList(contentList, onClick)
 
 
 class AckFile:
 	def __init__(self, fnameTerminal):
-		self.fname = Urwid.termianl2plainText(fnameTerminal)
+		self.fname = ur.termianl2plainText(fnameTerminal)
 		#self.fnameMarkup = Urwid.terminal2markup(fnameTerminal, 0)
 		#self.fnameOrig = fnameTerminal
 
@@ -226,13 +227,13 @@ class AckFile:
 		return [(themeTitle, self.fname), (themeCount, "(%d)" % len(self.lstLine))]
 
 
-class mDlgMainAck(cDialog):
+class mDlgMainAck(ur.cDialog):
 	def __init__(self):
 		super().__init__()
 
-		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(Urwid.makeBtnList([], None)))
+		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnList([], None)))
 		self.widgetFileList.body.set_focus_changed_callback(lambda new_focus: self.onFileFocusChanged(new_focus))
-		self.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList([])))
+		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList([])))
 
 		self.header = ">> dc V%s - ack-grep - q/F4(Quit),<-/->(Prev/Next file),Enter(goto),E(edit)..." % g.version
 		self.headerText = urwid.Text(self.header)
@@ -262,17 +263,14 @@ class mDlgMainAck(cDialog):
 		if g.loop.widget != g.dialog.mainWidget:
 			return keys
 			
-		if "down" in keys:
+		if ur.filterKey(keys, "down"):
 			self.widgetContent.scrollDown()
-			return self.excludeKey(keys, "down")
 
-		if "up" in keys:
+		if ur.filterKey(keys, "up"):
 			self.widgetContent.scrollUp()
-			return self.excludeKey(keys, "up")
-			
-		if "enter" in keys:
+
+		if ur.filterKey(keys, "enter"):
 			self.onFileSelected(self.widgetFileList.focus)
-			return self.excludeKey(keys, "enter")
 
 		return keys
 		
@@ -294,7 +292,7 @@ class mDlgMainAck(cDialog):
 				afile = AckFile(line)
 				self.lstContent.append(afile)
 				
-				btn = Urwid.genBtnMarkup(afile.getTitleMarkup(False), self.cbFileSelect, len(self.widgetFileList.body) == 0)
+				btn = ur.genBtnMarkup(afile.getTitleMarkup(False), self.cbFileSelect, len(self.widgetFileList.body) == 0)
 				btn.afile = afile
 				afile.btn = btn
 				afile.position = len(self.widgetContent.body)
@@ -309,7 +307,7 @@ class mDlgMainAck(cDialog):
 				afile.lstLine.append(line)
 				
 				# update content
-				txt = Urwid.genText(line)
+				txt = ur.genText(line)
 				self.widgetContent.body.append(txt)
 				
 				self.btnUpdate(afile.btn, afile.position == 0)
@@ -338,16 +336,16 @@ class mDlgMainAck(cDialog):
 			g.loop.start()
 			
 		elif key == "h":
-			Urwid.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
+			ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 	
 
-class mDlgMainFind(cDialog):
+class mDlgMainFind(ur.cDialog):
 	def __init__(self):
 		super().__init__()
 
-		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(Urwid.makeBtnList([], None)))
+		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnList([], None)))
 		self.widgetFileList.body.set_focus_changed_callback(lambda new_focus: self.onFileFocusChanged(new_focus))
-		self.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(["< Nothing to display >"])))
+		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
 		self.widgetContent.isViewContent = True
 
 		self.header = ">> dc V%s - find - q/F4(Quit),<-/->(Prev/Next file),Enter(goto),E(edit)..." % g.version
@@ -382,7 +380,7 @@ class mDlgMainFind(cDialog):
 		ss = ss.replace("\t", "    ")
 			
 		del self.widgetContent.body[:]
-		self.widgetContent.body += Urwid.makeTextList(ss.splitlines())
+		self.widgetContent.body += ur.makeTextList(ss.splitlines())
 		self.widgetFrame.set_focus(self.widgetContent)
 
 	def onFileSelected(self, btn):
@@ -392,17 +390,14 @@ class mDlgMainFind(cDialog):
 		raise urwid.ExitMainLoop()
 		
 	def inputFilter(self, keys, raw):
-		if "down" in keys:
+		if ur.filterKey(keys, "down"):
 			self.widgetContent.scrollDown()
-			return self.excludeKey(keys, "down")
 
-		if "up" in keys:
+		if ur.filterKey(keys, "up"):
 			self.widgetContent.scrollUp()
-			return self.excludeKey(keys, "up")
-				
-		if "enter" in keys:
+
+		if ur.filterKey(keys, "enter"):
 			self.onFileSelected(self.widgetFileList.focus)
-			return self.excludeKey(keys, "enter")
 
 		return keys
 		
@@ -421,7 +416,7 @@ class mDlgMainFind(cDialog):
 			if line == "":
 				continue
 			
-			btn = Urwid.genBtn(line, self.cbFileSelect, len(self.widgetFileList.body) == 0)  
+			btn = ur.genBtn(line, self.cbFileSelect, len(self.widgetFileList.body) == 0)
 			self.widgetFileList.body.append(btn)
 			if len(self.widgetFileList.body) == 1:
 				self.onFileFocusChanged(0)
@@ -450,22 +445,21 @@ class mDlgMainFind(cDialog):
 			g.loop.start()
 			
 		elif key == "h":
-			Urwid.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
+			ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 
-import stat
-class mDlgMainDc(cDialog):
+class mDlgMainDc(ur.cDialog):
 	def __init__(self):
 		super().__init__()
 
 		self.curPath = os.getcwd()
 
-		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(Urwid.makeBtnList(["< No files >"], None)))
+		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnList(["< No files >"], None)))
 		self.widgetFileList.body.set_focus_changed_callback(lambda newFocus: self.onFileFocusChanged(newFocus))
-		self.widgetExtraList = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(["< Nothing to display >"])))
+		self.widgetExtraList = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
 
 		self.headerText = urwid.Text(">> dc V%s - %s" % (g.version, self.curPath))
 		self.widgetFrame = urwid.Columns([(120, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetExtraList])
-		self.edInput = Urwid.genEdit("Input commit message => ", "", lambda edit,text: self.onMsgChanged(edit,text))
+		self.edInput = ur.genEdit("Input commit message => ", "", lambda edit,text: self.onMsgChanged(edit,text))
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText, footer=self.edInput)
 
 	def init(self):
@@ -475,11 +469,11 @@ class mDlgMainDc(cDialog):
 	def onFileFocusChanged(self, newFocus):
 		# old widget
 		widget = self.widgetFileList.focus
-		markup = Urwid.terminal2markup(widget.base_widget.origText, 0)
+		markup = ur.terminal2markup(widget.base_widget.origText, 0)
 		widget.base_widget.set_label(markup)
 
 		widget = self.widgetFileList.body[newFocus]
-		markup = Urwid.terminal2markup(widget.base_widget.origText, 1)
+		markup = ur.terminal2markup(widget.base_widget.origText, 1)
 		widget.base_widget.set_label(markup)
 
 	def onMsgChanged(self, edit, text):
@@ -489,23 +483,68 @@ class mDlgMainDc(cDialog):
 		pp = os.getcwd()
 		lst = [os.path.join(pp, x) for x in os.listdir(pp)]
 		lst2 = [ (x, os.stat(x)) for x in lst]
-		lst2.sort(key=lambda s1: stat.S_ISDIR(s1[1].st_mode))
+		lst2.sort(key=lambda s1: -11 if stat.S_ISDIR(s1[1].st_mode) else 1)
 
 		#refreshBtnList(fileList2, self.widgetFileList, lambda btn: self.onFileSelected(btn))
-		self.widgetFileList.body[:]
+		del self.widgetFileList.body[:]
 		self.widgetFileList.itemCount = len(lst2)
-		self.widgetFileList.body += Urwid.makeBtnList([os.path.basename(x[0]) for x in lst2], None)
+		self.widgetFileList.body += ur.makeBtnList( [os.path.basename(x[0]) for x in lst2], None)
+
+	def inputFilter(self, keys, raw):
+		if g.loop.widget != g.dialog.mainWidget:
+			return keys
+
+		if ur.filterKey(keys, "enter"):
+			pp = self.getFocusPath()
+			if os.path.isdir(pp):
+				os.chdir(os.path.join(pp))
+				self.fileRefresh()
+
+		if ur.filterKey(keys, "left"):
+			pp = os.getcwd()
+			pp = os.path.dirname(pp)
+			os.chdir(pp)
+			self.fileRefresh()
+
+		"""
+		if "down" in keys:
+			self.widgetContent.scrollDown()
+			return self.excludeKey(keys, "down")
+		"""
+
+		return keys
+
+	def getFocusPath(self):
+		pp = os.getcwd()
+		btn = self.widgetFileList.focus
+		fname = btn.base_widget.get_label()
+		return os.path.join(pp, fname)
+
+	def unhandled(self, key):
+		if key == 'f4':
+			raise urwid.ExitMainLoop()
+
+		elif key == "alt e":
+			pp = self.getFocusPath()
+
+			g.loop.stop()
+			systemRet("vim %s" % pp)
+			g.loop.start()
+			self.fileRefresh()
+
+		elif key == "h":
+			ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 
 
-class mDlgMainGitStatus(cDialog):
+class mDlgMainGitStatus(ur.cDialog):
 	def __init__(self):
 		super().__init__()
 
 		self.selectFileName = ""
 
-		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(Urwid.makeBtnList(["< No files >"], None)))
+		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnList(["< No files >"], None)))
 		self.widgetFileList.body.set_focus_changed_callback(lambda newFocus: self.onFileFocusChanged(newFocus))
-		self.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(["< Nothing to display >"])))
+		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
 
 		self.headerText = urwid.Text(">> dc V%s - q/F4(Quit),<-/->(Prev/Next file),A(Add),P(Prompt),R(Reset),D(drop),C(Commit),I(Ignore)" % g.version)
 		self.widgetFrame = urwid.Pile([(8, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
@@ -533,11 +572,11 @@ class mDlgMainGitStatus(cDialog):
 	def onFileFocusChanged(self, new_focus):
 		# old widget
 		widget = self.widgetFileList.focus
-		markup = Urwid.terminal2markup(widget.base_widget.origText, 0)
+		markup = ur.terminal2markup(widget.base_widget.origText, 0)
 		widget.base_widget.set_label(markup)
 
 		widget = self.widgetFileList.body[new_focus]
-		markup = Urwid.terminal2markup(widget.base_widget.origText, 1)
+		markup = ur.terminal2markup(widget.base_widget.origText, 1)
 		widget.base_widget.set_label(markup)
 
 	def onFileSelected(self, btn):
@@ -558,7 +597,7 @@ class mDlgMainGitStatus(cDialog):
 					with open(self.selectFileName, "r", encoding="UTF-8") as fp:
 						ss = fp.read()
 				except UnicodeDecodeError:
-					#Urwid.popupMsg("Encoding", "Encoding error[%s]" % self.selectFileName);
+					#ur.popupMsg("Encoding", "Encoding error[%s]" % self.selectFileName);
 					ss = "No utf8 file[size:%d]" % os.path.getsize(self.selectFileName)
 				
 		else:
@@ -570,7 +609,7 @@ class mDlgMainGitStatus(cDialog):
 		ss = ss.replace("\t", "    ")
 			
 		del self.widgetContent.body[:]
-		self.widgetContent.body += Urwid.makeTextList(ss.splitlines())
+		self.widgetContent.body += ur.makeTextList(ss.splitlines())
 		self.widgetFrame.set_focus(self.widgetContent)
 
 	def refreshFileContentCur(self):
@@ -612,14 +651,12 @@ class mDlgMainGitStatus(cDialog):
 		if g.loop.widget != g.dialog.mainWidget:
 			return keys
 
-		if "down" in keys:
+		if ur.filterKey(keys, "down"):
 			self.widgetContent.scrollDown()
-			return self.excludeKey(keys, "down")
 
-		if "up" in keys:
+		if ur.filterKey(keys, "up" ):
 			self.widgetContent.scrollUp()
-			return self.excludeKey(keys, "up")
-			
+
 		return keys
 
 	def unhandled(self, key):
@@ -652,7 +689,7 @@ class mDlgMainGitStatus(cDialog):
 					
 			btn = self.widgetFileList.focus
 			fname = gitFileBtnName(btn)
-			Urwid.popupAsk("Git add", "Do you want to add a file via prompt[%s]?" % fname, onPrompt)
+			ur.popupAsk("Git add", "Do you want to add a file via prompt[%s]?" % fname, onPrompt)
 
 		elif key == "R":
 			btn = self.widgetFileList.focus
@@ -672,9 +709,9 @@ class mDlgMainGitStatus(cDialog):
 			btn = self.widgetFileList.focus
 			fname = gitFileBtnName(btn)
 			if gitFileBtnType(btn) == "??":
-				Urwid.popupAsk("Git reset(f)", "Do you want to delete file[%s]?" % fname, onDelete)
+				ur.popupAsk("Git reset(f)", "Do you want to delete file[%s]?" % fname, onDelete)
 			else:
-				Urwid.popupAsk("Git reset(f)", "Do you want to drop file[%s]s modification?" % fname, onDrop)
+				ur.popupAsk("Git reset(f)", "Do you want to drop file[%s]s modification?" % fname, onDrop)
 		
 		elif key == "E":
 			btn = self.widgetFileList.focus
@@ -693,7 +730,7 @@ class mDlgMainGitStatus(cDialog):
 				g.loop.start()
 				self.refreshFileList()
 					
-			Urwid.popupAsk("Git commit", "Do you want to commit?", onCommit)
+			ur.popupAsk("Git commit", "Do you want to commit?", onCommit)
 
 		elif key == "C":
 			def onExit():
@@ -710,7 +747,7 @@ class mDlgMainGitStatus(cDialog):
 			# check staged data 
 			n = self.gitGetStagedCount()
 			if n == 0:
-				Urwid.popupMsg("Alert", "There is no staged file to commit")
+				ur.popupMsg("Alert", "There is no staged file to commit")
 				return
 				
 			dlg = mGitCommitDialog(onExit)
@@ -718,10 +755,10 @@ class mDlgMainGitStatus(cDialog):
 			g.loop.widget = dlg.mainWidget
 			
 		elif key == "h":
-			Urwid.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
+			ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 
 
-class mGitCommitDialog(cDialog):
+class mGitCommitDialog(ur.cDialog):
 	themes = [("greenfg", "greenfg_f"), ("std", "std_f")]
 	
 	def __init__(self, onExit):
@@ -730,10 +767,10 @@ class mGitCommitDialog(cDialog):
 		self.selectFileName = ""
 
 		self.onExit = onExit
-		self.edInput = Urwid.genEdit("Input commit message => ", "", lambda edit,text: self.onMsgChanged(edit,text))
-		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(Urwid.makeBtnList(["< No files >"], None)))
+		self.edInput = ur.genEdit("Input commit message => ", "", lambda edit,text: self.onMsgChanged(edit,text))
+		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnList(["< No files >"], None)))
 		self.widgetFileList.body.set_focus_changed_callback(lambda new_focus: self.onFileFocusChanged(new_focus))
-		self.widgetContent = mListBox(urwid.SimpleListWalker(Urwid.makeTextList(["< Nothing to display >"])))
+		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
 
 		self.headerText = urwid.Text(">> Commit...")
 		self.widgetFrame = urwid.Pile([("pack", self.edInput), (8, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
@@ -775,7 +812,7 @@ class mGitCommitDialog(cDialog):
 		ss = ss.replace("\t", "    ")
 			
 		del self.widgetContent.body[:]
-		self.widgetContent.body += Urwid.makeTextList(ss.split("\n"))
+		self.widgetContent.body += ur.makeTextList(ss.split("\n"))
 		self.widgetFrame.set_focus(self.widgetContent)
 
 	def refreshFileContentCur(self):
@@ -786,13 +823,13 @@ class mGitCommitDialog(cDialog):
 
 		# staged file list		
 		fileList = system("git diff --name-only --cached")
-		self.widgetFileList.body += Urwid.makeBtnList(fileList.split("\n"), 
+		self.widgetFileList.body += ur.makeBtnList(fileList.split("\n"),
 			lambda btn: self.onFileSelected(btn), 
 			lambda btn: setattr(btn, "data", "s"))
 
 		# general file list
 		fileList = system("git diff --name-only")
-		self.widgetFileList.body += Urwid.makeBtnList(fileList.split("\n"), 
+		self.widgetFileList.body += ur.makeBtnList(fileList.split("\n"),
 			lambda btn: self.onFileSelected(btn), 
 			lambda btn: setattr(btn, "data", "c"))
 			
@@ -800,7 +837,7 @@ class mGitCommitDialog(cDialog):
 			self._applyFileColorTheme(widget, 0)
 			
 		if len(self.widgetFileList.body) == 0:
-			self.widgetFileList.body += Urwid.makeBtnList(["< Nothing >"], None)
+			self.widgetFileList.body += ur.makeBtnList(["< Nothing >"], None)
 		else:
 			self.onFileFocusChanged(self.widgetFileList.focus_position)
 			self.onFileSelected(self.widgetFileList.focus)	# auto display
@@ -809,14 +846,12 @@ class mGitCommitDialog(cDialog):
 		if g.loop.widget != g.dialog.mainWidget:
 			return keys
 
-		if "down" in keys:
+		if ur.filterKey(keys, "down"):
 			self.widgetContent.scrollDown()
-			return self.excludeKey(keys, "down")
 
-		if "up" in keys:
+		if ur.filterKey(keys, "up"):
 			self.widgetContent.scrollUp()
-			return self.excludeKey(keys, "up")
-			
+
 		return keys
 		
 	def unhandled(self, key):
@@ -853,7 +888,7 @@ class mGitCommitDialog(cDialog):
 					
 			btn = self.widgetFileList.focus
 			fname = gitFileBtnName(btn)
-			Urwid.popupAsk3("Git add", "Do you want to add a file[%s]?" % fname, "Add", "Prompt", "Cancel", onAdd, onPrompt)
+			ur.popupAsk3("Git add", "Do you want to add a file[%s]?" % fname, "Add", "Prompt", "Cancel", onAdd, onPrompt)
 
 		elif key == "R":
 			def onReset():
@@ -862,7 +897,7 @@ class mGitCommitDialog(cDialog):
 					
 			btn = self.widgetFileList.focus
 			fname = gitFileBtnName(btn)
-			Urwid.popupAsk("Git reset", "Do you want to reset a file[%s]?" % fname, onReset)
+			ur.popupAsk("Git reset", "Do you want to reset a file[%s]?" % fname, onReset)
 			
 		elif key == "D":
 			def onDrop():
@@ -871,7 +906,7 @@ class mGitCommitDialog(cDialog):
 					
 			btn = self.widgetFileList.focus
 			fname = gitFileBtnName(btn)
-			Urwid.popupAsk("Git reset(f)", "Do you want to drop file[%s]s modification?" % fname, onDrop)
+			ur.popupAsk("Git reset(f)", "Do you want to drop file[%s]s modification?" % fname, onDrop)
 		
 		elif key == "E":
 			btn = self.widgetFileList.focus
@@ -893,7 +928,7 @@ class mGitCommitDialog(cDialog):
 				ss = system("git commit -a -m \"%s\"" % tt[:-1])
 				self.onExit()
 					
-			Urwid.popupAsk("Git Commit", "Do you want to commit all modification?", onCommit)
+			ur.popupAsk("Git Commit", "Do you want to commit all modification?", onCommit)
 			
 		elif key == "enter":
 			# commit
@@ -909,10 +944,10 @@ class mGitCommitDialog(cDialog):
 				g.loop.start()
 				self.refreshFileList()
 					
-			Urwid.popupAsk("Git commit(all)", "Do you want to commit all content?", onCommit)
+			ur.popupAsk("Git commit(all)", "Do you want to commit all content?", onCommit)
 			
 		elif key == "h":
-			Urwid.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
+			ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 
 
 
@@ -1216,7 +1251,7 @@ gr = Gr()
 def winTest():
 	ss = system("c:\\cygwin64\\bin\\git.exe diff --color dc.py")
 
-	kk = Urwid.terminal2markup(ss)
+	kk = ur.terminal2markup(ss)
 	st = ss.find("\x1b")
 	print("%d %x %x %x %x" % (st, ss[0], ss[1], ss[2], ss[3]))
 	sys.exit(0)
