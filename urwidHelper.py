@@ -144,182 +144,178 @@ class cDialog(object):
 	def inputFilter(self, keys, raw):
 		return keys
 
-	def excludeKey(self, keys, target):
-		return [c for c in keys if c != target]
 
-class Urwid:
-	@staticmethod
-	def termianl2plainText(ss):
-		# source = "\033[31mFOO\033[0mBAR"
-		st = ss.find("\x1b")
-		if st == -1:
-			return ss
+#def excludeKey(keys, target):
+#	return [c for c in keys if c != target]
 
-		out = ""
-		items = ss.split("\x1b")
-		for at in items:
-			if at == "":
-				continue
-			attr, text = at.split("m" ,1)
-			if text != "":	# skip empty string
-				out += text
-
-		return out
-
-	@staticmethod
-	def terminal2markup(ss, invert=0):
-		# source = "\033[31mFOO\033[0mBAR"
-		table = {"[1" :("bold" ,'bold_f'), "[4" :("underline" ,'underline_f'),
-		         "[22" :("std" ,'std_f'),
-		         "[24" :("std" ,'std_f'),
-		         "[31" :('redfg' ,'redfg_f'),
-		         "[32" :('greenfg', "greenfg_f"),
-		         "[33" :('yellowfg', "yellowfg_f"),
-		         "[36" :('cyanfg', "cyanfg_f"),
-		         "[41" :("redbg", "regbg_f"),
-		         "[1;31" :("redfg_b", "redfg_bf"),
-		         "[1;32" :("greenfg_b", "greenfg_bf"),
-		         "[1;33" :("yellowfg_b", "yellowfg_bf"),
-		         "[1;34" :("bluefg_b", "bluefg_bf"),
-		         "[1;36" :("cyanfg_b", "cyanfg_bf"),
-		         "[30;43" :("yellowbg_b", "yellowbg_bf"),
-		         "[0" :('std', "std_f"), "[" :('std', "std_f")}
-		markup = []
-		st = ss.find("\x1b")
-		if st == -1:
-			return ss
-
-		items = ss.split("\x1b")
-		pt = 1
-		if not ss.startswith("\x1b"):
-			markup.append(items[0])
-
-		for at in items[pt:]:
-			if at == "[K":	# it...
-				continue
-			attr, text = at.split("m" ,1)
-			if text != "":	# skip empty string
-				markup.append((table[attr][invert], text))
-
-		if len(markup) == 0:
-			return ""
-
-		return markup
-
-	@staticmethod
-	def genEdit(label, text, cbChange):
-		w = urwid.Edit(label, text)
-		urwid.connect_signal(w, 'change', cbChange)
-		cbChange(w, text)
-		# w = urwid.AttrWrap(w, 'edit')
-		return w
-
-	@staticmethod
-	def genText(terminalText):
-		line2 = Urwid.terminal2markup(terminalText)
-		txt = urwid.Text(line2)
-		# txt.origText = terminalText
-		return txt
+def filterKey(keys, keyName):
+	if keyName in keys:
+		keys.remove(keyName)
+		return True
+	else:
+		return False
 
 
-	@staticmethod
-	def makeTextList(lstStr):
-		outList = []
-		for line in lstStr:
-			outList.append(Urwid.genText(line))
-		return outList
+def termianl2plainText(ss):
+	# source = "\033[31mFOO\033[0mBAR"
+	st = ss.find("\x1b")
+	if st == -1:
+		return ss
 
-	@staticmethod
-	def makeBtnList(lstStr, onClick, doApply=None):
-		outList = []
-		isFirst = True
-		for line in lstStr:
-			if line.strip() == "":
-				continue
+	out = ""
+	items = ss.split("\x1b")
+	for at in items:
+		if at == "":
+			continue
+		attr, text = at.split("m" ,1)
+		if text != "":	# skip empty string
+			out += text
 
-			btn = Urwid.genBtn(line, onClick, isFirst, doApply)
-			isFirst = False
-			outList.append(btn)
-		return outList
+	return out
 
-	@staticmethod
-	def genBtn(terminalText, onClick, isFocus=False, doApply=None):
-		text2 = Urwid.terminal2markup(terminalText, 1 if isFocus else 0)
-		btn = Urwid.genBtnMarkup(text2, onClick, isFocus, doApply)
-		btn.base_widget.origText = terminalText
-		return btn
+def terminal2markup(ss, invert=0):
+	# source = "\033[31mFOO\033[0mBAR"
+	table = {"[1" :("bold" ,'bold_f'), "[4" :("underline" ,'underline_f'),
+	         "[22" :("std" ,'std_f'),
+	         "[24" :("std" ,'std_f'),
+	         "[31" :('redfg' ,'redfg_f'),
+	         "[32" :('greenfg', "greenfg_f"),
+	         "[33" :('yellowfg', "yellowfg_f"),
+	         "[36" :('cyanfg', "cyanfg_f"),
+	         "[41" :("redbg", "regbg_f"),
+	         "[1;31" :("redfg_b", "redfg_bf"),
+	         "[1;32" :("greenfg_b", "greenfg_bf"),
+	         "[1;33" :("yellowfg_b", "yellowfg_bf"),
+	         "[1;34" :("bluefg_b", "bluefg_bf"),
+	         "[1;36" :("cyanfg_b", "cyanfg_bf"),
+	         "[30;43" :("yellowbg_b", "yellowbg_bf"),
+	         "[0" :('std', "std_f"), "[" :('std', "std_f")}
+	markup = []
+	st = ss.find("\x1b")
+	if st == -1:
+		return ss
 
-	@staticmethod
-	def genBtnMarkup(markup, onClick, isFocus=False, doApply=None):
-		btn = mButton(markup, onClick)
-		# btn.origText = terminalText
+	items = ss.split("\x1b")
+	pt = 1
+	if not ss.startswith("\x1b"):
+		markup.append(items[0])
 
-		if doApply is not None:
-			doApply(btn)
+	for at in items[pt:]:
+		if at == "[K":	# it...
+			continue
+		attr, text = at.split("m" ,1)
+		if text != "":	# skip empty string
+			markup.append((table[attr][invert], text))
 
-		btn = urwid.AttrMap(btn, None, "reveal focus")
-		return btn
+	if len(markup) == 0:
+		return ""
 
-	@staticmethod
-	def popupMsg(title, ss):
-		def onCloseBtn(btn):
-			g.loop.widget = g.loop.widget.bottom_w
+	return markup
 
-		txtMsg = urwid.Text(ss)
-		btnClose = urwid.Button("Close", onCloseBtn)
-		popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', btnClose)]), title)
-		g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 20, 'middle', 10)
+def genEdit(label, text, cbChange):
+	w = urwid.Edit(label, text)
+	urwid.connect_signal(w, 'change', cbChange)
+	cbChange(w, text)
+	# w = urwid.AttrWrap(w, 'edit')
+	return w
 
-	@staticmethod
-	def popupAsk(title, ss, onOk, onCancel = None):
-		def onClickBtn(btn):
-			if btn == btnYes:
-				onOk()
-			elif btn == btnNo:
-				if onCancel is not None:
-					onCancel()
+def genText(terminalText):
+	line2 = terminal2markup(terminalText)
+	txt = urwid.Text(line2)
+	# txt.origText = terminalText
+	return txt
 
-			g.loop.widget = g.loop.widget.bottom_w
 
-		txtMsg = urwid.Text(ss)
-		btnYes = urwid.Button("Yes", onClickBtn)
-		btnNo = urwid.Button("No", onClickBtn)
-		popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', urwid.Columns([btnYes, btnNo]))]), title)
-		g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 40, 'middle', 5)
+def makeTextList(lstStr):
+	outList = []
+	for line in lstStr:
+		outList.append(genText(line))
+	return outList
 
-	@staticmethod
-	def popupAsk3(title, ss, btnName1, btnName2, btnName3, onBtn1, onBtn2, onBtn3 = None):
-		def onClickBtn(btn):
-			if btn == btnB1:
-				onBtn1()
-			elif btn == btnB2:
-				onBtn2()
-			elif btn == btnB3:
-				if onBtn3 is not None:
-					onBtn3()
+def makeBtnList(lstStr, onClick, doApply=None):
+	outList = []
+	isFirst = True
+	for line in lstStr:
+		if line.strip() == "":
+			continue
 
-			g.loop.widget = g.loop.widget.bottom_w
+		btn = genBtn(line, onClick, isFirst, doApply)
+		isFirst = False
+		outList.append(btn)
+	return outList
 
-		txtMsg = urwid.Text(ss)
-		btnB1 = urwid.Button(btnName1, onClickBtn)
-		btnB2 = urwid.Button(btnName2, onClickBtn)
-		btnB3 = urwid.Button(btnName3, onClickBtn)
-		popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', urwid.Columns([btnB1, btnB2, btnB3]))]), title)
-		g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 40, 'middle', 5)
+def genBtn(terminalText, onClick, isFocus=False, doApply=None):
+	text2 = terminal2markup(terminalText, 1 if isFocus else 0)
+	btn = genBtnMarkup(text2, onClick, isFocus, doApply)
+	btn.base_widget.origText = terminalText
+	return btn
 
-	@staticmethod
-	def popupInput(title, ss, onOk, onCancel = None):
-		def onClickBtn(btn):
-			if btn == btnOk:
-				onOk(edInput.edit_text)
-			elif btn == btnCancel:
-				if onCancel is not None:
-					onCancel()
+def genBtnMarkup(markup, onClick, isFocus=False, doApply=None):
+	btn = mButton(markup, onClick)
+	# btn.origText = terminalText
 
-			g.loop.widget = g.loop.widget.bottom_w
+	if doApply is not None:
+		doApply(btn)
 
-		edInput = urwid.Edit(ss)
-		btnOk = urwid.Button("OK", onClickBtn)
-		btnCancel = urwid.Button("Cancel", onClickBtn)
-		popup = urwid.LineBox(urwid.Pile([('pack', edInput), ('pack', urwid.Columns([btnOk, btnCancel]))]), title)
-		g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 40, 'middle', 5)
+	btn = urwid.AttrMap(btn, None, "reveal focus")
+	return btn
+
+def popupMsg(title, ss):
+	def onCloseBtn(btn):
+		g.loop.widget = g.loop.widget.bottom_w
+
+	txtMsg = urwid.Text(ss)
+	btnClose = urwid.Button("Close", onCloseBtn)
+	popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', btnClose)]), title)
+	g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 20, 'middle', 10)
+
+def popupAsk(title, ss, onOk, onCancel = None):
+	def onClickBtn(btn):
+		if btn == btnYes:
+			onOk()
+		elif btn == btnNo:
+			if onCancel is not None:
+				onCancel()
+
+		g.loop.widget = g.loop.widget.bottom_w
+
+	txtMsg = urwid.Text(ss)
+	btnYes = urwid.Button("Yes", onClickBtn)
+	btnNo = urwid.Button("No", onClickBtn)
+	popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', urwid.Columns([btnYes, btnNo]))]), title)
+	g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 40, 'middle', 5)
+
+def popupAsk3(title, ss, btnName1, btnName2, btnName3, onBtn1, onBtn2, onBtn3 = None):
+	def onClickBtn(btn):
+		if btn == btnB1:
+			onBtn1()
+		elif btn == btnB2:
+			onBtn2()
+		elif btn == btnB3:
+			if onBtn3 is not None:
+				onBtn3()
+
+		g.loop.widget = g.loop.widget.bottom_w
+
+	txtMsg = urwid.Text(ss)
+	btnB1 = urwid.Button(btnName1, onClickBtn)
+	btnB2 = urwid.Button(btnName2, onClickBtn)
+	btnB3 = urwid.Button(btnName3, onClickBtn)
+	popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', urwid.Columns([btnB1, btnB2, btnB3]))]), title)
+	g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 40, 'middle', 5)
+
+def popupInput(title, ss, onOk, onCancel = None):
+	def onClickBtn(btn):
+		if btn == btnOk:
+			onOk(edInput.edit_text)
+		elif btn == btnCancel:
+			if onCancel is not None:
+				onCancel()
+
+		g.loop.widget = g.loop.widget.bottom_w
+
+	edInput = urwid.Edit(ss)
+	btnOk = urwid.Button("OK", onClickBtn)
+	btnCancel = urwid.Button("Cancel", onClickBtn)
+	popup = urwid.LineBox(urwid.Pile([('pack', edInput), ('pack', urwid.Columns([btnOk, btnCancel]))]), title)
+	g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 40, 'middle', 5)
