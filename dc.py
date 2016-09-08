@@ -451,13 +451,12 @@ class mDlgMainDc(ur.cDialog):
 	def __init__(self):
 		super().__init__()
 
-		self.curPath = os.getcwd()
-
 		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnList(["< No files >"], None)))
 		self.widgetFileList.body.set_focus_changed_callback(lambda newFocus: self.onFileFocusChanged(newFocus))
 		self.widgetExtraList = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
 
-		self.headerText = urwid.Text(">> dc V%s - %s" % (g.version, self.curPath))
+		self.title = ">> dc V%s" % g.version
+		self.headerText = urwid.Text(self.title)
 		self.widgetFrame = urwid.Columns([(120, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetExtraList])
 		self.edInput = ur.genEdit("Input commit message => ", "", lambda edit,text: self.onMsgChanged(edit,text))
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText, footer=self.edInput)
@@ -481,6 +480,8 @@ class mDlgMainDc(ur.cDialog):
 
 	def fileRefresh(self):
 		pp = os.getcwd()
+		self.headerText.set_text("%s - %s" % (self.title, os.getcwd()))
+
 		lst = [os.path.join(pp, x) for x in os.listdir(pp)]
 		lst2 = [ (x, os.stat(x)) for x in lst]
 		lst2.sort(key=lambda s1: -11 if stat.S_ISDIR(s1[1].st_mode) else 1)
@@ -500,11 +501,13 @@ class mDlgMainDc(ur.cDialog):
 				os.chdir(os.path.join(pp))
 				self.fileRefresh()
 
+		"""
 		if ur.filterKey(keys, "left"):
 			pp = os.getcwd()
 			pp = os.path.dirname(pp)
 			os.chdir(pp)
 			self.fileRefresh()
+		"""
 
 		"""
 		if "down" in keys:
@@ -521,8 +524,14 @@ class mDlgMainDc(ur.cDialog):
 		return os.path.join(pp, fname)
 
 	def unhandled(self, key):
+		print(key)
 		if key == 'f4':
 			raise urwid.ExitMainLoop()
+		elif key == "meta left":
+			pp = os.getcwd()
+			pp = os.path.dirname(pp)
+			os.chdir(pp)
+			self.fileRefresh()
 
 		elif key == "alt e":
 			pp = self.getFocusPath()
