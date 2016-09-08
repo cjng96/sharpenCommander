@@ -360,11 +360,11 @@ class mDlgMainFind(ur.cDialog):
 	def onFileFocusChanged(self, new_focus):
 		# old widget
 		widget = self.widgetFileList.focus
-		markup = ("std", widget.base_widget.origText)
+		markup = ("std", widget.base_widget.origTxt)
 		widget.base_widget.set_label(markup)
 
 		widget = self.widgetFileList.body[new_focus]
-		markup = ("std_f", widget.base_widget.origText)
+		markup = ("std_f", widget.base_widget.origTxt)
 		widget.base_widget.set_label(markup)
 
 		self.widgetFileList.set_focus_valign("middle")
@@ -451,7 +451,7 @@ class mDlgMainDc(ur.cDialog):
 	def __init__(self):
 		super().__init__()
 
-		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnList(["< No files >"], None)))
+		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnList([], None)))
 		self.widgetFileList.body.set_focus_changed_callback(lambda newFocus: self.onFileFocusChanged(newFocus))
 		self.widgetExtraList = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
 
@@ -468,12 +468,10 @@ class mDlgMainDc(ur.cDialog):
 	def onFileFocusChanged(self, newFocus):
 		# old widget
 		widget = self.widgetFileList.focus
-		markup = ur.terminal2markup(widget.base_widget.origText, 0)
-		widget.base_widget.set_label(markup)
+		widget.base_widget.set_label(widget.base_widget.txtNormal)
 
 		widget = self.widgetFileList.body[newFocus]
-		markup = ur.terminal2markup(widget.base_widget.origText, 1)
-		widget.base_widget.set_label(markup)
+		widget.base_widget.set_label(widget.base_widget.txtFocus)
 
 	def onMsgChanged(self, edit, text):
 		pass
@@ -485,6 +483,7 @@ class mDlgMainDc(ur.cDialog):
 		lst = [os.path.join(pp, x) for x in os.listdir(pp)]
 		lst2 = [ (x, os.stat(x)) for x in lst]
 		lst2.sort(key=lambda s1: -11 if stat.S_ISDIR(s1[1].st_mode) else 1)
+		lst2.insert(0, ("..", None))
 
 		#refreshBtnList(fileList2, self.widgetFileList, lambda btn: self.onFileSelected(btn))
 		del self.widgetFileList.body[:]
@@ -581,12 +580,10 @@ class mDlgMainGitStatus(ur.cDialog):
 	def onFileFocusChanged(self, new_focus):
 		# old widget
 		widget = self.widgetFileList.focus
-		markup = ur.terminal2markup(widget.base_widget.origText, 0)
-		widget.base_widget.set_label(markup)
+		widget.base_widget.set_label(widget.base_widget.txtNormal)
 
 		widget = self.widgetFileList.body[new_focus]
-		markup = ur.terminal2markup(widget.base_widget.origText, 1)
-		widget.base_widget.set_label(markup)
+		widget.base_widget.set_label(widget.base_widget.txtFocus)
 
 	def onFileSelected(self, btn):
 		# why btn.get_label() is impossible?
@@ -651,7 +648,7 @@ class mDlgMainGitStatus(ur.cDialog):
 	def gitGetStagedCount(self):
 		cnt = 0
 		for item in self.widgetFileList.body:
-			ss = item.base_widget.origText
+			ss = item.base_widget.origTxt
 			if "[32m" in ss:	# greenfg
 				cnt += 1
 		return cnt
@@ -793,7 +790,7 @@ class mGitCommitDialog(ur.cDialog):
 		
 	def _applyFileColorTheme(self, widget, isFocus=0):
 		theme = self.themes[0 if widget.base_widget.data == "s" else 1]
-		widget.base_widget.set_label((theme[isFocus], widget.base_widget.origText))
+		widget.base_widget.set_label((theme[isFocus], widget.base_widget.origTxt))
 	
 
 	def onFileFocusChanged(self, new_focus):

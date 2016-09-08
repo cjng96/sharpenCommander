@@ -189,7 +189,8 @@ def terminal2markup(ss, invert=0):
 	         "[1;34" :("bluefg_b", "bluefg_bf"),
 	         "[1;36" :("cyanfg_b", "cyanfg_bf"),
 	         "[30;43" :("yellowbg_b", "yellowbg_bf"),
-	         "[0" :('std', "std_f"), "[" :('std', "std_f")}
+	         "[0" :('std', "std_f"),
+	         "[" :('std', "std_f")}
 	markup = []
 	st = ss.find("\x1b")
 	if st == -1:
@@ -232,28 +233,35 @@ def makeTextList(lstStr):
 		outList.append(genText(line))
 	return outList
 
-def makeBtnList(lstStr, onClick, doApply=None):
+def makeBtnList(lstTerminal, onClick, doApply=None):
+	"""
+	[31와 같은 터미널 문자열을 지원한다.
+	"""
 	outList = []
 	isFirst = True
-	for line in lstStr:
-		if line.strip() == "":
+	for terminalTxt in lstTerminal:
+		if terminalTxt.strip() == "":
 			continue
 
-		btn = genBtn(line, onClick, isFirst, doApply)
+		btn = genBtn(terminalTxt, onClick, isFirst, doApply)
 		isFirst = False
 		outList.append(btn)
 	return outList
 
 def genBtn(terminalText, onClick, isFocus=False, doApply=None):
-	text2 = terminal2markup(terminalText, 1 if isFocus else 0)
-	btn = genBtnMarkup(text2, onClick, isFocus, doApply)
-	btn.base_widget.origText = terminalText
+	txtNormal = terminal2markup(terminalText, 0)
+	txtFocus = terminal2markup(terminalText, 1)
+
+	text2 = txtFocus if isFocus else txtNormal
+	btn = genBtnMarkup(text2, onClick, doApply)
+	btn.base_widget.txtNormal = txtNormal
+	btn.base_widget.txtFocus = txtFocus
+
+	btn.base_widget.origTxt = terminalText
 	return btn
 
-def genBtnMarkup(markup, onClick, isFocus=False, doApply=None):
+def genBtnMarkup(markup, onClick, doApply=None):
 	btn = mButton(markup, onClick)
-	# btn.origText = terminalText
-
 	if doApply is not None:
 		doApply(btn)
 
