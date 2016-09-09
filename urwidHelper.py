@@ -76,6 +76,25 @@ class mListBox(urwid.ListBox):
 		super().__init__(body)
 		self.isViewContent = False
 		self.maxrow = 0  # for view content
+		self.itemCount = 0
+		self.focusCb = None
+
+		# SimpleListWalker don't have focus cb
+		if getattr(self.body, 'set_focus_changed_callback', None):
+			self.body.set_focus_changed_callback(lambda newFocus: self.onFocusChanged(newFocus))
+
+	def onFocusChanged(self, newFocus):
+		if self.focusCb is not None:
+			ret = self.focusCb(newFocus)
+			if not ret:
+				return
+
+		# general process
+		widget = self.focus
+		widget.base_widget.set_label(widget.base_widget.markup[0])
+
+		widget = self.body[newFocus]
+		widget.base_widget.set_label(widget.base_widget.markup[1])
 
 	def focusNext(self):
 		cur = self.body.get_focus()
@@ -128,6 +147,10 @@ class mListBox(urwid.ListBox):
 			elif button == 5:  # down
 				for i in range(3):
 					self.scrollDown()
+
+	def setFocusCb(self, cb):
+		self.focusCb = cb
+
 
 
 class cDialog(object):
@@ -204,6 +227,7 @@ def terminal2markup(ss, invert=0):
 	for at in items[pt:]:
 		if at == "[K":	# it...
 			continue
+
 		attr, text = at.split("m" ,1)
 		if text != "":	# skip empty string
 			markup.append((table[attr][invert], text))
@@ -233,31 +257,44 @@ def makeTextList(lstStr):
 		outList.append(genText(line))
 	return outList
 
-def makeBtnList(lstTerminal, onClick, doApply=None):
+
+def makeBtnListTerminal(lstTerminal, onClick, isFirstFocus=True, doApply=None):
 	"""
 	[31와 같은 터미널 문자열을 지원한다.
+	lstTerminal = list of (termianlText, attr)
 	"""
 	outList = []
-	isFirst = True
-	for terminalTxt in lstTerminal:
+	for terminalTxt, attr in lstTerminal:
 		if terminalTxt.strip() == "":
 			continue
 
-		btn = genBtn(terminalTxt, onClick, isFirst, doApply)
-		isFirst = False
+		markup = terminal2markup(terminalTxt, 0)
+		markupF = terminal2markup(terminalTxt, 1)
+		btn = genBtn(markup, markupF, attr, onClick, isFirstFocus, doApply)
+		isFirstFocus = False
 		outList.append(btn)
 	return outList
 
-def genBtn(terminalText, onClick, isFocus=False, doApply=None):
-	txtNormal = terminal2markup(terminalText, 0)
-	txtFocus = terminal2markup(terminalText, 1)
 
-	text2 = txtFocus if isFocus else txtNormal
+def makeBtnListMarkup(lstMarkup, onClick, isFirstFocus=True, doApply=None):
+	"""
+	lstMarkup = list of (std, focus, attr)
+	"""
+	outList = []
+	for mstd, mfocus, attr in lstMarkup:
+		btn = genBtn(mstd, mfocus, attr, onClick, isFirstFocus, doApply)
+		isFirstFocus = False
+		outList.append(btn)
+
+	return outList
+
+def genBtn(markup, markupF, attr, onClick, isFocus=False, doApply=None):
+	text2 = markupF if isFocus else markup
 	btn = genBtnMarkup(text2, onClick, doApply)
-	btn.base_widget.txtNormal = txtNormal
-	btn.base_widget.txtFocus = txtFocus
+	btn.base_widget.markup = (markup, markupF)
+	btn.base_widget.attr = attr
+	#btn.base_widget.origTxt = terminalText
 
-	btn.base_widget.origTxt = terminalText
 	return btn
 
 def genBtnMarkup(markup, onClick, doApply=None):

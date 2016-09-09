@@ -198,19 +198,16 @@ class MyProgram(Program):
 				elif hr == 'n' or hr == '':
 					break
 
-
-
-
-def refreshBtnList(content, listBox, onClick):
+"""
+itemList = list of (terminal, attr)
+"""
+def refreshBtnList(itemList, listBox, onClick):
 	del listBox.body[:]
-	if content.strip() == "":
-		contentList = ["< Nothing >"]
-		listBox.itemCount = 0
-	else:
-		contentList = content.split("\n")
-		listBox.itemCount = len(contentList)
+	listBox.itemCount = len(itemList)
+	if listBox.itemCount == 0:
+		itemList = [ ("< Nothing > ", None) ]
 		
-	listBox.body += ur.makeBtnList(contentList, onClick)
+	listBox.body += ur.makeBtnListTerminal(itemList, onClick)
 
 
 class AckFile:
@@ -231,8 +228,9 @@ class mDlgMainAck(ur.cDialog):
 	def __init__(self):
 		super().__init__()
 
-		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnList([], None)))
-		self.widgetFileList.body.set_focus_changed_callback(lambda new_focus: self.onFileFocusChanged(new_focus))
+		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
+		self.widgetFileList.setFocusCb(lambda newFocus: self.onFileFocusChanged(newFocus))
+
 		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList([])))
 
 		self.header = ">> dc V%s - ack-grep - q/F4(Quit),<-/->(Prev/Next file),Enter(goto),E(edit)..." % g.version
@@ -253,6 +251,7 @@ class mDlgMainAck(ur.cDialog):
 		newBtn = self.btnUpdate(self.widgetFileList.body[new_focus], True)
 		
 		self.widgetContent.focus_position = newBtn.afile.position
+		return False
 
 	def onFileSelected(self, btn):
 		pp = os.path.dirname(os.path.join(os.getcwd(), btn.afile.fname))
@@ -343,8 +342,8 @@ class mDlgMainFind(ur.cDialog):
 	def __init__(self):
 		super().__init__()
 
-		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnList([], None)))
-		self.widgetFileList.body.set_focus_changed_callback(lambda new_focus: self.onFileFocusChanged(new_focus))
+		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
+		self.widgetFileList.setFocusCb(lambda newFocus: self.onFileFocusChanged(newFocus))
 		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
 		self.widgetContent.isViewContent = True
 
@@ -382,6 +381,7 @@ class mDlgMainFind(ur.cDialog):
 		del self.widgetContent.body[:]
 		self.widgetContent.body += ur.makeTextList(ss.splitlines())
 		self.widgetFrame.set_focus(self.widgetContent)
+		return False
 
 	def onFileSelected(self, btn):
 		self.selectFileName = gitFileBtnName(btn)
@@ -451,8 +451,7 @@ class mDlgMainDc(ur.cDialog):
 	def __init__(self):
 		super().__init__()
 
-		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnList([], None)))
-		self.widgetFileList.body.set_focus_changed_callback(lambda newFocus: self.onFileFocusChanged(newFocus))
+		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
 		self.widgetExtraList = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
 
 		self.title = ">> dc V%s" % g.version
@@ -465,13 +464,7 @@ class mDlgMainDc(ur.cDialog):
 		self.fileRefresh()
 		return True
 
-	def onFileFocusChanged(self, newFocus):
-		# old widget
-		widget = self.widgetFileList.focus
-		widget.base_widget.set_label(widget.base_widget.txtNormal)
 
-		widget = self.widgetFileList.body[newFocus]
-		widget.base_widget.set_label(widget.base_widget.txtFocus)
 
 	def onMsgChanged(self, edit, text):
 		pass
@@ -485,10 +478,14 @@ class mDlgMainDc(ur.cDialog):
 		lst2.sort(key=lambda s1: -11 if stat.S_ISDIR(s1[1].st_mode) else 1)
 		lst2.insert(0, ("..", None))
 
-		#refreshBtnList(fileList2, self.widgetFileList, lambda btn: self.onFileSelected(btn))
-		del self.widgetFileList.body[:]
-		self.widgetFileList.itemCount = len(lst2)
-		self.widgetFileList.body += ur.makeBtnList( [os.path.basename(x[0]) for x in lst2], None)
+		itemList = [ (os.path.basename(x[0]), x[1]) for x in lst2]
+		refreshBtnList(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
+		#del self.widgetFileList.body[:]
+		#self.widgetFileList.itemCount = len(lst2)
+		#self.widgetFileList.body += ur.makeBtnListTerminal( , None)
+
+	def onFileSelected(self, btn):
+		pass
 
 	def inputFilter(self, keys, raw):
 		if g.loop.widget != g.dialog.mainWidget:
@@ -550,8 +547,7 @@ class mDlgMainGitStatus(ur.cDialog):
 
 		self.selectFileName = ""
 
-		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnList(["< No files >"], None)))
-		self.widgetFileList.body.set_focus_changed_callback(lambda newFocus: self.onFileFocusChanged(newFocus))
+		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([("< No files >", None)], None)))
 		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
 
 		self.headerText = urwid.Text(">> dc V%s - q/F4(Quit),<-/->(Prev/Next file),A(Add),P(Prompt),R(Reset),D(drop),C(Commit),I(Ignore)" % g.version)
@@ -577,13 +573,7 @@ class mDlgMainGitStatus(ur.cDialog):
 
 		return True
 
-	def onFileFocusChanged(self, new_focus):
-		# old widget
-		widget = self.widgetFileList.focus
-		widget.base_widget.set_label(widget.base_widget.txtNormal)
 
-		widget = self.widgetFileList.body[new_focus]
-		widget.base_widget.set_label(widget.base_widget.txtFocus)
 
 	def onFileSelected(self, btn):
 		# why btn.get_label() is impossible?
@@ -638,19 +628,23 @@ class mDlgMainGitStatus(ur.cDialog):
 			fileList2 += fileType + " " + fileName + "\n"
 		
 		focusIdx = self.widgetFileList.focus_position + focusMove
-		refreshBtnList(fileList2, self.widgetFileList, lambda btn: self.onFileSelected(btn))
+
+		itemList = [(x, "s" if "[32m" in x else "") for x in fileList2.split("\n")]
+		refreshBtnList(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
+
 		if focusIdx >= len(self.widgetFileList.body):
 			focusIdx = len(self.widgetFileList.body)-1
-		self.widgetFileList.focus_position = focusIdx
-	
+		#self.widgetFileList.focus_position = focusIdx
+		self.widgetFileList.set_focus(focusIdx)
+
 		self.onFileSelected(self.widgetFileList.focus)	# auto display
 		
 	def gitGetStagedCount(self):
 		cnt = 0
 		for item in self.widgetFileList.body:
-			ss = item.base_widget.origTxt
-			if "[32m" in ss:	# greenfg
+			if "s" in item.base_widget.attr:	# greenfg
 				cnt += 1
+
 		return cnt
 
 	def inputFilter(self, keys, raw):
@@ -774,8 +768,7 @@ class mGitCommitDialog(ur.cDialog):
 
 		self.onExit = onExit
 		self.edInput = ur.genEdit("Input commit message => ", "", lambda edit,text: self.onMsgChanged(edit,text))
-		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnList(["< No files >"], None)))
-		self.widgetFileList.body.set_focus_changed_callback(lambda new_focus: self.onFileFocusChanged(new_focus))
+		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([("< No files >", None)], None)))
 		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
 
 		self.headerText = urwid.Text(">> Commit...")
@@ -789,17 +782,11 @@ class mGitCommitDialog(ur.cDialog):
 		pass
 		
 	def _applyFileColorTheme(self, widget, isFocus=0):
-		theme = self.themes[0 if widget.base_widget.data == "s" else 1]
+		theme = self.themes[0 if widget.base_widget.attr == "s" else 1]
 		widget.base_widget.set_label((theme[isFocus], widget.base_widget.origTxt))
 	
 
-	def onFileFocusChanged(self, new_focus):
-		# old widget
-		widget = self.widgetFileList.focus
-		self._applyFileColorTheme(widget, 0)
 
-		widget = self.widgetFileList.body[new_focus]
-		self._applyFileColorTheme(widget, 1)
 
 	def onFileSelected(self, btn):
 		# why btn.get_label() is impossible?
@@ -808,7 +795,7 @@ class mGitCommitDialog(ur.cDialog):
 		#g.headerText.set_text("file - " + label)
 		
 		# display
-		btnType = btn.base_widget.data
+		btnType = btn.base_widget.attr
 		pp = os.path.join(g.relRoot, self.selectFileName)
 		try:
 			ss = system("git diff --color %s \"%s\"" % ("" if btnType == "c" else "--staged", pp))
@@ -829,24 +816,22 @@ class mGitCommitDialog(ur.cDialog):
 
 		# staged file list		
 		fileList = system("git diff --name-only --cached")
-		self.widgetFileList.body += ur.makeBtnList(fileList.split("\n"),
-			lambda btn: self.onFileSelected(btn), 
-			lambda btn: setattr(btn, "data", "s"))
+		itemList = [ ((self.themes[0][0], x), (self.themes[0][1], x), "s") for x in fileList.split("\n") if x.strip() != "" ]
+		self.widgetFileList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn))
 
 		# general file list
 		fileList = system("git diff --name-only")
-		self.widgetFileList.body += ur.makeBtnList(fileList.split("\n"),
-			lambda btn: self.onFileSelected(btn), 
-			lambda btn: setattr(btn, "data", "c"))
-			
-		for widget in self.widgetFileList.body:
-			self._applyFileColorTheme(widget, 0)
-			
+		itemList = [ ((self.themes[1][0], x), (self.themes[1][1], x), "c") for x in fileList.split("\n") if x.strip() != ""  ]
+		self.widgetFileList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn), False)
+
+		#for widget in self.widgetFileList.body:
+		#	self._applyFileColorTheme(widget, 0)
+
 		if len(self.widgetFileList.body) == 0:
-			self.widgetFileList.body += ur.makeBtnList(["< Nothing >"], None)
-		else:
-			self.onFileFocusChanged(self.widgetFileList.focus_position)
-			self.onFileSelected(self.widgetFileList.focus)	# auto display
+			self.widgetFileList.body += ur.makeBtnListTerminal([("< Nothing >", None)], None, False)
+
+		#self.onFileFocusChanged(self.widgetFileList.focus_position)
+		self.onFileSelected(self.widgetFileList.focus)	# auto display
 
 	def inputFilter(self, keys, raw):
 		if g.loop.widget != g.dialog.mainWidget:
