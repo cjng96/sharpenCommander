@@ -567,7 +567,7 @@ class mDlgMainGitStatus(ur.cDialog):
 
 	def init(self):
 		self.refreshFileList()
-		if self.widgetFileList.itemCount == 0:
+		if len(self.widgetFileList.body) == 0:
 			print("No modified or untracked files")
 			return False
 
