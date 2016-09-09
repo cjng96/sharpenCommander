@@ -632,12 +632,13 @@ class mDlgMainGitStatus(ur.cDialog):
 		itemList = [(x, "s" if "[32m" in x else "") for x in fileList2.split("\n")]
 		refreshBtnList(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
 
-		if focusIdx >= len(self.widgetFileList.body):
-			focusIdx = len(self.widgetFileList.body)-1
-		#self.widgetFileList.focus_position = focusIdx
-		self.widgetFileList.set_focus(focusIdx)
-
-		self.onFileSelected(self.widgetFileList.focus)	# auto display
+		size = len(self.widgetFileList.body)
+		if size > 0:
+			if focusIdx >= size:
+				focusIdx = size-1
+			#self.widgetFileList.focus_position = focusIdx
+			self.widgetFileList.set_focus(focusIdx)
+			self.onFileSelected(self.widgetFileList.focus)	# auto display
 		
 	def gitGetStagedCount(self):
 		cnt = 0
