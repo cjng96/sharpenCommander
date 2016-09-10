@@ -566,8 +566,7 @@ class mDlgMainGitStatus(ur.cDialog):
 			g.relRoot = os.path.relpath(g.gitRoot, g.curPath)
 
 	def init(self):
-		self.refreshFileList()
-		if len(self.widgetFileList.body) == 0:
+		if not self.refreshFileList():
 			print("No modified or untracked files")
 			return False
 
@@ -633,13 +632,17 @@ class mDlgMainGitStatus(ur.cDialog):
 		refreshBtnList(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
 
 		size = len(self.widgetFileList.body)
-		if size > 0:
-			if focusIdx >= size:
-				focusIdx = size-1
-			#self.widgetFileList.focus_position = focusIdx
-			self.widgetFileList.set_focus(focusIdx)
-			self.onFileSelected(self.widgetFileList.focus)	# auto display
-		
+		if size <= 0:
+			return False
+
+		if focusIdx >= size:
+			focusIdx = size-1
+		#self.widgetFileList.focus_position = focusIdx
+		self.widgetFileList.set_focus(focusIdx)
+		self.onFileSelected(self.widgetFileList.focus)	# auto display
+		return True
+
+
 	def gitGetStagedCount(self):
 		cnt = 0
 		for item in self.widgetFileList.body:
@@ -737,10 +740,7 @@ class mDlgMainGitStatus(ur.cDialog):
 			def onExit():
 				g.dialog = self
 				g.loop.widget = self.mainWidget
-				self.refreshFileList()
-				
-				# exit
-				if self.widgetFileList.itemCount == 0:
+				if not self.refreshFileList():
 					g.loop.stop()
 					print("No modified or untracked files")
 					sys.exit(0)
