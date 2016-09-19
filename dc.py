@@ -549,6 +549,7 @@ class mDlgMainDc(ur.cDialog):
 
 	def unhandled(self, key):
 		if key == 'f4':
+			g.savePath(os.getcwd())
 			raise urwid.ExitMainLoop()
 		elif key == "meta left":
 			pp = os.getcwd()
