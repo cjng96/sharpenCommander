@@ -290,14 +290,15 @@ class mDlgMainAck(ur.cDialog):
 				# new file				
 				afile = AckFile(line)
 				self.lstContent.append(afile)
-				
-				btn = ur.genBtnMarkup(afile.getTitleMarkup(False), self.cbFileSelect, len(self.widgetFileList.body) == 0)
+
+				isFirst = len(self.widgetFileList.body) == 0
+				btn = ur.genBtnMarkup(afile.getTitleMarkup(isFirst), self.cbFileSelect)
 				btn.afile = afile
 				afile.btn = btn
 				afile.position = len(self.widgetContent.body)
 				self.widgetFileList.body.append(btn)
 				
-				txt = urwid.Text(afile.getTitleMarkup(False))
+				txt = urwid.Text(afile.getTitleMarkup(isFirst))
 				self.widgetContent.body.append(txt)
 				
 			else:
@@ -356,15 +357,16 @@ class mDlgMainFind(ur.cDialog):
 		self.content = ""
 		self.selectFileName = ""
 
-	def onFileFocusChanged(self, new_focus):
+	def onFileFocusChanged(self, newFocus):
 		# old widget
-		widget = self.widgetFileList.focus
-		markup = ("std", widget.base_widget.origTxt)
-		widget.base_widget.set_label(markup)
+		#widget = self.widgetFileList.focus
+		#markup = ("std", widget.base_widget.origTxt)
+		#widget.base_widget.set_label(markup)
 
-		widget = self.widgetFileList.body[new_focus]
-		markup = ("std_f", widget.base_widget.origTxt)
-		widget.base_widget.set_label(markup)
+		#widget = self.widgetFileList.body[newFocus]
+		#markup = ("std_f", widget.base_widget.origTxt)
+		#widget.base_widget.set_label(markup)
+		widget = self.widgetFileList.body[newFocus]
 
 		self.widgetFileList.set_focus_valign("middle")
 
@@ -381,7 +383,7 @@ class mDlgMainFind(ur.cDialog):
 		del self.widgetContent.body[:]
 		self.widgetContent.body += ur.makeTextList(ss.splitlines())
 		self.widgetFrame.set_focus(self.widgetContent)
-		return False
+		return True
 
 	def onFileSelected(self, btn):
 		self.selectFileName = gitFileBtnName(btn)
@@ -415,8 +417,13 @@ class mDlgMainFind(ur.cDialog):
 			line = line.strip()
 			if line == "":
 				continue
-			
-			btn = ur.genBtn(line, self.cbFileSelect, len(self.widgetFileList.body) == 0)
+
+			#markup = ur.terminal2markup(line, 0)
+			#markupF = ur.terminal2markup(line, 1)
+			markup = ("std", line)
+			markupF = ("std_f", line)
+
+			btn = ur.genBtn(markup, markupF, None, self.cbFileSelect, len(self.widgetFileList.body) == 0)
 			self.widgetFileList.body.append(btn)
 			if len(self.widgetFileList.body) == 1:
 				self.onFileFocusChanged(0)
@@ -463,7 +470,6 @@ class mDlgMainDc(ur.cDialog):
 	def init(self):
 		self.fileRefresh()
 		return True
-
 
 
 	def onMsgChanged(self, edit, text):
@@ -520,7 +526,6 @@ class mDlgMainDc(ur.cDialog):
 		return os.path.join(pp, fname)
 
 	def unhandled(self, key):
-		print(key)
 		if key == 'f4':
 			raise urwid.ExitMainLoop()
 		elif key == "meta left":
