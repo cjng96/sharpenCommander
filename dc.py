@@ -201,13 +201,24 @@ class MyProgram(Program):
 """
 itemList = list of (terminal, attr)
 """
-def refreshBtnList(itemList, listBox, onClick):
+def refreshBtnListTerminal(terimalItemList, listBox, onClick):
 	del listBox.body[:]
-	listBox.itemCount = len(itemList)
+	listBox.itemCount = len(terimalItemList)
 	if listBox.itemCount == 0:
-		itemList = [ ("< Nothing > ", None) ]
-		
-	listBox.body += ur.makeBtnListTerminal(itemList, onClick)
+		terimalItemList = [("< Nothing > ", None)]
+
+	listBox.body += ur.makeBtnListTerminal(terimalItemList, onClick)
+
+"""
+itemList = list of (markup, markupF, attr)
+"""
+def refreshBtnListMarkupTuple(markupItemList, listBox, onClick):
+	del listBox.body[:]
+	listBox.itemCount = len(markupItemList)
+	if listBox.itemCount == 0:
+		markupItemList = [("std", "< Nothing > ", "")]
+
+	listBox.body += ur.makeBtnListMarkup(markupItemList, onClick)
 
 
 class AckFile:
@@ -481,11 +492,22 @@ class mDlgMainDc(ur.cDialog):
 
 		lst = [os.path.join(pp, x) for x in os.listdir(pp)]
 		lst2 = [ (x, os.stat(x)) for x in lst]
-		lst2.sort(key=lambda s1: -11 if stat.S_ISDIR(s1[1].st_mode) else 1)
+		lst2.sort(key=lambda x: -1 if stat.S_ISDIR(x[1].st_mode) else 1)
 		lst2.insert(0, ("..", None))
 
 		itemList = [ (os.path.basename(x[0]), x[1]) for x in lst2]
-		refreshBtnList(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
+		def gen(x):
+			if x[0] == "..":
+				isDir = True
+			else:
+				isDir = stat.S_ISDIR(x[1].st_mode)
+
+			mstd = "greenfg" if isDir else "std"
+			mfocus = "greenfg_f" if isDir else "std_f"
+			return (mstd, x[0]), (mfocus, x[0]), x[1]
+
+		itemList = list(map(gen, itemList))
+		refreshBtnListMarkupTuple(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
 		#del self.widgetFileList.body[:]
 		#self.widgetFileList.itemCount = len(lst2)
 		#self.widgetFileList.body += ur.makeBtnListTerminal( , None)
@@ -634,7 +656,7 @@ class mDlgMainGitStatus(ur.cDialog):
 		focusIdx = self.widgetFileList.focus_position + focusMove
 
 		itemList = [(x, "s" if "[32m" in x else "") for x in fileList2.split("\n")]
-		refreshBtnList(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
+		refreshBtnListTerminal(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
 
 		size = len(self.widgetFileList.body)
 		if size <= 0:
