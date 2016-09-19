@@ -475,15 +475,14 @@ class mDlgMainDc(ur.cDialog):
 		self.title = ">> dc V%s" % g.version
 		self.headerText = urwid.Text(self.title)
 		self.widgetFrame = urwid.Columns([(120, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetExtraList])
-		self.edInput = ur.genEdit("Input commit message => ", "", lambda edit,text: self.onMsgChanged(edit,text))
+		self.edInput = ur.genEdit("$ ", "", lambda edit,text: self.onInputChanged(edit, text))
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText, footer=self.edInput)
 
 	def init(self):
 		self.fileRefresh()
 		return True
 
-
-	def onMsgChanged(self, edit, text):
+	def onInputChanged(self, edit, text):
 		pass
 
 	def fileRefresh(self):
@@ -565,8 +564,20 @@ class mDlgMainDc(ur.cDialog):
 			g.loop.start()
 			self.fileRefresh()
 
-		elif key == "h":
+		elif key == "alt h":
 			ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
+
+		elif key == "up":
+			self.mainWidget.set_focus("body")
+		elif key == "down":
+			self.mainWidget.set_focus("body")
+
+		else:
+			self.mainWidget.set_focus("footer")
+			if len(key) == 1:
+				#self.edInput.set_edit_text(self.edInput.get_edit_text()+key)
+				self.edInput.insert_text(key)
+
 
 
 class mDlgMainGitStatus(ur.cDialog):
