@@ -240,7 +240,7 @@ def terminal2markup(ss, invert=0):
 def genEdit(label, text, cbChange):
 	w = urwid.Edit(label, text)
 	urwid.connect_signal(w, 'change', cbChange)
-	cbChange(w, text)
+	#cbChange(w, text)
 	# w = urwid.AttrWrap(w, 'edit')
 	return w
 

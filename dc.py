@@ -483,13 +483,14 @@ class mDlgMainDc(ur.cDialog):
 		return True
 
 	def onInputChanged(self, edit, text):
-		pass
+		self.fileRefresh(text)
 
-	def fileRefresh(self):
+	def fileRefresh(self, newText = None):
 		pp = os.getcwd()
 		self.headerText.set_text("%s - %s" % (self.title, os.getcwd()))
 
-		lst = [os.path.join(pp, x) for x in os.listdir(pp)]
+		filterStr = self.edInput.get_edit_text() if newText is None else newText
+		lst = [os.path.join(pp, x) for x in os.listdir(pp) if filterStr == "" or filterStr in x ]
 		lst2 = [ (x, os.stat(x)) for x in lst]
 		lst2.sort(key=lambda x: -1 if stat.S_ISDIR(x[1].st_mode) else 1)
 		lst2.insert(0, ("..", None))
@@ -571,6 +572,8 @@ class mDlgMainDc(ur.cDialog):
 			self.mainWidget.set_focus("body")
 		elif key == "down":
 			self.mainWidget.set_focus("body")
+		elif key == "esc":
+			self.edInput.set_edit_text("")
 
 		else:
 			self.mainWidget.set_focus("footer")
