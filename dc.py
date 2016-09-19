@@ -345,7 +345,7 @@ class mDlgMainAck(ur.cDialog):
 			g.loop.stop()
 			systemRet("vim %s" % btn.afile.fname)
 			g.loop.start()
-			
+
 		elif key == "h":
 			ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 	
@@ -523,6 +523,7 @@ class mDlgMainDc(ur.cDialog):
 			pp = self.getFocusPath()
 			if os.path.isdir(pp):
 				os.chdir(os.path.join(pp))
+				self.edInput.set_edit_text("")
 				self.fileRefresh()
 
 		"""
