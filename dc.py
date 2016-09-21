@@ -469,18 +469,45 @@ class mDlgMainDc(ur.cDialog):
 	def __init__(self):
 		super().__init__()
 
+		# content
 		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
+		self.widgetCmdList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
+		self.widgetContent = urwid.Pile([urwid.AttrMap(self.widgetFileList, 'std'), ('pack', urwid.Divider('-')), (8, self.widgetCmdList)])
+		self.widgetContent.isShow = True
+
+		# extra
 		self.widgetExtraList = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
 
+		# main frame + input
 		self.title = ">> dc V%s" % g.version
 		self.headerText = urwid.Text(self.title)
-		self.widgetFrame = urwid.Columns([(120, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetExtraList])
+		self.widgetFrame = urwid.Columns([(120, urwid.AttrMap(self.widgetContent, 'std')), ('pack', urwid.Divider('-')), self.widgetExtraList])
 		self.edInput = ur.genEdit("$ ", "", lambda edit,text: self.onInputChanged(edit, text))
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText, footer=self.edInput)
 
 	def init(self):
 		self.fileRefresh()
 		return True
+
+	def cmdShow(self, lstItem):
+		isShow = len(lstItem) > 0
+		if isShow == self.widgetContent.isShow:
+			return
+
+		self.widgetContent.isShow = isShow
+		if isShow:
+			#self.widgetContent.contents[1] = (self.widgetContent.contents[1][0], (urwid.widget.PACK, None))
+			self.widgetContent.contents[1] = (urwid.Divider('-'), (urwid.widget.PACK, None))
+			self.widgetContent.contents[2] = (self.widgetContent.contents[2][0], (urwid.widget.GIVEN, 8))
+		else:
+			#self.widgetContent.contents[1] = (self.widgetContent.contents[1][0], (urwid.widget.GIVEN, 0))  # 이게 잘안된다. 아마 divider는 pack만 지원하는듯
+			self.widgetContent.contents[1] = (urwid.Pile([]), (urwid.widget.GIVEN, 0))
+			self.widgetContent.contents[2] = (self.widgetContent.contents[2][0], (urwid.widget.GIVEN, 0))
+
+		# list
+		lstItem = [ (("std", x), ("std_f", x), None) for x in lstItem ]
+		refreshBtnListMarkupTuple(lstItem, self.widgetCmdList, lambda btn: self.onFileSelected(btn))
+
 
 	def onInputChanged(self, edit, text):
 		self.fileRefresh(text)
@@ -511,6 +538,15 @@ class mDlgMainDc(ur.cDialog):
 		#del self.widgetFileList.body[:]
 		#self.widgetFileList.itemCount = len(lst2)
 		#self.widgetFileList.body += ur.makeBtnListTerminal( , None)
+
+		# extra
+		lst = []
+		if filterStr != "":
+			if filterStr == "eng":
+				lst.append("eng")
+
+		self.cmdShow(lst)
+
 
 	def onFileSelected(self, btn):
 		pass
@@ -575,14 +611,14 @@ class mDlgMainDc(ur.cDialog):
 			self.mainWidget.set_focus("body")
 		elif key == "esc":
 			self.edInput.set_edit_text("")
-
+		elif type(key) == tuple:
+			pass
 		else:
 			self.mainWidget.set_focus("footer")
+			print(key)
 			if len(key) == 1:
 				#self.edInput.set_edit_text(self.edInput.get_edit_text()+key)
 				self.edInput.insert_text(key)
-
-
 
 class mDlgMainGitStatus(ur.cDialog):
 	def __init__(self):
