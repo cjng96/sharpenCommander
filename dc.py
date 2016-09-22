@@ -98,16 +98,30 @@ class MyProgram(Program):
 	def savePath(self, pp):
 		with open("/tmp/cmdDevTool.path", "wb") as f:
 			f.write(os.path.expanduser(pp).encode())
-			
+
 	def findItem(self, target):
 		for pp in self.lstPath:
-			lstName = pp["name"]
+			names = pp["name"]
 
-			if target.lower() in map(str.lower, lstName):
+			if target.lower() in map(str.lower, names):
 				return pp
-				
+
 		raise ErrFailure("No that target[%s]" % target)
-		
+
+	# path list that includes sub string
+	def findItems(self, sub):
+		sub = sub.lower()
+		lst = []
+		for pp in self.lstPath:
+			names = pp["name"]
+			names2 = map(str.lower, names)
+
+			hasList = list(filter(lambda s: sub in s, names2))
+			if len(hasList) > 0:
+				lst.append(pp["path"])
+
+		return lst
+
 	def cd(self, target):
 		if target == "~":
 			self.savePath(target)
@@ -546,8 +560,7 @@ class mDlgMainDc(ur.cDialog):
 		# extra
 		lst = []
 		if filterStr != "":
-			if filterStr == "eng":
-				lst.append("eng")
+			lst += g.findItems(filterStr)
 
 		self.cmdShow(lst)
 
@@ -555,16 +568,25 @@ class mDlgMainDc(ur.cDialog):
 	def onFileSelected(self, btn):
 		pass
 
+	def changePath(self, pp):
+		if not os.path.isdir(pp):
+			return False
+
+		os.chdir(pp)
+		self.edInput.set_edit_text("")
+		self.fileRefresh()
+
 	def inputFilter(self, keys, raw):
 		if g.loop.widget != g.dialog.mainWidget:
 			return keys
 
 		if ur.filterKey(keys, "enter"):
-			pp = self.getFocusPath()
-			if os.path.isdir(pp):
-				os.chdir(os.path.join(pp))
-				self.edInput.set_edit_text("")
-				self.fileRefresh()
+			self.changePath(self.getFocusPath())
+
+		elif ur.filterKey(keys, "ctrl ^"):
+			item = self.widgetCmdList.focus
+			pp = item.base_widget.get_label()
+			self.changePath(pp)
 
 		"""
 		if ur.filterKey(keys, "left"):
@@ -589,6 +611,7 @@ class mDlgMainDc(ur.cDialog):
 		return os.path.join(pp, fname)
 
 	def unhandled(self, key):
+
 		if key == 'f4':
 			g.savePath(os.getcwd())
 			raise urwid.ExitMainLoop()
@@ -606,8 +629,17 @@ class mDlgMainDc(ur.cDialog):
 			g.loop.start()
 			self.fileRefresh()
 
-		elif key == "alt h":
-			ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
+		#elif key == "ctrl h":
+		#	ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
+
+		elif key == "meta j":   # we can't use ctrl+j since it's terminal key for enter replacement
+			self.widgetFileList.focusNext()
+		elif key == "meta k":
+			self.widgetFileList.focusPrevious()
+		elif key == "meta u":
+			self.changePath("..")
+		elif key == "meta h":   # enter
+			self.changePath(self.getFocusPath())
 
 		elif key == "up":
 			self.mainWidget.set_focus("body")
@@ -615,7 +647,7 @@ class mDlgMainDc(ur.cDialog):
 			self.mainWidget.set_focus("body")
 		elif key == "esc":
 			self.edInput.set_edit_text("")
-		elif type(key) == tuple:
+		elif type(key) == tuple:    # mouse
 			pass
 		else:
 			self.mainWidget.set_focus("footer")
@@ -868,9 +900,6 @@ class mGitCommitDialog(ur.cDialog):
 	def _applyFileColorTheme(self, widget, isFocus=0):
 		theme = self.themes[0 if widget.base_widget.attr == "s" else 1]
 		widget.base_widget.set_label((theme[isFocus], widget.base_widget.origTxt))
-	
-
-
 
 	def onFileSelected(self, btn):
 		# why btn.get_label() is impossible?
