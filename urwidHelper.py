@@ -278,11 +278,11 @@ def makeBtnListTerminal(lstTerminal, onClick, isFirstFocus=True, doApply=None):
 
 def makeBtnListMarkup(lstMarkup, onClick, isFirstFocus=True, doApply=None):
 	"""
-	lstMarkup = list of (std, focus, attr)
+	lstMarkup = list of (std, focus, text, attr)
 	"""
 	outList = []
-	for mstd, mfocus, attr in lstMarkup:
-		btn = genBtn(mstd, mfocus, attr, onClick, isFirstFocus, doApply)
+	for std, focus, text, attr in lstMarkup:
+		btn = genBtn((std, text), (focus, text), attr, onClick, isFirstFocus, doApply)
 		isFirstFocus = False
 		outList.append(btn)
 

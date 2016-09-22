@@ -216,7 +216,7 @@ def refreshBtnListMarkupTuple(markupItemList, listBox, onClick):
 	del listBox.body[:]
 	listBox.itemCount = len(markupItemList)
 	if listBox.itemCount == 0:
-		markupItemList = [("std", "< Nothing > ", "")]
+		markupItemList = [("std", "std_f", "< Nothing > ", "")]
 
 	listBox.body += ur.makeBtnListMarkup(markupItemList, onClick)
 
@@ -491,21 +491,22 @@ class mDlgMainDc(ur.cDialog):
 
 	def cmdShow(self, lstItem):
 		isShow = len(lstItem) > 0
-		if isShow == self.widgetContent.isShow:
+		if isShow != self.widgetContent.isShow:
+			self.widgetContent.isShow = isShow
+			if isShow:
+				#self.widgetContent.contents[1] = (self.widgetContent.contents[1][0], (urwid.widget.PACK, None))
+				self.widgetContent.contents[1] = (urwid.Divider('-'), (urwid.widget.PACK, None))
+				self.widgetContent.contents[2] = (self.widgetContent.contents[2][0], (urwid.widget.GIVEN, 8))
+			else:
+				#self.widgetContent.contents[1] = (self.widgetContent.contents[1][0], (urwid.widget.GIVEN, 0))  # 이게 잘안된다. 아마 divider는 pack만 지원하는듯
+				self.widgetContent.contents[1] = (urwid.Pile([]), (urwid.widget.GIVEN, 0))
+				self.widgetContent.contents[2] = (self.widgetContent.contents[2][0], (urwid.widget.GIVEN, 0))
+
+		if not isShow:
 			return
 
-		self.widgetContent.isShow = isShow
-		if isShow:
-			#self.widgetContent.contents[1] = (self.widgetContent.contents[1][0], (urwid.widget.PACK, None))
-			self.widgetContent.contents[1] = (urwid.Divider('-'), (urwid.widget.PACK, None))
-			self.widgetContent.contents[2] = (self.widgetContent.contents[2][0], (urwid.widget.GIVEN, 8))
-		else:
-			#self.widgetContent.contents[1] = (self.widgetContent.contents[1][0], (urwid.widget.GIVEN, 0))  # 이게 잘안된다. 아마 divider는 pack만 지원하는듯
-			self.widgetContent.contents[1] = (urwid.Pile([]), (urwid.widget.GIVEN, 0))
-			self.widgetContent.contents[2] = (self.widgetContent.contents[2][0], (urwid.widget.GIVEN, 0))
-
 		# list
-		lstItem = [ (("std", x), ("std_f", x), None) for x in lstItem ]
+		lstItem = [ ("std", "std_f", x, None) for x in lstItem ]
 		refreshBtnListMarkupTuple(lstItem, self.widgetCmdList, lambda btn: self.onFileSelected(btn))
 
 
@@ -514,10 +515,12 @@ class mDlgMainDc(ur.cDialog):
 
 	def fileRefresh(self, newText = None):
 		pp = os.getcwd()
-		self.headerText.set_text("%s - %s" % (self.title, os.getcwd()))
 
+		# filter
 		filterStr = self.edInput.get_edit_text() if newText is None else newText
 		lst = [os.path.join(pp, x) for x in os.listdir(pp) if filterStr == "" or filterStr in x ]
+
+		# list
 		lst2 = [ (x, os.stat(x)) for x in lst]
 		lst2.sort(key=lambda x: -1 if stat.S_ISDIR(x[1].st_mode) else 1)
 		lst2.insert(0, ("..", None))
@@ -531,9 +534,10 @@ class mDlgMainDc(ur.cDialog):
 
 			mstd = "greenfg" if isDir else "std"
 			mfocus = "greenfg_f" if isDir else "std_f"
-			return (mstd, x[0]), (mfocus, x[0]), x[1]
+			return mstd, mfocus, x[0], x[1]
 
 		itemList = list(map(gen, itemList))
+		self.headerText.set_text("%s - %s(%d)" % (self.title, pp, len(itemList)))
 		refreshBtnListMarkupTuple(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
 		#del self.widgetFileList.body[:]
 		#self.widgetFileList.itemCount = len(lst2)
@@ -615,7 +619,7 @@ class mDlgMainDc(ur.cDialog):
 			pass
 		else:
 			self.mainWidget.set_focus("footer")
-			print(key)
+			#print(key)
 			if len(key) == 1:
 				#self.edInput.set_edit_text(self.edInput.get_edit_text()+key)
 				self.edInput.insert_text(key)
@@ -896,12 +900,12 @@ class mGitCommitDialog(ur.cDialog):
 
 		# staged file list		
 		fileList = system("git diff --name-only --cached")
-		itemList = [ ((self.themes[0][0], x), (self.themes[0][1], x), "s") for x in fileList.split("\n") if x.strip() != "" ]
+		itemList = [ (self.themes[0][0], self.themes[0][1], x, "s") for x in fileList.split("\n") if x.strip() != "" ]
 		self.widgetFileList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn))
 
 		# general file list
 		fileList = system("git diff --name-only")
-		itemList = [ ((self.themes[1][0], x), (self.themes[1][1], x), "c") for x in fileList.split("\n") if x.strip() != ""  ]
+		itemList = [ (self.themes[1][0], self.themes[1][1], x, "c") for x in fileList.split("\n") if x.strip() != ""  ]
 		self.widgetFileList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn), False)
 
 		#for widget in self.widgetFileList.body:
