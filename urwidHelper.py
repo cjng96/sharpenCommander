@@ -79,6 +79,10 @@ class mListBox(urwid.ListBox):
 		self.itemCount = 0
 		self.focusCb = None
 
+		self.maxcol = 0
+		self.maxrow = 0
+
+
 		# SimpleListWalker don't have focus cb
 		if getattr(self.body, 'set_focus_changed_callback', None):
 			self.body.set_focus_changed_callback(lambda newFocus: self.onFocusChanged(newFocus))
@@ -96,10 +100,21 @@ class mListBox(urwid.ListBox):
 		widget = self.body[newFocus]
 		widget.base_widget.set_label(widget.base_widget.markup[1])
 
+
+	def render(self, size, focus=False):
+		super.render(size, focus)
+		(maxcol, maxrow) = size
+		self.maxcol = maxcol
+		self.maxrow = maxrow
+
 	def focusNext(self):
 		cur = self.body.get_focus()
 		if cur[1] >= len(self.body) - 1:
 			return
+
+		# for
+		if self.offset_rows < self.maxrow-1:
+			self.offset_rows += 1
 
 		nextRow = self.body.get_next(cur[1])
 		self.body.set_focus(nextRow[1])
@@ -108,6 +123,9 @@ class mListBox(urwid.ListBox):
 		cur = self.body.get_focus()
 		if cur[1] == 0:
 			return
+
+		if self.offset_rows > 0:
+			self.offset_rows -= 1
 
 		self.body.set_focus(self.body.get_prev(cur[1])[1])
 
