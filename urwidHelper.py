@@ -323,14 +323,14 @@ def genBtnMarkup(markup, onClick, doApply=None):
 	btn = urwid.AttrMap(btn, None, "reveal focus")
 	return btn
 
-def popupMsg(title, ss):
+def popupMsg(title, ss, width=50):
 	def onCloseBtn(btn):
 		g.loop.widget = g.loop.widget.bottom_w
 
 	txtMsg = urwid.Text(ss)
 	btnClose = urwid.Button("Close", onCloseBtn)
 	popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', btnClose)]), title)
-	g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 20, 'middle', 10)
+	g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', width, 'middle', 10)
 
 def popupAsk(title, ss, onOk, onCancel = None):
 	def onClickBtn(btn):
