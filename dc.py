@@ -28,6 +28,7 @@ import urwidHelper as ur
 
 
 
+
 '''
 dc - devCmd
 
@@ -65,6 +66,7 @@ class Ansi:
 	blue = "\033[0;34m"
 	clear = "\033[0m"
 
+import json
 
 class MyProgram(Program):
 	def __init__(self):
@@ -73,6 +75,9 @@ class MyProgram(Program):
 		self.configPath = ""    # ~/.devcmd/path.py
 		self.isPrintSystem = False
 
+		# main dialog
+		self.dialog = None
+		self.loop = None
 
 	def init(self):
 		pp = os.path.expanduser("~/.devcmd")
@@ -80,21 +85,36 @@ class MyProgram(Program):
 			print("No .devcmd folder. generate it...")
 			os.mkdir(pp)
 			
-		self.configPath = os.path.join(pp, "path.py")	
-		
-		if not os.path.isfile(g.configPath):
-			raise ErrFailure("No path.py file in ~/.devcmd")
+		self.configPath = os.path.join(pp, "path.json")
 
-		sys.path.append(pp)
-		m = __import__("path")
-		self.lstPath = [ item for item in m.pathList if len(item["name"]) > 0 ]
-		
-		for item in g.lstPath:
+		self.configLoad()
+
+	def configLoad(self):
+		if not os.path.isfile(g.configPath):
+			print("No path.json file. generate it...")
+			self.lstPath = []
+			self.configSave()
+			return
+
+		#sys.path.append(pp)
+		#m = __import__("path")
+		#self.lstPath = [ item for item in m.pathList if len(item["name"]) > 0 ]
+		with open(self.configPath, "r") as fp:
+			obj = json.load(fp)
+			self.lstPath = obj["path"]
+
+		for item in self.lstPath:
 			item["path"] = os.path.expanduser(item["path"])
 			name = item["name"]
 			if type(name) is str:
 				item["name"] = [name]
-		
+
+	def configSave(self):
+		obj = dict()
+		obj["path"] = self.lstPath
+		with open(self.configPath, "w") as fp:
+			json.dump(obj, fp, separators=(',',':'))
+
 	def savePath(self, pp):
 		with open("/tmp/cmdDevTool.path", "wb") as f:
 			f.write(os.path.expanduser(pp).encode())
@@ -107,6 +127,9 @@ class MyProgram(Program):
 				return pp
 
 		raise ErrFailure("No that target[%s]" % target)
+
+	def findItemByPathSafe(self, pp):
+		return next((x for x in g.lstPath if x["path"] == pp), None)
 
 	# path list that includes sub string
 	def findItems(self, sub):
@@ -211,6 +234,10 @@ class MyProgram(Program):
 					break
 				elif hr == 'n' or hr == '':
 					break
+
+	def doSetMain(self, dlg):
+		self.dialog = dlg
+		g.loop.widget = dlg.mainWidget
 
 """
 itemList = list of (terminal, attr)
@@ -499,6 +526,8 @@ class mDlgMainDc(ur.cDialog):
 		self.edInput = ur.genEdit("$ ", "", lambda edit,text: self.onInputChanged(edit, text))
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText, footer=self.edInput)
 
+		self.cmd = ""
+
 	def init(self):
 		self.fileRefresh()
 		return True
@@ -525,13 +554,18 @@ class mDlgMainDc(ur.cDialog):
 
 
 	def onInputChanged(self, edit, text):
-		self.fileRefresh(text)
+		if self.cmd == "filter":
+			self.fileRefresh(text)
 
 	def fileRefresh(self, newText = None):
 		pp = os.getcwd()
 
 		# filter
-		filterStr = self.edInput.get_edit_text() if newText is None else newText
+		if self.cmd == "filter":
+			filterStr = self.edInput.get_edit_text() if newText is None else newText
+		else:
+			filterStr = ""
+
 		lst = [os.path.join(pp, x) for x in os.listdir(pp) if filterStr == "" or filterStr in x ]
 
 		# list
@@ -550,8 +584,17 @@ class mDlgMainDc(ur.cDialog):
 			mfocus = "greenfg_f" if isDir else "std_f"
 			return mstd, mfocus, x[0], x[1]
 
+		# status
 		itemList = list(map(gen, itemList))
-		self.headerText.set_text("%s - %s(%d)" % (self.title, pp, len(itemList)))
+		status = ""
+		item = g.findItemByPathSafe(pp)
+		if item is not None:
+			status = "*"
+			if "repo" in item and item["repo"]:
+				status += "+"
+			status = "(%s)" % status
+
+		self.headerText.set_text("%s - %s%s - %d" % (self.title, pp, status, len(itemList)))
 		refreshBtnListMarkupTuple(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
 		#del self.widgetFileList.body[:]
 		#self.widgetFileList.itemCount = len(lst2)
@@ -564,7 +607,6 @@ class mDlgMainDc(ur.cDialog):
 
 		self.cmdShow(lst)
 
-
 	def onFileSelected(self, btn):
 		pass
 
@@ -573,17 +615,96 @@ class mDlgMainDc(ur.cDialog):
 			return False
 
 		os.chdir(pp)
+
+		# filter상태도 클리어하는게 맞나?
+		self.inputSet("")
 		self.edInput.set_edit_text("")
 		self.fileRefresh()
+
+	def inputSet(self, status):
+		"""
+
+		:param status: filter,
+		:return:
+		"""
+		self.cmd = status
+		if status == "":
+			self.mainWidget.set_focus("body")
+		else:
+			self.mainWidget.set_focus("footer")
+
+		self.edInput.set_edit_text("")
+		self.edInput.set_caption("%s$ " % self.cmd)
+
 
 	def inputFilter(self, keys, raw):
 		if g.loop.widget != g.dialog.mainWidget:
 			return keys
 
 		if ur.filterKey(keys, "enter"):
-			self.changePath(self.getFocusPath())
+			if self.mainWidget.get_focus() == "body":
+				self.changePath(self.getFocusPath())
+			else:
+				if self.cmd == "filter":
+					self.mainWidget.set_focus("body")
+				elif self.cmd == "cmd":
+					ss = self.edInput.get_edit_text()
+					if ss == "list":
+						self.doFolderList()
+					else:
+						ur.popupMsg("Command", "No valid cmd\n -- %s" % ss)
+
+					self.inputSet("")
 
 		elif ur.filterKey(keys, "ctrl ^"):
+			if self.mainWidget.get_focus() == "body":
+				pass
+			elif self.mainWidget.get_focus() == "footer":
+				if self.cmd == "filter":
+					# find cmd
+					ss = self.edInput.get_edit_text()
+					self.inputSet("")
+					self.doFind(ss)
+					return
+				elif self.cmd == "cmd":
+					ss = self.edInput.get_edit_text()
+					if ss == "reg":
+						self.edInput.set_edit_text("")
+
+						pp = os.getcwd()
+						item = g.findItemByPathSafe(pp)
+						if item is not None:
+							# already registered
+							ur.popupMsg("Regiter the folder", "The path is already registerted\n%s" % pp, 60)
+							return
+
+						# add
+						name = os.path.basename(pp)
+						g.lstPath.append(dict(name=name, path=pp, repo=False))
+						g.configSave()
+						self.fileRefresh()
+						ur.popupMsg("Regiter the folder", "The path is registerted successfully\n%s" % pp, 60)
+						return
+
+					elif ss == "set repo":
+						self.edInput.set_edit_text("")
+
+						pp = os.getcwd()
+						item = g.findItemByPathSafe(pp)
+						if item is None:
+							# no item
+							ur.popupMsg("Set repo status", "The path is no registered\n%s" % pp, 60)
+							return
+
+						# set repo
+						item["repo"] = not item["repo"] if "repo" in item else True
+
+						g.configSave()
+						self.fileRefresh()
+						ur.popupMsg("Set repo status", "The path is set as %s\n%s" % ("Repo" if item["repo"] else "Not Repo", pp), 60)
+						return
+
+
 			item = self.widgetCmdList.focus
 			pp = item.base_widget.get_label()
 			self.changePath(pp)
@@ -612,16 +733,19 @@ class mDlgMainDc(ur.cDialog):
 
 	def unhandled(self, key):
 
-		if key == 'f4':
+		if key == 'f4' or key == "q":
 			g.savePath(os.getcwd())
 			raise urwid.ExitMainLoop()
-		elif key == "meta left":
-			pp = os.getcwd()
-			pp = os.path.dirname(pp)
-			os.chdir(pp)
-			self.fileRefresh()
 
-		elif key == "alt e":
+		elif key == "f":  # filter
+			self.inputSet("filter")
+			return
+
+		elif key == "/":  # cmd
+			self.inputSet("cmd")
+			return
+
+		elif key == "e":
 			pp = self.getFocusPath()
 
 			g.loop.stop()
@@ -632,13 +756,14 @@ class mDlgMainDc(ur.cDialog):
 		#elif key == "ctrl h":
 		#	ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 
-		elif key == "meta j":   # we can't use ctrl+j since it's terminal key for enter replacement
+		elif key == "j":   # we can't use ctrl+j since it's terminal key for enter replacement
 			self.widgetFileList.focusNext()
-		elif key == "meta k":
+		elif key == "k":
 			self.widgetFileList.focusPrevious()
-		elif key == "meta u":
+		elif key == "u" or key == ".":
 			self.changePath("..")
-		elif key == "meta h":   # enter
+
+		elif key == "h":   # enter
 			self.changePath(self.getFocusPath())
 
 		elif key == "up":
@@ -646,7 +771,9 @@ class mDlgMainDc(ur.cDialog):
 		elif key == "down":
 			self.mainWidget.set_focus("body")
 		elif key == "esc":
-			self.edInput.set_edit_text("")
+			self.inputSet("")
+
+		'''
 		elif type(key) == tuple:    # mouse
 			pass
 		else:
@@ -655,6 +782,79 @@ class mDlgMainDc(ur.cDialog):
 			if len(key) == 1:
 				#self.edInput.set_edit_text(self.edInput.get_edit_text()+key)
 				self.edInput.insert_text(key)
+		'''
+
+
+	def doFolderList(self):
+		def onExit():
+			g.doSetMain(self)
+			'''
+			if not self.refreshFileList():
+				g.loop.stop()
+				print("No modified or untracked files")
+				sys.exit(0)
+			'''
+
+		dlg = mDlgFolderList(onExit)
+		g.doSetMain(dlg)
+
+	def doFind(self):
+		pass
+
+
+class mDlgFolderList(ur.cDialog):
+	def __init__(self, onExit):
+		super().__init__()
+
+		self.onExit = onExit
+		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
+		#self.widgetFileList.setFocusCb(lambda newFocus: self.onFileFocusChanged(newFocus))
+		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
+		#self.widgetContent.isViewContent = True
+
+		self.header = ">> dc V%s - folder list" % g.version
+		self.headerText = urwid.Text(self.header)
+
+		self.widgetFrame = urwid.Pile(
+			[(15, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
+		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
+
+		#self.cbFileSelect = lambda btn: self.onFileSelected(btn)
+		#self.content = ""
+		#self.selectFileName = ""
+
+		self.refreshFile()
+
+	def init(self):
+		pass
+
+	def refreshFile(self):
+
+		def getStatus(item):
+			if item["repo"]:
+				return "(+)"
+			else:
+				return ""
+
+		itemList = [ (os.path.basename(x["path"]) + getStatus(x), x) for x in g.lstPath ]
+
+		def gen(x):
+			mstd = "greenfg" if "repo" in x[1] and x[1]["repo"] else "std"
+			mfocus = mstd + "_f"
+			return mstd, mfocus, x[0], x[1]
+
+		# status
+		itemList = list(map(gen, itemList))
+		#self.headerText.set_text("%s - %s%s - %d" % (self.title, pp, status, len(itemList)))
+		refreshBtnListMarkupTuple(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
+		#del self.widgetFileList.body[:]
+		#self.widgetFileList.itemCount = len(lst2)
+		#self.widgetFileList.body += ur.makeBtnListTerminal( , None)
+
+
+	def unhandled(self, key):
+		if key == 'f4' or key == "q":
+			self.onExit()
 
 class mDlgMainGitStatus(ur.cDialog):
 	def __init__(self):
@@ -686,8 +886,6 @@ class mDlgMainGitStatus(ur.cDialog):
 			return False
 
 		return True
-
-
 
 	def onFileSelected(self, btn):
 		# why btn.get_label() is impossible?
@@ -853,8 +1051,7 @@ class mDlgMainGitStatus(ur.cDialog):
 
 		elif key == "C":
 			def onExit():
-				g.dialog = self
-				g.loop.widget = self.mainWidget
+				g.doSetMain(self)
 				if not self.refreshFileList():
 					g.loop.stop()
 					print("No modified or untracked files")
@@ -867,9 +1064,8 @@ class mDlgMainGitStatus(ur.cDialog):
 				return
 				
 			dlg = mGitCommitDialog(onExit)
-			g.dialog = dlg
-			g.loop.widget = dlg.mainWidget
-			
+			g.doSetMain(dlg)
+
 		elif key == "h":
 			ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 
@@ -1125,7 +1321,7 @@ def uiMain(dlgClass, doSubMake=None):
 		return
 
 	g.dialog = dlg
-	g.loop = urwid.MainLoop(dlg.mainWidget, g.palette, urwid.raw_display.Screen(),
+	g.loop = urwid.MainLoop(dlg.mainWidget, ur.palette, urwid.raw_display.Screen(),
 							unhandled_input=urwidUnhandled, input_filter=urwidInputFilter)
 
 	if doSubMake is not None:
@@ -1162,7 +1358,7 @@ class Gr(object):
 		self.repoList = [dict(name=["test"], path="")]
 		
 	def init(self):
-		self.repoList = [repo for repo in g.lstPath if "repo" in repo and repo["repo"] != 0]
+		self.repoList = [repo for repo in g.lstPath if "repo" in repo and repo["repo"]]
 		self.isInit = True
 		
 	def repoAllName(self):
@@ -1371,7 +1567,6 @@ def removeEmptyArgv():
 		if data != "":
 			sys.argv = sys.argv[:idx+1]
 			break
-
 
 def run():
 	#winTest()
