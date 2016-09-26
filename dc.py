@@ -546,7 +546,8 @@ class mDlgMainDc(ur.cDialog):
 
 
 	def onInputChanged(self, edit, text):
-		self.fileRefresh(text)
+		if self.cmd == "filter":
+			self.fileRefresh(text)
 
 	def fileRefresh(self, newText = None):
 		pp = os.getcwd()
