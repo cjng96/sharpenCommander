@@ -553,7 +553,11 @@ class mDlgMainDc(ur.cDialog):
 		pp = os.getcwd()
 
 		# filter
-		filterStr = self.edInput.get_edit_text() if newText is None else newText
+		if self.cmd == "filter":
+			filterStr = self.edInput.get_edit_text() if newText is None else newText
+		else:
+			filterStr = ""
+
 		lst = [os.path.join(pp, x) for x in os.listdir(pp) if filterStr == "" or filterStr in x ]
 
 		# list
@@ -572,6 +576,7 @@ class mDlgMainDc(ur.cDialog):
 			mfocus = "greenfg_f" if isDir else "std_f"
 			return mstd, mfocus, x[0], x[1]
 
+		# status
 		itemList = list(map(gen, itemList))
 		status = ""
 		item = g.findItemByPathSafe(pp)
