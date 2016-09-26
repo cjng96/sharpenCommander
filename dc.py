@@ -65,6 +65,7 @@ class Ansi:
 	blue = "\033[0;34m"
 	clear = "\033[0m"
 
+import json
 
 class MyProgram(Program):
 	def __init__(self):
@@ -80,21 +81,36 @@ class MyProgram(Program):
 			print("No .devcmd folder. generate it...")
 			os.mkdir(pp)
 			
-		self.configPath = os.path.join(pp, "path.py")	
-		
-		if not os.path.isfile(g.configPath):
-			raise ErrFailure("No path.py file in ~/.devcmd")
+		self.configPath = os.path.join(pp, "path.json")
 
-		sys.path.append(pp)
-		m = __import__("path")
-		self.lstPath = [ item for item in m.pathList if len(item["name"]) > 0 ]
-		
-		for item in g.lstPath:
+		self.configLoad()
+
+	def configLoad(self):
+		if not os.path.isfile(g.configPath):
+			print("No path.json file. generate it...")
+			self.lstPath = []
+			self.configSave()
+			return
+
+		#sys.path.append(pp)
+		#m = __import__("path")
+		#self.lstPath = [ item for item in m.pathList if len(item["name"]) > 0 ]
+		with open(self.configPath, "r") as fp:
+			obj = json.load(fp)
+			self.lstPath = obj["path"]
+
+		for item in self.lstPath:
 			item["path"] = os.path.expanduser(item["path"])
 			name = item["name"]
 			if type(name) is str:
 				item["name"] = [name]
-		
+
+	def configSave(self):
+		obj = dict()
+		obj["path"] = self.lstPath
+		with open(self.configPath, "w") as fp:
+			json.dump(obj, fp, separators=(',',':'))
+
 	def savePath(self, pp):
 		with open("/tmp/cmdDevTool.path", "wb") as f:
 			f.write(os.path.expanduser(pp).encode())
@@ -107,6 +123,9 @@ class MyProgram(Program):
 				return pp
 
 		raise ErrFailure("No that target[%s]" % target)
+
+	def findItemByPathSafe(self, pp):
+		return next((x for x in g.lstPath if x["path"] == pp), None)
 
 	# path list that includes sub string
 	def findItems(self, sub):
@@ -551,7 +570,15 @@ class mDlgMainDc(ur.cDialog):
 			return mstd, mfocus, x[0], x[1]
 
 		itemList = list(map(gen, itemList))
-		self.headerText.set_text("%s - %s(%d)" % (self.title, pp, len(itemList)))
+		status = ""
+		item = g.findItemByPathSafe(pp)
+		if item is not None:
+			status = "*"
+			if "repo" in item and item["repo"]:
+				status += "+"
+			status = "(%s)" % status
+
+		self.headerText.set_text("%s - %s%s - %d" % (self.title, pp, status, len(itemList)))
 		refreshBtnListMarkupTuple(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
 		#del self.widgetFileList.body[:]
 		#self.widgetFileList.itemCount = len(lst2)
@@ -584,6 +611,44 @@ class mDlgMainDc(ur.cDialog):
 			self.changePath(self.getFocusPath())
 
 		elif ur.filterKey(keys, "ctrl ^"):
+			ss = self.edInput.get_edit_text()
+			if ss == "reg":
+				self.edInput.set_edit_text("")
+
+				pp = os.getcwd()
+				item = g.findItemByPathSafe(pp)
+				if item is not None:
+					# already registered
+					ur.popupMsg("Regiter the folder", "The path is already registerted\n%s" % pp, 60)
+					return
+
+				# add
+				name = os.path.basename(pp)
+				g.lstPath.append(dict(name=name, path=pp, repo=False))
+				g.configSave()
+				self.fileRefresh()
+				ur.popupMsg("Regiter the folder", "The path is registerted successfully\n%s" % pp, 60)
+				return
+
+			elif ss == "set repo":
+				self.edInput.set_edit_text("")
+
+				pp = os.getcwd()
+				item = g.findItemByPathSafe(pp)
+				if item is None:
+					# no item
+					ur.popupMsg("Set repo status", "The path is no registered\n%s" % pp, 60)
+					return
+
+				# set repo
+				item["repo"] = not item["repo"] if "repo" in item else True
+
+				g.configSave()
+				self.fileRefresh()
+				ur.popupMsg("Set repo status", "The path is set as %s\n%s" % ("Repo" if item["repo"] else "Not Repo", pp), 60)
+				return
+
+
 			item = self.widgetCmdList.focus
 			pp = item.base_widget.get_label()
 			self.changePath(pp)
@@ -1162,7 +1227,7 @@ class Gr(object):
 		self.repoList = [dict(name=["test"], path="")]
 		
 	def init(self):
-		self.repoList = [repo for repo in g.lstPath if "repo" in repo and repo["repo"] != 0]
+		self.repoList = [repo for repo in g.lstPath if "repo" in repo and repo["repo"]]
 		self.isInit = True
 		
 	def repoAllName(self):
