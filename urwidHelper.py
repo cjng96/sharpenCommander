@@ -185,7 +185,6 @@ class cDialog(object):
 	def inputFilter(self, keys, raw):
 		return keys
 
-
 #def excludeKey(keys, target):
 #	return [c for c in keys if c != target]
 

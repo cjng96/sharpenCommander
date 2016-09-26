@@ -733,7 +733,7 @@ class mDlgMainDc(ur.cDialog):
 
 	def unhandled(self, key):
 
-		if key == 'f4':
+		if key == 'f4' or key == "q":
 			g.savePath(os.getcwd())
 			raise urwid.ExitMainLoop()
 
@@ -806,6 +806,7 @@ class mDlgFolderList(ur.cDialog):
 	def __init__(self, onExit):
 		super().__init__()
 
+		self.onExit = onExit
 		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
 		#self.widgetFileList.setFocusCb(lambda newFocus: self.onFileFocusChanged(newFocus))
 		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
@@ -822,9 +823,38 @@ class mDlgFolderList(ur.cDialog):
 		#self.content = ""
 		#self.selectFileName = ""
 
+		self.refreshFile()
 
 	def init(self):
 		pass
+
+	def refreshFile(self):
+
+		def getStatus(item):
+			if item["repo"]:
+				return "(+)"
+			else:
+				return ""
+
+		itemList = [ (os.path.basename(x["path"]) + getStatus(x), x) for x in g.lstPath ]
+
+		def gen(x):
+			mstd = "greenfg" if "repo" in x[1] and x[1]["repo"] else "std"
+			mfocus = mstd + "_f"
+			return mstd, mfocus, x[0], x[1]
+
+		# status
+		itemList = list(map(gen, itemList))
+		#self.headerText.set_text("%s - %s%s - %d" % (self.title, pp, status, len(itemList)))
+		refreshBtnListMarkupTuple(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
+		#del self.widgetFileList.body[:]
+		#self.widgetFileList.itemCount = len(lst2)
+		#self.widgetFileList.body += ur.makeBtnListTerminal( , None)
+
+
+	def unhandled(self, key):
+		if key == 'f4' or key == "q":
+			self.onExit()
 
 class mDlgMainGitStatus(ur.cDialog):
 	def __init__(self):
@@ -856,8 +886,6 @@ class mDlgMainGitStatus(ur.cDialog):
 			return False
 
 		return True
-
-
 
 	def onFileSelected(self, btn):
 		# why btn.get_label() is impossible?
