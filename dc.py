@@ -518,6 +518,8 @@ class mDlgMainDc(ur.cDialog):
 		self.edInput = ur.genEdit("$ ", "", lambda edit,text: self.onInputChanged(edit, text))
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText, footer=self.edInput)
 
+		self.cmd = ""
+
 	def init(self):
 		self.fileRefresh()
 		return True
@@ -591,7 +593,6 @@ class mDlgMainDc(ur.cDialog):
 
 		self.cmdShow(lst)
 
-
 	def onFileSelected(self, btn):
 		pass
 
@@ -600,53 +601,86 @@ class mDlgMainDc(ur.cDialog):
 			return False
 
 		os.chdir(pp)
+
+		# filter상태도 클리어하는게 맞나?
+		self.inputSet("")
 		self.edInput.set_edit_text("")
 		self.fileRefresh()
+
+	def inputSet(self, status):
+		"""
+
+		:param status: filter,
+		:return:
+		"""
+		self.cmd = status
+		if status == "":
+			self.mainWidget.set_focus("body")
+		else:
+			self.mainWidget.set_focus("footer")
+
+		self.edInput.set_edit_text("")
+		self.edInput.set_caption("%s$ " % self.cmd)
+
 
 	def inputFilter(self, keys, raw):
 		if g.loop.widget != g.dialog.mainWidget:
 			return keys
 
 		if ur.filterKey(keys, "enter"):
-			self.changePath(self.getFocusPath())
+			if self.mainWidget.get_focus() == "body":
+				self.changePath(self.getFocusPath())
+			else:
+				if self.cmd == "filter":
+					self.mainWidget.set_focus("body")
 
 		elif ur.filterKey(keys, "ctrl ^"):
-			ss = self.edInput.get_edit_text()
-			if ss == "reg":
-				self.edInput.set_edit_text("")
-
-				pp = os.getcwd()
-				item = g.findItemByPathSafe(pp)
-				if item is not None:
-					# already registered
-					ur.popupMsg("Regiter the folder", "The path is already registerted\n%s" % pp, 60)
+			if self.mainWidget.get_focus() == "body":
+				pass
+			elif self.mainWidget.get_focus() == "footer":
+				if self.cmd == "filter":
+					# find cmd
+					ss = self.edInput.get_edit_text()
+					self.inputSet("")
+					self.doFind(ss)
 					return
+				elif self.cmd == "cmd":
+					ss = self.edInput.get_edit_text()
+					if ss == "reg":
+						self.edInput.set_edit_text("")
 
-				# add
-				name = os.path.basename(pp)
-				g.lstPath.append(dict(name=name, path=pp, repo=False))
-				g.configSave()
-				self.fileRefresh()
-				ur.popupMsg("Regiter the folder", "The path is registerted successfully\n%s" % pp, 60)
-				return
+						pp = os.getcwd()
+						item = g.findItemByPathSafe(pp)
+						if item is not None:
+							# already registered
+							ur.popupMsg("Regiter the folder", "The path is already registerted\n%s" % pp, 60)
+							return
 
-			elif ss == "set repo":
-				self.edInput.set_edit_text("")
+						# add
+						name = os.path.basename(pp)
+						g.lstPath.append(dict(name=name, path=pp, repo=False))
+						g.configSave()
+						self.fileRefresh()
+						ur.popupMsg("Regiter the folder", "The path is registerted successfully\n%s" % pp, 60)
+						return
 
-				pp = os.getcwd()
-				item = g.findItemByPathSafe(pp)
-				if item is None:
-					# no item
-					ur.popupMsg("Set repo status", "The path is no registered\n%s" % pp, 60)
-					return
+					elif ss == "set repo":
+						self.edInput.set_edit_text("")
 
-				# set repo
-				item["repo"] = not item["repo"] if "repo" in item else True
+						pp = os.getcwd()
+						item = g.findItemByPathSafe(pp)
+						if item is None:
+							# no item
+							ur.popupMsg("Set repo status", "The path is no registered\n%s" % pp, 60)
+							return
 
-				g.configSave()
-				self.fileRefresh()
-				ur.popupMsg("Set repo status", "The path is set as %s\n%s" % ("Repo" if item["repo"] else "Not Repo", pp), 60)
-				return
+						# set repo
+						item["repo"] = not item["repo"] if "repo" in item else True
+
+						g.configSave()
+						self.fileRefresh()
+						ur.popupMsg("Set repo status", "The path is set as %s\n%s" % ("Repo" if item["repo"] else "Not Repo", pp), 60)
+						return
 
 
 			item = self.widgetCmdList.focus
@@ -680,13 +714,16 @@ class mDlgMainDc(ur.cDialog):
 		if key == 'f4':
 			g.savePath(os.getcwd())
 			raise urwid.ExitMainLoop()
-		elif key == "meta left":
-			pp = os.getcwd()
-			pp = os.path.dirname(pp)
-			os.chdir(pp)
-			self.fileRefresh()
 
-		elif key == "alt e":
+		elif key == "f":  # filter
+			self.inputSet("filter")
+			return
+
+		elif key == "/":  # cmd
+			self.inputSet("cmd")
+			return
+
+		elif key == "e":
 			pp = self.getFocusPath()
 
 			g.loop.stop()
@@ -697,13 +734,14 @@ class mDlgMainDc(ur.cDialog):
 		#elif key == "ctrl h":
 		#	ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 
-		elif key == "meta j":   # we can't use ctrl+j since it's terminal key for enter replacement
+		elif key == "j":   # we can't use ctrl+j since it's terminal key for enter replacement
 			self.widgetFileList.focusNext()
-		elif key == "meta k":
+		elif key == "k":
 			self.widgetFileList.focusPrevious()
-		elif key == "meta u":
+		elif key == "u" or key == ".":
 			self.changePath("..")
-		elif key == "meta h":   # enter
+
+		elif key == "h":   # enter
 			self.changePath(self.getFocusPath())
 
 		elif key == "up":
@@ -711,7 +749,9 @@ class mDlgMainDc(ur.cDialog):
 		elif key == "down":
 			self.mainWidget.set_focus("body")
 		elif key == "esc":
-			self.edInput.set_edit_text("")
+			self.inputSet("")
+
+		'''
 		elif type(key) == tuple:    # mouse
 			pass
 		else:
@@ -720,6 +760,7 @@ class mDlgMainDc(ur.cDialog):
 			if len(key) == 1:
 				#self.edInput.set_edit_text(self.edInput.get_edit_text()+key)
 				self.edInput.insert_text(key)
+		'''
 
 class mDlgMainGitStatus(ur.cDialog):
 	def __init__(self):
