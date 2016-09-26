@@ -28,6 +28,7 @@ import urwidHelper as ur
 
 
 
+
 '''
 dc - devCmd
 
@@ -74,6 +75,9 @@ class MyProgram(Program):
 		self.configPath = ""    # ~/.devcmd/path.py
 		self.isPrintSystem = False
 
+		# main dialog
+		self.dialog = None
+		self.loop = None
 
 	def init(self):
 		pp = os.path.expanduser("~/.devcmd")
@@ -230,6 +234,10 @@ class MyProgram(Program):
 					break
 				elif hr == 'n' or hr == '':
 					break
+
+	def doSetMain(self, dlg):
+		self.dialog = dlg
+		g.loop.widget = dlg.mainWidget
 
 """
 itemList = list of (terminal, attr)
@@ -639,6 +647,14 @@ class mDlgMainDc(ur.cDialog):
 			else:
 				if self.cmd == "filter":
 					self.mainWidget.set_focus("body")
+				elif self.cmd == "cmd":
+					ss = self.edInput.get_edit_text()
+					if ss == "list":
+						self.doFolderList()
+					else:
+						ur.popupMsg("Command", "No valid cmd\n -- %s" % ss)
+
+					self.inputSet("")
 
 		elif ur.filterKey(keys, "ctrl ^"):
 			if self.mainWidget.get_focus() == "body":
@@ -767,6 +783,48 @@ class mDlgMainDc(ur.cDialog):
 				#self.edInput.set_edit_text(self.edInput.get_edit_text()+key)
 				self.edInput.insert_text(key)
 		'''
+
+
+	def doFolderList(self):
+		def onExit():
+			g.doSetMain(self)
+			'''
+			if not self.refreshFileList():
+				g.loop.stop()
+				print("No modified or untracked files")
+				sys.exit(0)
+			'''
+
+		dlg = mDlgFolderList(onExit)
+		g.doSetMain(dlg)
+
+	def doFind(self):
+		pass
+
+
+class mDlgFolderList(ur.cDialog):
+	def __init__(self, onExit):
+		super().__init__()
+
+		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
+		#self.widgetFileList.setFocusCb(lambda newFocus: self.onFileFocusChanged(newFocus))
+		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
+		#self.widgetContent.isViewContent = True
+
+		self.header = ">> dc V%s - folder list" % g.version
+		self.headerText = urwid.Text(self.header)
+
+		self.widgetFrame = urwid.Pile(
+			[(15, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
+		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
+
+		#self.cbFileSelect = lambda btn: self.onFileSelected(btn)
+		#self.content = ""
+		#self.selectFileName = ""
+
+
+	def init(self):
+		pass
 
 class mDlgMainGitStatus(ur.cDialog):
 	def __init__(self):
@@ -965,8 +1023,7 @@ class mDlgMainGitStatus(ur.cDialog):
 
 		elif key == "C":
 			def onExit():
-				g.dialog = self
-				g.loop.widget = self.mainWidget
+				g.doSetMain(self)
 				if not self.refreshFileList():
 					g.loop.stop()
 					print("No modified or untracked files")
@@ -979,9 +1036,8 @@ class mDlgMainGitStatus(ur.cDialog):
 				return
 				
 			dlg = mGitCommitDialog(onExit)
-			g.dialog = dlg
-			g.loop.widget = dlg.mainWidget
-			
+			g.doSetMain(dlg)
+
 		elif key == "h":
 			ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 
@@ -1237,7 +1293,7 @@ def uiMain(dlgClass, doSubMake=None):
 		return
 
 	g.dialog = dlg
-	g.loop = urwid.MainLoop(dlg.mainWidget, g.palette, urwid.raw_display.Screen(),
+	g.loop = urwid.MainLoop(dlg.mainWidget, ur.palette, urwid.raw_display.Screen(),
 							unhandled_input=urwidUnhandled, input_filter=urwidInputFilter)
 
 	if doSubMake is not None:
@@ -1483,7 +1539,6 @@ def removeEmptyArgv():
 		if data != "":
 			sys.argv = sys.argv[:idx+1]
 			break
-
 
 def run():
 	#winTest()

@@ -20,21 +20,26 @@ class ErrFailure(Err):
 		super().__init__(msg)
 
 
+g_app = None
 
 #g.logPath = programPath("dc.log")
 class GlobalBase(object):
 	def __init__(self):
-		self.app = None
+		pass
 
 	def __getattr__(self, name):
-		return getattr(self.app, name)
+		return getattr(g_app, name)
+
+	def __setattr__(self, name, val):
+		setattr(g_app, name, val)
 
 
 class Program(object):
 	def __init__(self, verStr, logPath):
 		self.logPath = logPath
 		self.version = verStr
-		g.app = self
+		global g_app
+		g_app = self
 
 	def log(self, lv, msg):
 		timeStr = datetime.datetime.now().strftime("%m%d %H%M%S")

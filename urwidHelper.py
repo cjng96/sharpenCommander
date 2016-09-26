@@ -9,11 +9,11 @@ from urwid.signals import connect_signal
 
 from globalBase import *
 
-g.dialog = None
-g.loop = None       # urwid
+#g.dialog = None
+#g.loop = None       # urwid
 
 # (name, fg, bg, mono, fgHigh, bgHigh)
-g.palette = [
+palette = [
 	('std', 'light gray', 'black'),
 	('std_f', 'black', 'dark cyan'),
 	('reset', 'std'),
