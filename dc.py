@@ -518,27 +518,36 @@ class mDlgMainDc(ur.cDialog):
 		# content
 		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
 		self.widgetCmdList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
-		self.widgetContent = urwid.Pile([urwid.AttrMap(self.widgetFileList, 'std'), ('pack', urwid.Divider('-')), (8, self.widgetCmdList)])
+		self.widgetContent = urwid.Pile([self.widgetFileList, ('pack', urwid.Divider('-')), (8, self.widgetCmdList)])
 		self.widgetContent.isShow = True
 
 		# extra
-		self.widgetExtraList = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
+		self.widgetWorkList = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Workspace >"])))
+		self.widgetTempList = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Extra >"])))
+		self.widgetExtraList = urwid.Pile([self.widgetWorkList, self.widgetTempList])
 
 		# main frame + input
 		self.title = ">> dc V%s" % g.version
 		self.headerText = urwid.Text(self.title)
-		self.widgetFrame = urwid.Columns([(120, urwid.AttrMap(self.widgetContent, 'std')), ('pack', urwid.Divider('-')), self.widgetExtraList])
+		self.widgetFrame = urwid.Columns([(100, self.widgetContent), (20, self.widgetExtraList)])
 		self.edInput = ur.genEdit("$ ", "", lambda edit,text: self.onInputChanged(edit, text))
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText, footer=self.edInput)
 
 		self.cmd = ""
 
+		# work space
+		pp = os.getcwd()
+		self.workList = [pp]
+		self.workPt = 0
+
+
 	def init(self):
-		self.extraShow([])
+		self.cmdShow([])  # hide extra panel
 		self.fileRefresh()
+		self.workRefresh()
 		return True
 
-	def extraShow(self, lstItem):
+	def cmdShow(self, lstItem):
 		isShow = len(lstItem) > 0
 		if isShow != self.widgetContent.isShow:
 			self.widgetContent.isShow = isShow
@@ -637,6 +646,9 @@ class mDlgMainDc(ur.cDialog):
 			return False
 
 		os.chdir(pp)
+
+		self.workList[self.workPt] = pp
+		self.workRefresh()
 
 		# filter상태도 클리어하는게 맞나?
 		self.inputSet("")
@@ -764,6 +776,14 @@ class mDlgMainDc(ur.cDialog):
 		fname = btn.base_widget.get_label()
 		return os.path.join(pp, fname)
 
+	def workNew(self):
+		pp = os.getcwd()
+		self.workList.append(pp)
+		self.workPt += 1
+
+	def workRefresh(self):
+		pass
+
 	def unhandled(self, key):
 		if key == 'f4' or key == "q":
 			g.savePath(os.getcwd())
@@ -804,6 +824,9 @@ class mDlgMainDc(ur.cDialog):
 
 		#elif key == "ctrl h":
 		#	ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
+
+		elif key == "insert":
+			self.workNew()
 
 		elif key == "j":   # we can't use ctrl+j since it's terminal key for enter replacement
 			self.widgetFileList.focusNext()
