@@ -746,7 +746,6 @@ class mDlgMainDc(ur.cDialog):
 		return os.path.join(pp, fname)
 
 	def unhandled(self, key):
-
 		if key == 'f4' or key == "q":
 			g.savePath(os.getcwd())
 			raise urwid.ExitMainLoop()
@@ -757,6 +756,18 @@ class mDlgMainDc(ur.cDialog):
 
 		elif key == "/":  # cmd
 			self.inputSet("cmd")
+			return
+
+		elif key == "s": # shell
+			self.inputSet("shell")
+			return
+
+		elif key == "c": # git commit
+			def onExit():
+				g.doSetMain(self)
+
+			dlg = mDlgMainGitStatus(onExit)
+			g.doSetMain(dlg)
 			return
 
 		elif key == "e":
@@ -867,7 +878,7 @@ class mDlgFolderSetting(ur.cDialog):
 
 	def unhandled(self, key):
 		if key == 'f4' or key == "q":
-			self.onExit()
+			self.close()
 		elif key == "r":
 			self.item["repo"] = not self.item["repo"]
 			g.configSave()
@@ -966,7 +977,7 @@ class mDlgFolderList(ur.cDialog):
 
 	def unhandled(self, key):
 		if key == 'f4' or key == "q" or key == "esc":
-			self.onExit()
+			self.close()
 		elif key == "j":  # we can't use ctrl+j since it's terminal key for enter replacement
 			self.widgetFileList.focusNext()
 		elif key == "k":
@@ -984,9 +995,10 @@ class mDlgFolderList(ur.cDialog):
 
 
 class mDlgMainGitStatus(ur.cDialog):
-	def __init__(self):
+	def __init__(self, onExit=None):
 		super().__init__()
 
+		self.onExit = onExit
 		self.selectFileName = ""
 
 		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([("< No files >", None)], None)))
@@ -1104,7 +1116,7 @@ class mDlgMainGitStatus(ur.cDialog):
 
 	def unhandled(self, key):
 		if key == 'f4' or key == "q":
-			raise urwid.ExitMainLoop()
+			self.close()
 		elif key == 'k':
 			self.widgetContent.scrollUp()
 		elif key == 'j':
@@ -1282,7 +1294,7 @@ class mGitCommitDialog(ur.cDialog):
 		
 	def unhandled(self, key):
 		if key == "q" or key == "Q" or key == "f4":
-			self.onExit()
+			self.close()
 		elif key == 'k':
 			self.widgetContent.scrollUp()
 		elif key == 'j':
@@ -1352,7 +1364,7 @@ class mGitCommitDialog(ur.cDialog):
 			def onCommit():
 				tt = self.edInput.get_edit_text()
 				ss = system("git commit -a -m \"%s\"" % tt[:-1])
-				self.onExit()
+				self.close()
 					
 			ur.popupAsk("Git Commit", "Do you want to commit all modification?", onCommit)
 			
@@ -1361,7 +1373,7 @@ class mGitCommitDialog(ur.cDialog):
 			tt = self.edInput.get_edit_text()
 			ss = system("git commit -m \"%s\"" % tt)
 			#print(ss)
-			self.onExit()
+			self.close()
 
 		elif key == "C":
 			def onCommit():
