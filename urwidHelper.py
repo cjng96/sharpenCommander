@@ -341,13 +341,12 @@ def popupMsg(title, ss, width=50):
 
 def popupAsk(title, ss, onOk, onCancel = None):
 	def onClickBtn(btn):
+		g.loop.widget = g.loop.widget.bottom_w
 		if btn == btnYes:
 			onOk()
 		elif btn == btnNo:
 			if onCancel is not None:
 				onCancel()
-
-		g.loop.widget = g.loop.widget.bottom_w
 
 	txtMsg = urwid.Text(ss)
 	btnYes = urwid.Button("Yes", onClickBtn)
