@@ -9,6 +9,8 @@ import select
 import datetime
 import re
 import stat
+import json
+
 
 from enum import Enum
 
@@ -66,8 +68,6 @@ class Ansi:
 	blue = "\033[0;34m"
 	clear = "\033[0m"
 
-import json
-
 class MyProgram(Program):
 	def __init__(self):
 		super().__init__("1.1.0", programPath("dc.log"))
@@ -98,16 +98,20 @@ class MyProgram(Program):
 
 		#sys.path.append(pp)
 		#m = __import__("path")
-		#self.lstPath = [ item for item in m.pathList if len(item["name"]) > 0 ]
+		#self.lstPath = [ item for item in m.pathList if len(item["names"]) > 0 ]
 		with open(self.configPath, "r") as fp:
 			obj = json.load(fp)
 			self.lstPath = obj["path"]
 
 		for item in self.lstPath:
 			item["path"] = os.path.expanduser(item["path"])
-			name = item["name"]
+			name = item["names"]
 			if type(name) is str:
-				item["name"] = [name]
+				item["names"] = [name]
+
+			if "groups" not in item:
+				item["groups"] = []
+
 
 	def configSave(self):
 		obj = dict()
@@ -121,7 +125,7 @@ class MyProgram(Program):
 
 	def findItem(self, target):
 		for pp in self.lstPath:
-			names = pp["name"]
+			names = pp["names"]
 
 			if target.lower() in map(str.lower, names):
 				return pp
@@ -136,7 +140,7 @@ class MyProgram(Program):
 		sub = sub.lower()
 		lst = []
 		for pp in self.lstPath:
-			names = pp["name"]
+			names = pp["names"]
 			names2 = map(str.lower, names)
 
 			hasList = list(filter(lambda s: sub in s, names2))
@@ -238,6 +242,7 @@ class MyProgram(Program):
 	def doSetMain(self, dlg):
 		self.dialog = dlg
 		g.loop.widget = dlg.mainWidget
+		dlg.init()
 
 """
 itemList = list of (terminal, attr)
@@ -663,7 +668,7 @@ class mDlgMainDc(ur.cDialog):
 
 						# add
 						name = os.path.basename(pp)
-						g.lstPath.append(dict(name=[name], path=pp, repo=False))
+						g.lstPath.append(dict(names=[name], path=pp, groups=[], repo=False))
 						g.configSave()
 						self.fileRefresh()
 						ur.popupMsg("Regiter the folder", "The path is registerted successfully\n%s" % pp, 60)
@@ -794,15 +799,68 @@ class mDlgMainDc(ur.cDialog):
 	def doFind(self):
 		pass
 
+# 두칸씩 작은 오버레이로 띄우자
 class mDlgFolderSetting(ur.cDialog):
-	def __init__(self, onExit):
+	def __init__(self, onExit, item):
 		super().__init__()
+		self.onExit = onExit
+		self.item = item
+
+		self.header = ">> dc V%s - folder setting" % g.version
+		self.headerText = urwid.Text(self.header)
+
+		self.lbPath = urwid.Text("Path: %s" % item["path"])
+
+		self.lbNames = urwid.Text("Names...")
+		self.lbGroups = urwid.Text("Groups...")
+		self.widgetListName = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
+		self.widgetListGroup = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal(["< No group >"], None)))
+
+		#urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
+		self.lbHelp = urwid.Text("Insert: new name/group, Delete: remove name/group, R: toggle repo status")
+
+		self.widgetFrame = urwid.LineBox(urwid.Pile(
+			[("pack", self.headerText),
+			("pack", self.lbPath),
+            ("pack", self.lbNames), (8, self.widgetListName),
+			('pack', urwid.Divider('-')),
+            ("pack", self.lbGroups), (8, self.widgetListGroup),
+			("pack", self.lbHelp)]))
+
+		self.mainWidget = urwid.Overlay(urwid.Filler(self.widgetFrame), g.loop.widget, 'center', 80, 'middle', 30)
 
 	def init(self):
+		self.showInfo()
 		pass
 
-	def refreshFile(self):
-		pass
+	def showInfo(self):
+		names = self.item["names"]
+		del self.widgetListName.body[:]
+		self.widgetListName.body += ur.makeBtnListTerminal(names, None)
+
+		groups = self.item["groups"]
+		if len(groups) > 0:
+			del self.widgetListGroup.body[:]
+			self.widgetListGroup.body += ur.makeBtnListTerminal(groups, None)
+
+		#self.widgetFrame.set_focus(self.widgetContent)
+
+	def unhandled(self, key):
+		if key == 'f4' or key == "q":
+			self.onExit()
+		elif key == "insert":
+			focusWidget = self.widgetFrame.original_widget.get_focus()
+			if focusWidget == self.widgetListName:
+				print("new name")
+			elif focusWidget == self.widgetListGroup:
+				print("new group")
+
+		elif key == "delete":
+			focusWidget = self.widgetFrame.original_widget.get_focus()
+			if focusWidget == self.widgetListName:
+				print("del name")
+			elif focusWidget == self.widgetListGroup:
+				print("del group")
 
 
 class mDlgFolderList(ur.cDialog):
@@ -818,18 +876,17 @@ class mDlgFolderList(ur.cDialog):
 		self.header = ">> dc V%s - folder list" % g.version
 		self.headerText = urwid.Text(self.header)
 
-		self.widgetFrame = urwid.Pile(
-			[(15, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
+		#self.widgetFrame = urwid.Pile(
+		#	[(15, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
+		self.widgetFrame = urwid.AttrMap(self.widgetFileList, 'std')
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
 
 		#self.cbFileSelect = lambda btn: self.onFileSelected(btn)
 		#self.content = ""
 		#self.selectFileName = ""
 
-		self.refreshFile()
-
 	def init(self):
-		pass
+		self.refreshFile()
 
 	def refreshFile(self):
 		def getStatus(item):
@@ -838,7 +895,7 @@ class mDlgFolderList(ur.cDialog):
 				ss = "(+)"
 
 			ss += " - "
-			for n in item["name"]:
+			for n in item["names"]:
 				ss += n + ", "
 			ss = ss[:-2]
 			return ss
@@ -858,10 +915,24 @@ class mDlgFolderList(ur.cDialog):
 		#self.widgetFileList.itemCount = len(lst2)
 		#self.widgetFileList.body += ur.makeBtnListTerminal( , None)
 
-
 	def unhandled(self, key):
 		if key == 'f4' or key == "q":
 			self.onExit()
+		elif key == "j":  # we can't use ctrl+j since it's terminal key for enter replacement
+			self.widgetFileList.focusNext()
+		elif key == "k":
+			self.widgetFileList.focusPrevious()
+		elif key == "e":
+			item = self.widgetFileList.focus
+			self.doEdit(item.base_widget.attr)
+
+	def doEdit(self, item):
+		def onExit():
+			g.doSetMain(self)
+
+		dlg = mDlgFolderSetting(onExit, item)
+		g.doSetMain(dlg)
+
 
 class mDlgMainGitStatus(ur.cDialog):
 	def __init__(self):
@@ -1369,7 +1440,7 @@ class Gr(object):
 		self.isInit = True
 		
 	def repoAllName(self):
-		return [repo["name"][0] for repo in self.repoList]
+		return [repo["names"][0] for repo in self.repoList]
 		
 	def action(self, action):
 		if not self.isInit:
@@ -1383,7 +1454,7 @@ class Gr(object):
 				for repo in gr.repoList:
 					repoPath = os.path.realpath(repo["path"]) 
 					if cur.startswith(repoPath+"/"):
-						second = repo["name"][0]
+						second = repo["names"][0]
 						break
 				if second == ".":
 					self.log(0, "Current path[%s] is not git repo." % cur)
@@ -1410,7 +1481,7 @@ class Gr(object):
 
 	def getRepo(self, name):
 		for repo in self.repoList:
-			if name in repo["name"]:
+			if name in repo["names"]:
 				return repo
 				
 		raise Exception("Can't find repo[name:%s]" % name)
