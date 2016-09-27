@@ -810,9 +810,10 @@ class mDlgFolderSetting(ur.cDialog):
 		self.headerText = urwid.Text(self.header)
 
 		self.lbPath = urwid.Text("Path: %s" % item["path"])
+		self.lbRepo = urwid.Text("Repo: ..")
 
-		self.lbNames = urwid.Text("Names...")
-		self.lbGroups = urwid.Text("Groups...")
+		self.lbNames = urwid.Text("Names -----------")
+		self.lbGroups = urwid.Text("Groups -----------")
 		self.widgetListName = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
 		self.widgetListGroup = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal(["< No group >"], None)))
 
@@ -822,6 +823,7 @@ class mDlgFolderSetting(ur.cDialog):
 		self.widgetFrame = urwid.LineBox(urwid.Pile(
 			[("pack", self.headerText),
 			("pack", self.lbPath),
+			("pack", self.lbRepo),
             ("pack", self.lbNames), (8, self.widgetListName),
 			('pack', urwid.Divider('-')),
             ("pack", self.lbGroups), (8, self.widgetListGroup),
@@ -834,6 +836,8 @@ class mDlgFolderSetting(ur.cDialog):
 		pass
 
 	def showInfo(self):
+		self.lbRepo.set_text("Repo: %s" % ("O" if self.item["repo"] else "X"))
+
 		names = self.item["names"]
 		del self.widgetListName.body[:]
 		self.widgetListName.body += ur.makeBtnListTerminal(names, None)
@@ -848,6 +852,11 @@ class mDlgFolderSetting(ur.cDialog):
 	def unhandled(self, key):
 		if key == 'f4' or key == "q":
 			self.onExit()
+		elif key == "r":
+			self.item["repo"] = not self.item["repo"]
+			g.configSave()
+			self.showInfo()
+
 		elif key == "insert":
 			focusWidget = self.widgetFrame.original_widget.get_focus()
 			if focusWidget == self.widgetListName:
