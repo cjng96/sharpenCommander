@@ -673,6 +673,22 @@ class mDlgMainDc(ur.cDialog):
 						self.fileRefresh()
 						ur.popupMsg("Regiter the folder", "The path is registerted successfully\n%s" % pp, 60)
 						return
+					elif ss == "del":
+						pp = os.getcwd()
+						item = g.findItemByPathSafe(pp)
+						if item is None:
+							ur.popupMsg("Remove the folder", "The path is not registered\n%s" % pp, 60)
+							return
+
+						def onOk():
+							g.lstPath.remove(item)
+							g.configSave()
+							self.fileRefresh()
+							ur.popupMsg("Remove the folder", "The path is registerted successfully\n%s" % pp, 60)
+
+						ur.popupAsk("Remove the folder", "Do you want to delete that folder?\n%s" % pp, onOk)
+						return
+
 					elif ss == "set repo":
 						pp = os.getcwd()
 						item = g.findItemByPathSafe(pp)
@@ -949,7 +965,7 @@ class mDlgFolderList(ur.cDialog):
 		#self.widgetFileList.body += ur.makeBtnListTerminal( , None)
 
 	def unhandled(self, key):
-		if key == 'f4' or key == "q":
+		if key == 'f4' or key == "q" or key == "esc":
 			self.onExit()
 		elif key == "j":  # we can't use ctrl+j since it's terminal key for enter replacement
 			self.widgetFileList.focusNext()
