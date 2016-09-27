@@ -1193,7 +1193,6 @@ class mDlgMainGitStatus(ur.cDialog):
 					g.loop.stop()
 					print("No modified or untracked files")
 					sys.exit(0)
-					return
 
 				g.doSetMain(self)
 
