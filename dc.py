@@ -1189,12 +1189,14 @@ class mDlgMainGitStatus(ur.cDialog):
 
 		elif key == "C":
 			def onExit():
-				g.doSetMain(self)
 				if not self.refreshFileList():
 					g.loop.stop()
 					print("No modified or untracked files")
 					sys.exit(0)
-					
+					return
+
+				g.doSetMain(self)
+
 			# check staged data 
 			n = self.gitGetStagedCount()
 			if n == 0:
