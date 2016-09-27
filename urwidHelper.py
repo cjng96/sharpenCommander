@@ -174,6 +174,7 @@ class mListBox(urwid.ListBox):
 class cDialog(object):
 	def __init__(self):
 		self.mainWidget = None
+		self.onExit = None
 
 	def init(self):
 		# something to do
@@ -184,6 +185,12 @@ class cDialog(object):
 
 	def inputFilter(self, keys, raw):
 		return keys
+
+	def close(self):
+		if getattr(self, "onExit") and self.onExit is not None:
+			self.onExit()
+		else:
+			raise urwid.ExitMainLoop
 
 #def excludeKey(keys, target):
 #	return [c for c in keys if c != target]
@@ -281,6 +288,14 @@ def makeBtnListTerminal(lstTerminal, onClick, isFirstFocus=True, doApply=None):
 	lstTerminal = list of (termianlText, attr)
 	"""
 	outList = []
+
+	if len(lstTerminal) == 0:
+		return outList
+
+	# support string only list
+	if not isinstance(lstTerminal[0], tuple):
+		lstTerminal = [ (x, None) for x in lstTerminal ]
+
 	for terminalTxt, attr in lstTerminal:
 		if terminalTxt.strip() == "":
 			continue
@@ -333,13 +348,12 @@ def popupMsg(title, ss, width=50):
 
 def popupAsk(title, ss, onOk, onCancel = None):
 	def onClickBtn(btn):
+		g.loop.widget = g.loop.widget.bottom_w
 		if btn == btnYes:
 			onOk()
 		elif btn == btnNo:
 			if onCancel is not None:
 				onCancel()
-
-		g.loop.widget = g.loop.widget.bottom_w
 
 	txtMsg = urwid.Text(ss)
 	btnYes = urwid.Button("Yes", onClickBtn)
@@ -366,7 +380,7 @@ def popupAsk3(title, ss, btnName1, btnName2, btnName3, onBtn1, onBtn2, onBtn3 = 
 	popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', urwid.Columns([btnB1, btnB2, btnB3]))]), title)
 	g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 40, 'middle', 5)
 
-def popupInput(title, ss, onOk, onCancel = None):
+def popupInput(title, ss, onOk, onCancel = None, width=40):
 	def onClickBtn(btn):
 		if btn == btnOk:
 			onOk(edInput.edit_text)
@@ -380,4 +394,4 @@ def popupInput(title, ss, onOk, onCancel = None):
 	btnOk = urwid.Button("OK", onClickBtn)
 	btnCancel = urwid.Button("Cancel", onClickBtn)
 	popup = urwid.LineBox(urwid.Pile([('pack', edInput), ('pack', urwid.Columns([btnOk, btnCancel]))]), title)
-	g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 40, 'middle', 5)
+	g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', width, 'middle', 5)
