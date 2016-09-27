@@ -174,6 +174,7 @@ class mListBox(urwid.ListBox):
 class cDialog(object):
 	def __init__(self):
 		self.mainWidget = None
+		self.onExit = None
 
 	def init(self):
 		# something to do
@@ -184,6 +185,12 @@ class cDialog(object):
 
 	def inputFilter(self, keys, raw):
 		return keys
+
+	def close(self):
+		if getattr(self, "onExit") and self.onExit is not None:
+			self.onExit()
+		else:
+			raise urwid.ExitMainLoop
 
 #def excludeKey(keys, target):
 #	return [c for c in keys if c != target]
