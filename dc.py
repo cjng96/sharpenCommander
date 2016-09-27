@@ -145,7 +145,7 @@ class MyProgram(Program):
 
 			hasList = list(filter(lambda s: sub in s, names2))
 			if len(hasList) > 0:
-				lst.append(pp["path"])
+				lst.append(pp)
 
 		return lst
 
@@ -534,10 +534,11 @@ class mDlgMainDc(ur.cDialog):
 		self.cmd = ""
 
 	def init(self):
+		self.extraShow([])
 		self.fileRefresh()
 		return True
 
-	def cmdShow(self, lstItem):
+	def extraShow(self, lstItem):
 		isShow = len(lstItem) > 0
 		if isShow != self.widgetContent.isShow:
 			self.widgetContent.isShow = isShow
@@ -557,20 +558,33 @@ class mDlgMainDc(ur.cDialog):
 		lstItem = [ ("std", "std_f", x, None) for x in lstItem ]
 		refreshBtnListMarkupTuple(lstItem, self.widgetCmdList, lambda btn: self.onFileSelected(btn))
 
-
 	def onInputChanged(self, edit, text):
-		if self.cmd == "find":
+		if self.cmd == "find" or self.cmd == "goto":
 			self.fileRefresh(text)
 
-	def fileRefresh(self, newText = None):
-		pp = os.getcwd()
+	def gotoRefresh(self, newText):
+		filterStr = self.edInput.get_edit_text() if newText is None else newText
+		if filterStr == "":
+			lst = [ ("greenfg", "greenfg_f", x["path"], x) for x in g.lstPath ]
+		else:
+			lst = [ ("greenfg", "greenfg_f", x["path"], x) for x in g.findItems(filterStr) ]
 
-		# filter
+		self.headerText.set_text("%s - %d" % (self.title, len(lst)))
+		refreshBtnListMarkupTuple(lst, self.widgetFileList, lambda btn: self.onFileSelected(btn))
+
+	def fileRefresh(self, newText = None):
+		if self.cmd == "goto":
+			self.gotoRefresh(newText)
+			return
+
+		# filtering
 		if self.cmd == "find":
 			filterStr = self.edInput.get_edit_text() if newText is None else newText
 		else:
 			filterStr = ""
 
+		pp = os.getcwd()
+		# TODO: use scandir
 		lst = [os.path.join(pp, x) for x in os.listdir(pp) if filterStr == "" or filterStr in x ]
 
 		# list
@@ -606,11 +620,14 @@ class mDlgMainDc(ur.cDialog):
 		#self.widgetFileList.body += ur.makeBtnListTerminal( , None)
 
 		# extra
+		'''
 		lst = []
 		if filterStr != "":
 			lst += g.findItems(filterStr)
+			lst = [ x["path"] for x in lst ]
 
-		self.cmdShow(lst)
+		self.extraShow(lst)
+		'''
 
 	def onFileSelected(self, btn):
 		pass
@@ -652,6 +669,8 @@ class mDlgMainDc(ur.cDialog):
 			else:
 				if self.cmd == "find":
 					self.mainWidget.set_focus("body")
+				elif self.cmd == "goto":
+					self.changePath(self.getFocusPath())
 				elif self.cmd == "cmd":
 					ss = self.edInput.get_edit_text()
 					self.inputSet("")
@@ -754,6 +773,11 @@ class mDlgMainDc(ur.cDialog):
 			self.inputSet("find")
 			return
 
+		elif key == "g":  # go
+			self.inputSet("goto")
+			self.fileRefresh()
+			return
+
 		elif key == "/":  # cmd
 			self.inputSet("cmd")
 			return
@@ -792,11 +816,18 @@ class mDlgMainDc(ur.cDialog):
 			self.changePath(self.getFocusPath())
 
 		elif key == "up":
-			self.mainWidget.set_focus("body")
+			if self.cmd == "goto":
+				self.widgetFileList.focusPrevious()
+			else:
+				self.mainWidget.set_focus("body")
 		elif key == "down":
-			self.mainWidget.set_focus("body")
+			if self.cmd == "goto":
+				self.widgetFileList.focusNext()
+			else:
+				self.mainWidget.set_focus("body")
 		elif key == "esc":
 			self.inputSet("")
+			self.fileRefresh()
 
 		'''
 		elif type(key) == tuple:    # mouse
