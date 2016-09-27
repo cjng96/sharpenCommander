@@ -1017,8 +1017,6 @@ class mDlgMainGitStatus(ur.cDialog):
 				fileName = fileName[1:-1]  
 			fileList2 += fileType + " " + fileName + "\n"
 		
-		focusIdx = self.widgetFileList.focus_position + focusMove
-
 		itemList = [(x, "s" if "[32m" in x else "") for x in fileList2.split("\n")]
 		refreshBtnListTerminal(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
 
@@ -1026,6 +1024,7 @@ class mDlgMainGitStatus(ur.cDialog):
 		if size <= 0:
 			return False
 
+		focusIdx = self.widgetFileList.focus_position + focusMove
 		if focusIdx >= size:
 			focusIdx = size-1
 		#self.widgetFileList.focus_position = focusIdx
