@@ -554,14 +554,14 @@ class mDlgMainDc(ur.cDialog):
 
 
 	def onInputChanged(self, edit, text):
-		if self.cmd == "filter":
+		if self.cmd == "find":
 			self.fileRefresh(text)
 
 	def fileRefresh(self, newText = None):
 		pp = os.getcwd()
 
 		# filter
-		if self.cmd == "filter":
+		if self.cmd == "find":
 			filterStr = self.edInput.get_edit_text() if newText is None else newText
 		else:
 			filterStr = ""
@@ -645,32 +645,15 @@ class mDlgMainDc(ur.cDialog):
 			if self.mainWidget.get_focus() == "body":
 				self.changePath(self.getFocusPath())
 			else:
-				if self.cmd == "filter":
+				if self.cmd == "find":
 					self.mainWidget.set_focus("body")
 				elif self.cmd == "cmd":
 					ss = self.edInput.get_edit_text()
+					self.inputSet("")
+
 					if ss == "list":
 						self.doFolderList()
-					else:
-						ur.popupMsg("Command", "No valid cmd\n -- %s" % ss)
-
-					self.inputSet("")
-
-		elif ur.filterKey(keys, "ctrl ^"):
-			if self.mainWidget.get_focus() == "body":
-				pass
-			elif self.mainWidget.get_focus() == "footer":
-				if self.cmd == "filter":
-					# find cmd
-					ss = self.edInput.get_edit_text()
-					self.inputSet("")
-					self.doFind(ss)
-					return
-				elif self.cmd == "cmd":
-					ss = self.edInput.get_edit_text()
-					if ss == "reg":
-						self.edInput.set_edit_text("")
-
+					elif ss == "reg":
 						pp = os.getcwd()
 						item = g.findItemByPathSafe(pp)
 						if item is not None:
@@ -680,15 +663,12 @@ class mDlgMainDc(ur.cDialog):
 
 						# add
 						name = os.path.basename(pp)
-						g.lstPath.append(dict(name=name, path=pp, repo=False))
+						g.lstPath.append(dict(name=[name], path=pp, repo=False))
 						g.configSave()
 						self.fileRefresh()
 						ur.popupMsg("Regiter the folder", "The path is registerted successfully\n%s" % pp, 60)
 						return
-
 					elif ss == "set repo":
-						self.edInput.set_edit_text("")
-
 						pp = os.getcwd()
 						item = g.findItemByPathSafe(pp)
 						if item is None:
@@ -703,7 +683,20 @@ class mDlgMainDc(ur.cDialog):
 						self.fileRefresh()
 						ur.popupMsg("Set repo status", "The path is set as %s\n%s" % ("Repo" if item["repo"] else "Not Repo", pp), 60)
 						return
+					else:
+						ur.popupMsg("Command", "No valid cmd\n -- %s" % ss)
 
+
+		elif ur.filterKey(keys, "ctrl ^"):
+			if self.mainWidget.get_focus() == "body":
+				pass
+			elif self.mainWidget.get_focus() == "footer":
+				if self.cmd == "find":
+					# find cmd
+					ss = self.edInput.get_edit_text()
+					self.inputSet("")
+					self.doFind(ss)
+					return
 
 			item = self.widgetCmdList.focus
 			pp = item.base_widget.get_label()
@@ -738,7 +731,7 @@ class mDlgMainDc(ur.cDialog):
 			raise urwid.ExitMainLoop()
 
 		elif key == "f":  # filter
-			self.inputSet("filter")
+			self.inputSet("find")
 			return
 
 		elif key == "/":  # cmd
@@ -801,6 +794,16 @@ class mDlgMainDc(ur.cDialog):
 	def doFind(self):
 		pass
 
+class mDlgFolderSetting(ur.cDialog):
+	def __init__(self, onExit):
+		super().__init__()
+
+	def init(self):
+		pass
+
+	def refreshFile(self):
+		pass
+
 
 class mDlgFolderList(ur.cDialog):
 	def __init__(self, onExit):
@@ -829,12 +832,16 @@ class mDlgFolderList(ur.cDialog):
 		pass
 
 	def refreshFile(self):
-
 		def getStatus(item):
+			ss = ""
 			if item["repo"]:
-				return "(+)"
-			else:
-				return ""
+				ss = "(+)"
+
+			ss += " - "
+			for n in item["name"]:
+				ss += n + ", "
+			ss = ss[:-2]
+			return ss
 
 		itemList = [ (os.path.basename(x["path"]) + getStatus(x), x) for x in g.lstPath ]
 
