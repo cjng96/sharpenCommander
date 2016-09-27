@@ -851,16 +851,40 @@ class mDlgFolderSetting(ur.cDialog):
 		elif key == "insert":
 			focusWidget = self.widgetFrame.original_widget.get_focus()
 			if focusWidget == self.widgetListName:
-				print("new name")
+				def onOk(ss):
+					self.item["names"].append(ss)
+					g.configSave()
+					self.showInfo()
+
+				ur.popupInput("Input new name", "", onOk, width=60)
+
 			elif focusWidget == self.widgetListGroup:
-				print("new group")
+				def onOk(ss):
+					self.item["groups"].append(ss)
+					g.configSave()
+					self.showInfo()
+
+				ur.popupInput("Input new group", "", onOk, width=60)
 
 		elif key == "delete":
 			focusWidget = self.widgetFrame.original_widget.get_focus()
 			if focusWidget == self.widgetListName:
-				print("del name")
+				ss = self.widgetListName.focus.original_widget.get_label()
+				def onOk():
+					self.item["names"].remove(ss)
+					g.configSave()
+					self.showInfo()
+
+				ur.popupAsk("Remove Name", "[%s] will be deleted. Are you sure?" % ss, onOk)
+
 			elif focusWidget == self.widgetListGroup:
-				print("del group")
+				ss = self.widgetListGroup.focus.original_widget.get_label()
+				def onOk():
+					self.item["groups"].remove(ss)
+					g.configSave()
+					self.showInfo()
+
+				ur.popupAsk("Remove Group", "[%s] will be deleted. Are you sure?" % ss, onOk)
 
 
 class mDlgFolderList(ur.cDialog):

@@ -374,7 +374,7 @@ def popupAsk3(title, ss, btnName1, btnName2, btnName3, onBtn1, onBtn2, onBtn3 = 
 	popup = urwid.LineBox(urwid.Pile([('pack', txtMsg), ('pack', urwid.Columns([btnB1, btnB2, btnB3]))]), title)
 	g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', 40, 'middle', 5)
 
-def popupInput(title, ss, onOk, onCancel = None, width = 40):
+def popupInput(title, ss, onOk, onCancel = None, width=40):
 	def onClickBtn(btn):
 		if btn == btnOk:
 			onOk(edInput.edit_text)
@@ -388,4 +388,4 @@ def popupInput(title, ss, onOk, onCancel = None, width = 40):
 	btnOk = urwid.Button("OK", onClickBtn)
 	btnCancel = urwid.Button("Cancel", onClickBtn)
 	popup = urwid.LineBox(urwid.Pile([('pack', edInput), ('pack', urwid.Columns([btnOk, btnCancel]))]), title)
-	g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', widget, 'middle', 5)
+	g.loop.widget = urwid.Overlay(urwid.Filler(popup), g.loop.widget, 'center', width, 'middle', 5)
