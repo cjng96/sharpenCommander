@@ -145,7 +145,7 @@ class MyProgram(Program):
 
 			hasList = list(filter(lambda s: sub in s, names2))
 			if len(hasList) > 0:
-				lst.append(pp["path"])
+				lst.append(pp)
 
 		return lst
 
@@ -518,23 +518,33 @@ class mDlgMainDc(ur.cDialog):
 		# content
 		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
 		self.widgetCmdList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
-		self.widgetContent = urwid.Pile([urwid.AttrMap(self.widgetFileList, 'std'), ('pack', urwid.Divider('-')), (8, self.widgetCmdList)])
+		self.widgetContent = urwid.Pile([self.widgetFileList, ('pack', urwid.Divider('-')), (8, self.widgetCmdList)])
 		self.widgetContent.isShow = True
 
 		# extra
-		self.widgetExtraList = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
+		self.widgetWorkList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal(["< Workspace >"], None)))
+		self.widgetTempList = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Extra >"])))
+		self.widgetExtraList = urwid.Pile([self.widgetWorkList, self.widgetTempList])
 
 		# main frame + input
 		self.title = ">> dc V%s" % g.version
 		self.headerText = urwid.Text(self.title)
-		self.widgetFrame = urwid.Columns([(120, urwid.AttrMap(self.widgetContent, 'std')), ('pack', urwid.Divider('-')), self.widgetExtraList])
+		self.widgetFrame = urwid.Columns([(100, self.widgetContent), (20, self.widgetExtraList)])
 		self.edInput = ur.genEdit("$ ", "", lambda edit,text: self.onInputChanged(edit, text))
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText, footer=self.edInput)
 
 		self.cmd = ""
 
+		# work space
+		pp = os.getcwd()
+		self.workList = [pp]
+		self.workPt = 0
+
+
 	def init(self):
+		self.cmdShow([])  # hide extra panel
 		self.fileRefresh()
+		self.workRefresh()
 		return True
 
 	def cmdShow(self, lstItem):
@@ -557,20 +567,33 @@ class mDlgMainDc(ur.cDialog):
 		lstItem = [ ("std", "std_f", x, None) for x in lstItem ]
 		refreshBtnListMarkupTuple(lstItem, self.widgetCmdList, lambda btn: self.onFileSelected(btn))
 
-
 	def onInputChanged(self, edit, text):
-		if self.cmd == "find":
+		if self.cmd == "find" or self.cmd == "goto":
 			self.fileRefresh(text)
 
-	def fileRefresh(self, newText = None):
-		pp = os.getcwd()
+	def gotoRefresh(self, newText):
+		filterStr = self.edInput.get_edit_text() if newText is None else newText
+		if filterStr == "":
+			lst = [ ("greenfg", "greenfg_f", x["path"], x) for x in g.lstPath ]
+		else:
+			lst = [ ("greenfg", "greenfg_f", x["path"], x) for x in g.findItems(filterStr) ]
 
-		# filter
+		self.headerText.set_text("%s - %d" % (self.title, len(lst)))
+		refreshBtnListMarkupTuple(lst, self.widgetFileList, lambda btn: self.onFileSelected(btn))
+
+	def fileRefresh(self, newText = None):
+		if self.cmd == "goto":
+			self.gotoRefresh(newText)
+			return
+
+		# filtering
 		if self.cmd == "find":
 			filterStr = self.edInput.get_edit_text() if newText is None else newText
 		else:
 			filterStr = ""
 
+		pp = os.getcwd()
+		# TODO: use scandir
 		lst = [os.path.join(pp, x) for x in os.listdir(pp) if filterStr == "" or filterStr in x ]
 
 		# list
@@ -606,11 +629,14 @@ class mDlgMainDc(ur.cDialog):
 		#self.widgetFileList.body += ur.makeBtnListTerminal( , None)
 
 		# extra
+		'''
 		lst = []
 		if filterStr != "":
 			lst += g.findItems(filterStr)
+			lst = [ x["path"] for x in lst ]
 
-		self.cmdShow(lst)
+		self.extraShow(lst)
+		'''
 
 	def onFileSelected(self, btn):
 		pass
@@ -620,6 +646,9 @@ class mDlgMainDc(ur.cDialog):
 			return False
 
 		os.chdir(pp)
+
+		self.workList[self.workPt] = pp
+		self.workRefresh()
 
 		# filter상태도 클리어하는게 맞나?
 		self.inputSet("")
@@ -652,6 +681,8 @@ class mDlgMainDc(ur.cDialog):
 			else:
 				if self.cmd == "find":
 					self.mainWidget.set_focus("body")
+				elif self.cmd == "goto":
+					self.changePath(self.getFocusPath())
 				elif self.cmd == "cmd":
 					ss = self.edInput.get_edit_text()
 					self.inputSet("")
@@ -745,6 +776,14 @@ class mDlgMainDc(ur.cDialog):
 		fname = btn.base_widget.get_label()
 		return os.path.join(pp, fname)
 
+	def workNew(self):
+		pp = os.getcwd()
+		self.workList.append(pp)
+		self.workPt += 1
+
+	def workRefresh(self):
+		pass
+
 	def unhandled(self, key):
 		if key == 'f4' or key == "q":
 			g.savePath(os.getcwd())
@@ -752,6 +791,11 @@ class mDlgMainDc(ur.cDialog):
 
 		elif key == "f":  # filter
 			self.inputSet("find")
+			return
+
+		elif key == "g":  # go
+			self.inputSet("goto")
+			self.fileRefresh()
 			return
 
 		elif key == "/":  # cmd
@@ -781,6 +825,9 @@ class mDlgMainDc(ur.cDialog):
 		#elif key == "ctrl h":
 		#	ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 
+		elif key == "insert":
+			self.workNew()
+
 		elif key == "j":   # we can't use ctrl+j since it's terminal key for enter replacement
 			self.widgetFileList.focusNext()
 		elif key == "k":
@@ -792,11 +839,18 @@ class mDlgMainDc(ur.cDialog):
 			self.changePath(self.getFocusPath())
 
 		elif key == "up":
-			self.mainWidget.set_focus("body")
+			if self.cmd == "goto":
+				self.widgetFileList.focusPrevious()
+			else:
+				self.mainWidget.set_focus("body")
 		elif key == "down":
-			self.mainWidget.set_focus("body")
+			if self.cmd == "goto":
+				self.widgetFileList.focusNext()
+			else:
+				self.mainWidget.set_focus("body")
 		elif key == "esc":
 			self.inputSet("")
+			self.fileRefresh()
 
 		'''
 		elif type(key) == tuple:    # mouse
