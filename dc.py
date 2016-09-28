@@ -522,7 +522,7 @@ class mDlgMainDc(ur.cDialog):
 		self.widgetContent.isShow = True
 
 		# extra
-		self.widgetWorkList = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Workspace >"])))
+		self.widgetWorkList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal(["< Workspace >"], None)))
 		self.widgetTempList = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Extra >"])))
 		self.widgetExtraList = urwid.Pile([self.widgetWorkList, self.widgetTempList])
 
