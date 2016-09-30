@@ -815,7 +815,7 @@ class mDlgMainDc(ur.cDialog):
 			self.inputSet("shell")
 			return
 
-		elif key == "c": # git commit
+		elif key == "C": # git commit
 			def onExit():
 				g.doSetMain(self)
 
@@ -1253,9 +1253,12 @@ class mDlgMainGitStatus(ur.cDialog):
 		elif key == "C":
 			def onExit():
 				if not self.refreshFileList():
-					g.loop.stop()
-					print("No modified or untracked files")
-					sys.exit(0)
+					if self.onExit is not None:
+						self.close()
+					else:
+						g.loop.stop()
+						print("No modified or untracked files")
+						sys.exit(0)
 
 				g.doSetMain(self)
 
