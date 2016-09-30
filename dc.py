@@ -300,7 +300,7 @@ class mDlgMainAck(ur.cDialog):
 		self.lstContent = []
 		
 	def btnUpdate(self, btn, focus):
-		btn.base_widget.set_label(btn.afile.getTitleMarkup(focus))
+		btn.original_widget.set_label(btn.afile.getTitleMarkup(focus))
 		return btn
 
 	def onFileFocusChanged(self, new_focus):
@@ -522,9 +522,11 @@ class mDlgMainDc(ur.cDialog):
 		self.widgetContent.isShow = True
 
 		# extra
-		self.widgetWorkList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal(["< Workspace >"], None)))
-		self.widgetTempList = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Extra >"])))
-		self.widgetExtraList = urwid.Pile([self.widgetWorkList, self.widgetTempList])
+		self.widgetWorkLabel = urwid.Text("< Workspace >")
+		self.widgetWorkList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
+		self.widgetTempLabel = urwid.Text("< Temp >")
+		self.widgetTempList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
+		self.widgetExtraList = urwid.Pile([("pack", self.widgetWorkLabel), self.widgetWorkList, ("pack", self.widgetTempLabel), self.widgetTempList])
 
 		# main frame + input
 		self.title = ">> dc V%s" % g.version
@@ -623,10 +625,9 @@ class mDlgMainDc(ur.cDialog):
 			status = "(%s)" % status
 
 		self.headerText.set_text("%s - %s%s - %d" % (self.title, pp, status, len(itemList)))
-		refreshBtnListMarkupTuple(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
-		#del self.widgetFileList.body[:]
-		#self.widgetFileList.itemCount = len(lst2)
-		#self.widgetFileList.body += ur.makeBtnListTerminal( , None)
+
+		del self.widgetFileList.body[:]
+		self.widgetFileList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn))
 
 		# extra
 		'''
@@ -645,6 +646,7 @@ class mDlgMainDc(ur.cDialog):
 		if not os.path.isdir(pp):
 			return False
 
+		pp = os.path.realpath(pp)
 		os.chdir(pp)
 
 		self.workList[self.workPt] = pp
@@ -683,6 +685,15 @@ class mDlgMainDc(ur.cDialog):
 					self.mainWidget.set_focus("body")
 				elif self.cmd == "goto":
 					self.changePath(self.getFocusPath())
+				elif self.cmd == "shell":
+					ss = self.edInput.get_edit_text()
+					self.inputSet("")
+
+					g.loop.stop()
+					systemRet(ss)
+					g.loop.start()
+					self.fileRefresh()
+
 				elif self.cmd == "cmd":
 					ss = self.edInput.get_edit_text()
 					self.inputSet("")
@@ -751,7 +762,7 @@ class mDlgMainDc(ur.cDialog):
 					return
 
 			item = self.widgetCmdList.focus
-			pp = item.base_widget.get_label()
+			pp = item.original_widget.get_label()
 			self.changePath(pp)
 
 		"""
@@ -780,9 +791,50 @@ class mDlgMainDc(ur.cDialog):
 		pp = os.getcwd()
 		self.workList.append(pp)
 		self.workPt += 1
+		self.workRefresh()
+
+	def workRemove(self):
+		if len(self.workList) <= 1:
+			return
+
+		del self.workList[self.workPt]
+		if self.workPt >= len(self.workList)-1:
+			self.workPt = len(self.workList)-1
+
+		self.workGo()
+
+	def workMove(self, add):
+		if add == 0:
+			return
+
+		elif add < 0:
+			if self.workPt == 0:
+				return
+			self.workPt -= 1
+		else:
+			if self.workPt+1 >= len(self.workList):
+				return
+
+			self.workPt += 1
+
+		self.workGo()
+
+	def workGo(self):
+		# control refresh and go
+		self.workRefresh()
+		item = self.widgetWorkList.focus
+		x = item.original_widget.attr
+		os.chdir(x)
+		self.fileRefresh()
+
 
 	def workRefresh(self):
-		pass
+		del self.widgetWorkList.body[:]
+
+		# std, focus, text, attr
+		itemList =  [ ("std", "std_f", os.path.basename(x), x) for x in self.workList ]
+		self.widgetWorkList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn))
+		self.widgetWorkList.focus_position = self.workPt
 
 	def unhandled(self, key):
 		if key == 'f4' or key == "q":
@@ -806,7 +858,7 @@ class mDlgMainDc(ur.cDialog):
 			self.inputSet("shell")
 			return
 
-		elif key == "c": # git commit
+		elif key == "C": # git commit
 			def onExit():
 				g.doSetMain(self)
 
@@ -825,8 +877,15 @@ class mDlgMainDc(ur.cDialog):
 		#elif key == "ctrl h":
 		#	ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 
-		elif key == "insert":
+		elif key == "meta right" or key == "meta l":
 			self.workNew()
+		elif key == "meta left" or key == "meta h":
+			self.workRemove()
+
+		elif key == "meta up" or key == "meta k":
+			self.workMove(-1)
+		elif key == "meta down" or key == "meta j":
+			self.workMove(1)
 
 		elif key == "j":   # we can't use ctrl+j since it's terminal key for enter replacement
 			self.widgetFileList.focusNext()
@@ -1038,7 +1097,7 @@ class mDlgFolderList(ur.cDialog):
 			self.widgetFileList.focusPrevious()
 		elif key == "e":
 			item = self.widgetFileList.focus
-			self.doEdit(item.base_widget.attr)
+			self.doEdit(item.original_widget.attr)
 
 	def doEdit(self, item):
 		def onExit():
@@ -1082,7 +1141,7 @@ class mDlgMainGitStatus(ur.cDialog):
 
 	def onFileSelected(self, btn):
 		# why btn.get_label() is impossible?
-		label = btn.base_widget.get_label()
+		label = btn.original_widget.get_label()
 		#self.selectFileName = gitFileBtnName(btn)
 		self.selectFileName = gitFileLastName(btn)
 		#g.headerText.set_text("file - " + label)
@@ -1151,7 +1210,7 @@ class mDlgMainGitStatus(ur.cDialog):
 	def gitGetStagedCount(self):
 		cnt = 0
 		for item in self.widgetFileList.body:
-			if "s" in item.base_widget.attr:	# greenfg
+			if "s" in item.original_widget.attr:	# greenfg
 				cnt += 1
 
 		return cnt
@@ -1244,9 +1303,13 @@ class mDlgMainGitStatus(ur.cDialog):
 		elif key == "C":
 			def onExit():
 				if not self.refreshFileList():
-					g.loop.stop()
-					print("No modified or untracked files")
-					sys.exit(0)
+					if getattr(self, "onExit") and self.onExit is not None:
+						self.close()
+						return
+					else:
+						g.loop.stop()
+						print("No modified or untracked files")
+						sys.exit(0)
 
 				g.doSetMain(self)
 
@@ -1287,17 +1350,17 @@ class mGitCommitDialog(ur.cDialog):
 		pass
 		
 	def _applyFileColorTheme(self, widget, isFocus=0):
-		theme = self.themes[0 if widget.base_widget.attr == "s" else 1]
-		widget.base_widget.set_label((theme[isFocus], widget.base_widget.origTxt))
+		theme = self.themes[0 if widget.original_widget.attr == "s" else 1]
+		widget.original_widget.set_label((theme[isFocus], widget.original_widget.origTxt))
 
 	def onFileSelected(self, btn):
 		# why btn.get_label() is impossible?
-		label = btn.base_widget.get_label()
-		self.selectFileName = btn.base_widget.get_label()
+		label = btn.original_widget.get_label()
+		self.selectFileName = btn.original_widget.get_label()
 		#g.headerText.set_text("file - " + label)
 		
 		# display
-		btnType = btn.base_widget.attr
+		btnType = btn.original_widget.attr
 		pp = os.path.join(g.relRoot, self.selectFileName)
 		try:
 			ss = system("git diff --color %s \"%s\"" % ("" if btnType == "c" else "--staged", pp))
@@ -1455,12 +1518,12 @@ def urwidInputFilter(keys, raw):
 	return g.dialog.inputFilter(keys, raw)
 
 def gitFileBtnName(btn):
-	label = btn.base_widget.get_label()
+	label = btn.original_widget.get_label()
 	return label[2:].strip()
 
 # "??" - untracked file
 def gitFileBtnType(btn):
-	label = btn.base_widget.get_label()
+	label = btn.original_widget.get_label()
 	return label[:2]
 
 def unwrapQutesFilename(ss):
