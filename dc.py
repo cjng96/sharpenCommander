@@ -877,14 +877,14 @@ class mDlgMainDc(ur.cDialog):
 		#elif key == "ctrl h":
 		#	ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 
-		elif key == "meta right":
+		elif key == "meta right" or key == "meta l":
 			self.workNew()
-		elif key == "meta left":
+		elif key == "meta left" or key == "meta h":
 			self.workRemove()
 
-		elif key == "meta up":
+		elif key == "meta up" or key == "meta k":
 			self.workMove(-1)
-		elif key == "meta down":
+		elif key == "meta down" or key == "meta j":
 			self.workMove(1)
 
 		elif key == "j":   # we can't use ctrl+j since it's terminal key for enter replacement
