@@ -683,6 +683,15 @@ class mDlgMainDc(ur.cDialog):
 					self.mainWidget.set_focus("body")
 				elif self.cmd == "goto":
 					self.changePath(self.getFocusPath())
+				elif self.cmd == "shell":
+					ss = self.edInput.get_edit_text()
+					self.inputSet("")
+
+					g.loop.stop()
+					systemRet(ss)
+					g.loop.start()
+					self.fileRefresh()
+
 				elif self.cmd == "cmd":
 					ss = self.edInput.get_edit_text()
 					self.inputSet("")
