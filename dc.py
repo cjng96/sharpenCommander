@@ -1253,8 +1253,9 @@ class mDlgMainGitStatus(ur.cDialog):
 		elif key == "C":
 			def onExit():
 				if not self.refreshFileList():
-					if self.onExit is not None:
+					if getattr(self, "onExit") and self.onExit is not None:
 						self.close()
+						return
 					else:
 						g.loop.stop()
 						print("No modified or untracked files")
