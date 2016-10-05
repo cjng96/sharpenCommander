@@ -866,11 +866,11 @@ class mDlgMainDc(ur.cDialog):
 			g.doSetMain(dlg)
 			return
 
-		elif key == "e":
+		elif key == "E":
 			pp = self.getFocusPath()
 
 			g.loop.stop()
-			systemRet("vim %s" % pp)
+			systemRet("e %s" % pp)
 			g.loop.start()
 			self.fileRefresh()
 
