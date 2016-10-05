@@ -134,6 +134,7 @@ class git:
 		"""
 		fileList = system("git -c color.status=always status -s")
 
+
 		# quoted octal notation to utf8
 		fileList = bytes(fileList, "utf-8").decode("unicode_escape")
 		bb = fileList.encode("ISO-8859-1")
@@ -147,5 +148,13 @@ class git:
 				fileName = fileName[1:-1]
 			fileList2 += fileType + " " + fileName + "\n"
 
-		itemList = [(x, "s" if "[32m" in x else "") for x in fileList2.split("\n")]
+		def getStatus(terminal):
+			if "[32m" in terminal:
+				return "s"
+			elif "??" in terminal:
+				return "?"
+			else:
+				return ""
+
+		itemList = [(x, getStatus(x)) for x in fileList2.split("\n")]
 		return itemList
