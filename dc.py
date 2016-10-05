@@ -627,8 +627,25 @@ class mDlgMainDc(ur.cDialog):
 
 		# git post
 		if self.gitBranch is not None:
+			gitItemList = git.statusFileList()
+			for gitItem in gitItemList:
+				name = ur.termianl2plainText(gitItem[0])[2:]
+				print("name - [%s]" % name)
+				def gen2(x):
+					#print("target - [%s]" % x[0])
+					if x[2] == name:
+						if gitItem[1] == "s":
+							mstd = "bluefg"
+							mfocus = "bluefg_f"
+						else:
+							mstd = "cyanfg"
+							mfocus = "cyanfg_f"
 
-			pass
+						return mstd, mfocus, x[2], x[3]
+					else:
+						return x
+
+				itemList = list(map(gen2, itemList))
 
 		self.headerText.set_text("%s - %s%s - %d" % (self.title, pp, status, len(itemList)-1))
 
