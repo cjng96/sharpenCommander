@@ -536,6 +536,7 @@ class mDlgMainDc(ur.cDialog):
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText, footer=self.edInput)
 
 		self.cmd = ""
+		self.gitBranch = None
 
 		# work space
 		pp = os.getcwd()
@@ -545,8 +546,7 @@ class mDlgMainDc(ur.cDialog):
 
 	def init(self):
 		self.cmdShow([])  # hide extra panel
-		self.fileRefresh()
-		self.workRefresh()
+		self.changePath(os.getcwd())
 		return True
 
 	def cmdShow(self, lstItem):
@@ -594,6 +594,7 @@ class mDlgMainDc(ur.cDialog):
 		else:
 			filterStr = ""
 
+
 		pp = os.getcwd()
 		# TODO: use scandir
 		lst = [os.path.join(pp, x) for x in os.listdir(pp) if filterStr == "" or filterStr in x ]
@@ -624,7 +625,7 @@ class mDlgMainDc(ur.cDialog):
 				status += "+"
 			status = "(%s)" % status
 
-		self.headerText.set_text("%s - %s%s - %d" % (self.title, pp, status, len(itemList)))
+		self.headerText.set_text("%s - %s%s - %d" % (self.title, pp, status, len(itemList)-1))
 
 		del self.widgetFileList.body[:]
 		self.widgetFileList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn))
@@ -649,6 +650,14 @@ class mDlgMainDc(ur.cDialog):
 		pp = os.path.realpath(pp)
 		os.chdir(pp)
 
+		# check git repo
+		try:
+			ss = subprocess.check_output(["git", "branch", "--color=never"]).decode()
+			name = re.search(r"^\*\s(\w+)", ss, re.MULTILINE)
+			self.gitBranch = name.group(1)
+		except subprocess.CalledProcessError:
+			self.gitBranch = None
+
 		self.workList[self.workPt] = pp
 		self.workRefresh()
 
@@ -670,8 +679,7 @@ class mDlgMainDc(ur.cDialog):
 			self.mainWidget.set_focus("footer")
 
 		self.edInput.set_edit_text("")
-		self.edInput.set_caption("%s$ " % self.cmd)
-
+		self.edInput.set_caption("%s%s$ " % ("" if self.gitBranch is None else "[%s] " % self.gitBranch, self.cmd))
 
 	def inputFilter(self, keys, raw):
 		if g.loop.widget != g.dialog.mainWidget:
@@ -862,6 +870,10 @@ class mDlgMainDc(ur.cDialog):
 		elif key == "C": # git commit
 			def onExit():
 				g.doSetMain(self)
+
+			if self.gitBranch is None:
+				ur.popupMsg("Error", "Not git repository")
+				return
 
 			dlg = mDlgMainGitStatus(onExit)
 			g.doSetMain(dlg)
