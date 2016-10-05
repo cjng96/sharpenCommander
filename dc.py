@@ -625,6 +625,11 @@ class mDlgMainDc(ur.cDialog):
 				status += "+"
 			status = "(%s)" % status
 
+		# git post
+		if self.gitBranch is not None:
+
+			pass
+
 		self.headerText.set_text("%s - %s%s - %d" % (self.title, pp, status, len(itemList)-1))
 
 		del self.widgetFileList.body[:]
@@ -1189,22 +1194,7 @@ class mDlgMainGitStatus(ur.cDialog):
 		self.onFileSelected(self.widgetFileList.focus)
 
 	def refreshFileList(self, focusMove=0):
-		fileList = system("git -c color.status=always status -s")
-		
-		# quoted octal notation to utf8
-		fileList = bytes(fileList, "utf-8").decode("unicode_escape")
-		bb = fileList.encode("ISO-8859-1")
-		fileList = bb.decode()
-		
-		# remove "" in file name
-		fileList2 = ""
-		for line in fileList.splitlines():
-			fileType, fileName = line.split(" ", 1)
-			if fileName.startswith("\"") and fileName.endswith("\""):
-				fileName = fileName[1:-1]  
-			fileList2 += fileType + " " + fileName + "\n"
-		
-		itemList = [(x, "s" if "[32m" in x else "") for x in fileList2.split("\n")]
+		itemList = git.statusFileList()
 		refreshBtnListTerminal(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
 
 		size = len(self.widgetFileList.body)
