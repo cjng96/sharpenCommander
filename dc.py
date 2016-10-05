@@ -629,14 +629,16 @@ class mDlgMainDc(ur.cDialog):
 		if self.gitBranch is not None:
 			gitItemList = git.statusFileList()
 			for gitItem in gitItemList:
-				name = ur.termianl2plainText(gitItem[0])[2:]
-				print("name - [%s]" % name)
+				name = ur.termianl2plainText(gitItem[0])[3:]
 				def gen2(x):
 					#print("target - [%s]" % x[0])
 					if x[2] == name:
 						if gitItem[1] == "s":
 							mstd = "bluefg"
 							mfocus = "bluefg_f"
+						elif gitItem[1] == "?":
+							mstd = "underline"
+							mfocus = "underline_f"
 						else:
 							mstd = "cyanfg"
 							mfocus = "cyanfg_f"
@@ -1398,6 +1400,7 @@ class mGitCommitDialog(ur.cDialog):
 
 	def refreshFileList(self):
 		del self.widgetFileList.body[:]
+
 
 		# staged file list		
 		fileList = system("git diff --name-only --cached")
