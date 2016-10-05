@@ -691,6 +691,7 @@ class mDlgMainDc(ur.cDialog):
 
 					g.loop.stop()
 					systemRet(ss)
+					input("Enter to return...")
 					g.loop.start()
 					self.fileRefresh()
 
