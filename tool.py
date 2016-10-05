@@ -125,4 +125,36 @@ class git:
 		ss = system("git stash pop %s" % name)
 		print
 		
-		
+	@staticmethod
+	def statusFileList():
+		"""
+		file list(staged, modified) in current folder by terminal character
+		(terminal name, s or "")
+		:return:
+		"""
+		fileList = system("git -c color.status=always status -s")
+
+
+		# quoted octal notation to utf8
+		fileList = bytes(fileList, "utf-8").decode("unicode_escape")
+		bb = fileList.encode("ISO-8859-1")
+		fileList = bb.decode()
+
+		# remove "" in file name
+		fileList2 = ""
+		for line in fileList.splitlines():
+			fileType, fileName = line.split(" ", 1)
+			if fileName.startswith("\"") and fileName.endswith("\""):
+				fileName = fileName[1:-1]
+			fileList2 += fileType + " " + fileName + "\n"
+
+		def getStatus(terminal):
+			if "[32m" in terminal:
+				return "s"
+			elif "??" in terminal:
+				return "?"
+			else:
+				return ""
+
+		itemList = [(x, getStatus(x)) for x in fileList2.split("\n")]
+		return itemList

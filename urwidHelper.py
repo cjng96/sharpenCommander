@@ -212,7 +212,9 @@ def termianl2plainText(ss):
 	out = ""
 	items = ss.split("\x1b")
 	for at in items:
-		if at == "":
+		# at == "" or first string
+		if at.find("m") == -1:
+			out += at
 			continue
 		attr, text = at.split("m" ,1)
 		if text != "":	# skip empty string

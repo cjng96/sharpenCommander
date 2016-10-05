@@ -536,6 +536,7 @@ class mDlgMainDc(ur.cDialog):
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText, footer=self.edInput)
 
 		self.cmd = ""
+		self.gitBranch = None
 
 		# work space
 		pp = os.getcwd()
@@ -545,8 +546,7 @@ class mDlgMainDc(ur.cDialog):
 
 	def init(self):
 		self.cmdShow([])  # hide extra panel
-		self.fileRefresh()
-		self.workRefresh()
+		self.changePath(os.getcwd())
 		return True
 
 	def cmdShow(self, lstItem):
@@ -594,6 +594,7 @@ class mDlgMainDc(ur.cDialog):
 		else:
 			filterStr = ""
 
+
 		pp = os.getcwd()
 		# TODO: use scandir
 		lst = [os.path.join(pp, x) for x in os.listdir(pp) if filterStr == "" or filterStr in x ]
@@ -624,7 +625,31 @@ class mDlgMainDc(ur.cDialog):
 				status += "+"
 			status = "(%s)" % status
 
-		self.headerText.set_text("%s - %s%s - %d" % (self.title, pp, status, len(itemList)))
+		# git post
+		if self.gitBranch is not None:
+			gitItemList = git.statusFileList()
+			for gitItem in gitItemList:
+				name = ur.termianl2plainText(gitItem[0])[3:]
+				def gen2(x):
+					#print("target - [%s]" % x[0])
+					if x[2] == name:
+						if gitItem[1] == "s":
+							mstd = "bluefg"
+							mfocus = "bluefg_f"
+						elif gitItem[1] == "?":
+							mstd = "underline"
+							mfocus = "underline_f"
+						else:
+							mstd = "cyanfg"
+							mfocus = "cyanfg_f"
+
+						return mstd, mfocus, x[2], x[3]
+					else:
+						return x
+
+				itemList = list(map(gen2, itemList))
+
+		self.headerText.set_text("%s - %s%s - %d" % (self.title, pp, status, len(itemList)-1))
 
 		del self.widgetFileList.body[:]
 		self.widgetFileList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn))
@@ -649,6 +674,14 @@ class mDlgMainDc(ur.cDialog):
 		pp = os.path.realpath(pp)
 		os.chdir(pp)
 
+		# check git repo
+		try:
+			ss = subprocess.check_output(["git", "branch", "--color=never"]).decode()
+			name = re.search(r"^\*\s(\w+)", ss, re.MULTILINE)
+			self.gitBranch = name.group(1)
+		except subprocess.CalledProcessError:
+			self.gitBranch = None
+
 		self.workList[self.workPt] = pp
 		self.workRefresh()
 
@@ -670,8 +703,7 @@ class mDlgMainDc(ur.cDialog):
 			self.mainWidget.set_focus("footer")
 
 		self.edInput.set_edit_text("")
-		self.edInput.set_caption("%s$ " % self.cmd)
-
+		self.edInput.set_caption("%s%s$ " % ("" if self.gitBranch is None else "[%s] " % self.gitBranch, self.cmd))
 
 	def inputFilter(self, keys, raw):
 		if g.loop.widget != g.dialog.mainWidget:
@@ -691,6 +723,7 @@ class mDlgMainDc(ur.cDialog):
 
 					g.loop.stop()
 					systemRet(ss)
+					input("Enter to return...")
 					g.loop.start()
 					self.fileRefresh()
 
@@ -862,15 +895,19 @@ class mDlgMainDc(ur.cDialog):
 			def onExit():
 				g.doSetMain(self)
 
+			if self.gitBranch is None:
+				ur.popupMsg("Error", "Not git repository")
+				return
+
 			dlg = mDlgMainGitStatus(onExit)
 			g.doSetMain(dlg)
 			return
 
-		elif key == "e":
+		elif key == "E":
 			pp = self.getFocusPath()
 
 			g.loop.stop()
-			systemRet("vim %s" % pp)
+			systemRet("e %s" % pp)
 			g.loop.start()
 			self.fileRefresh()
 
@@ -1176,22 +1213,7 @@ class mDlgMainGitStatus(ur.cDialog):
 		self.onFileSelected(self.widgetFileList.focus)
 
 	def refreshFileList(self, focusMove=0):
-		fileList = system("git -c color.status=always status -s")
-		
-		# quoted octal notation to utf8
-		fileList = bytes(fileList, "utf-8").decode("unicode_escape")
-		bb = fileList.encode("ISO-8859-1")
-		fileList = bb.decode()
-		
-		# remove "" in file name
-		fileList2 = ""
-		for line in fileList.splitlines():
-			fileType, fileName = line.split(" ", 1)
-			if fileName.startswith("\"") and fileName.endswith("\""):
-				fileName = fileName[1:-1]  
-			fileList2 += fileType + " " + fileName + "\n"
-		
-		itemList = [(x, "s" if "[32m" in x else "") for x in fileList2.split("\n")]
+		itemList = git.statusFileList()
 		refreshBtnListTerminal(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
 
 		size = len(self.widgetFileList.body)
@@ -1378,6 +1400,7 @@ class mGitCommitDialog(ur.cDialog):
 
 	def refreshFileList(self):
 		del self.widgetFileList.body[:]
+
 
 		# staged file list		
 		fileList = system("git diff --name-only --cached")
