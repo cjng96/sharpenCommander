@@ -594,7 +594,6 @@ class mDlgMainDc(ur.cDialog):
 		else:
 			filterStr = ""
 
-
 		pp = os.getcwd()
 		# TODO: use scandir
 		lst = [os.path.join(pp, x) for x in os.listdir(pp) if filterStr == "" or filterStr in x ]
@@ -676,7 +675,7 @@ class mDlgMainDc(ur.cDialog):
 
 		# check git repo
 		try:
-			ss = subprocess.check_output(["git", "branch", "--color=never"]).decode()
+			ss = subprocess.check_output(["git", "branch", "--color=never"], stderr=subprocess.DEVNULL).decode()
 			name = re.search(r"^\*\s(\w+)", ss, re.MULTILINE)
 			self.gitBranch = name.group(1)
 		except subprocess.CalledProcessError:
