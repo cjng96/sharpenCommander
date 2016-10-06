@@ -630,7 +630,7 @@ class mDlgMainDc(ur.cDialog):
 			for gitItem in gitItemList:
 				name = ur.termianl2plainText(gitItem[0])[3:]
 				def gen2(x):
-					#print("target - [%s]" % x[0])
+					#print("target - [%s] - %s" % (x[2], name))
 					if x[2] == name:
 						if gitItem[1] == "s":
 							mstd = "bluefg"
