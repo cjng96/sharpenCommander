@@ -653,6 +653,9 @@ class mDlgMainDc(ur.cDialog):
 		del self.widgetFileList.body[:]
 		self.widgetFileList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn))
 
+		if filterStr is not None and len(itemList) > 1:
+			self.widgetFileList.focus_position = 1
+
 		# extra
 		'''
 		lst = []
