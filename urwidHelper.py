@@ -131,11 +131,11 @@ class mListBox(urwid.ListBox):
 
 	# TODO: scroll
 	def scrollDown(self):
-		cur = self.body.get_focus()
-		if cur[1] >= len(self.body) - 1:
+		focusPt = self.focus_position
+		if focusPt >= len(self.body) - 1:
 			return
 
-		nextRow = self.body.get_next(cur[1])
+		nextRow = self.body.get_next(focusPt)
 		self.body.set_focus(nextRow[1])
 
 	def scrollUp(self):

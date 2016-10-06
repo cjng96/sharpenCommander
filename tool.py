@@ -10,11 +10,11 @@ class Config:
 g = Config()
 
 
-def system(args):
+def system(args, stderr=subprocess.STDOUT):
 	if g.isPrintSystem:
 		print("system command - %s" % args)
-	rr = subprocess.check_output(args, stderr=subprocess.STDOUT, shell=True).decode("UTF-8")
-	rr = rr.strip(' \r\n')
+	rr = subprocess.check_output(args, stderr=stderr, shell=True).decode("UTF-8")
+	rr = rr.rstrip(' \r\n')
 	return rr
 
 def systemSafe(args):
@@ -132,8 +132,7 @@ class git:
 		(terminal name, s or "")
 		:return:
 		"""
-		fileList = system("git -c color.status=always status -s")
-
+		fileList = system("git -c color.status=always status -s", stderr=subprocess.DEVNULL)
 
 		# quoted octal notation to utf8
 		fileList = bytes(fileList, "utf-8").decode("unicode_escape")

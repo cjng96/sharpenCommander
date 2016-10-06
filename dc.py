@@ -594,7 +594,6 @@ class mDlgMainDc(ur.cDialog):
 		else:
 			filterStr = ""
 
-
 		pp = os.getcwd()
 		# TODO: use scandir
 		lst = [os.path.join(pp, x) for x in os.listdir(pp) if filterStr == "" or filterStr in x ]
@@ -631,7 +630,7 @@ class mDlgMainDc(ur.cDialog):
 			for gitItem in gitItemList:
 				name = ur.termianl2plainText(gitItem[0])[3:]
 				def gen2(x):
-					#print("target - [%s]" % x[0])
+					#print("target - [%s] - %s" % (x[2], name))
 					if x[2] == name:
 						if gitItem[1] == "s":
 							mstd = "bluefg"
@@ -653,6 +652,9 @@ class mDlgMainDc(ur.cDialog):
 
 		del self.widgetFileList.body[:]
 		self.widgetFileList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn))
+
+		if filterStr is not None and len(itemList) > 1:
+			self.widgetFileList.focus_position = 1
 
 		# extra
 		'''
@@ -676,7 +678,7 @@ class mDlgMainDc(ur.cDialog):
 
 		# check git repo
 		try:
-			ss = subprocess.check_output(["git", "branch", "--color=never"]).decode()
+			ss = subprocess.check_output(["git", "branch", "--color=never"], stderr=subprocess.DEVNULL).decode()
 			name = re.search(r"^\*\s(\w+)", ss, re.MULTILINE)
 			self.gitBranch = name.group(1)
 		except subprocess.CalledProcessError:
