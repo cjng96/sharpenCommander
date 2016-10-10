@@ -625,6 +625,7 @@ class mDlgMainDc(ur.cDialog):
 			status = "(%s)" % status
 
 		# git post
+		gitSt = ""
 		if self.gitBranch is not None:
 			cntStaged = 0
 			cntModified = 0
@@ -658,8 +659,6 @@ class mDlgMainDc(ur.cDialog):
 
 				itemList = list(map(gen2, itemList))
 
-		ss = "%s - %s%s - %d" % (self.title, pp, status, len(itemList)-1)
-		if self.gitBranch is not None:
 			ss1 = ""
 			if cntStaged > 0:
 				ss1 += "S:%d, " % cntStaged
@@ -671,8 +670,9 @@ class mDlgMainDc(ur.cDialog):
 			if ss1 != "":
 				ss1 = ss1[:-2]
 
-			ss += " - git(%s)" % ss1
+			gitSt = " - git(%s)" % ss1
 
+		ss = "%s - %s%s - %d%s" % (self.title, pp, status, len(itemList)-1, gitSt)
 		self.headerText.set_text(ss)
 
 		del self.widgetFileList.body[:]
