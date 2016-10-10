@@ -905,6 +905,14 @@ class mDlgMainDc(ur.cDialog):
 			g.doSetMain(dlg)
 			return
 
+		elif key == "U": # git update
+			cur = os.getcwd()
+			g.loop.stop()
+			gr.actionUpdate(cur)
+			input("Enter to return...")
+			g.loop.start()
+			self.fileRefresh()
+
 		elif key == "E":
 			pp = self.getFocusPath()
 
@@ -1645,36 +1653,17 @@ class Gr(object):
 	def repoAllName(self):
 		return [repo["names"][0] for repo in self.repoList]
 		
-	def action(self, action):
+	def action(self, action, target):
 		if not self.isInit:
 			self.init()
 
-		if len(sys.argv) >= 3:
-			second = sys.argv[2]
-			if second == ".":
-				# current repo
-				cur = os.getcwd() + "/"
+		if target is not None:
+			action(self, target)
 
-				# allow the repo that isn't registerted
-				second = cur
-
-				'''
-				for repo in gr.repoList:
-					repoPath = os.path.realpath(repo["path"]) 
-					if cur.startswith(repoPath+"/"):
-						second = repo["names"][0]
-						break
-				if second == ".":
-					self.log(0, "Current path[%s] is not git repo." % cur)
-					return
-				'''
-				
-			action(self, second)
-			
 		else:
 			for comp in gr.repoAllName():
 				action(self, comp)
-		
+
 	def log(self, lv, msg):
 		if lv == 0:
 			print("%s%s%s" % (Ansi.redBold, msg, Ansi.clear))
@@ -1781,7 +1770,17 @@ class Gr(object):
 			
 			#ss = system("git st")
 			#print(ss)
-			
+
+	def actionUpdate(self, target):
+		print("fetch......")
+		gr.action(Gr.fetch, target)
+
+		print("merge......")
+		gr.action(Gr.mergeSafe, target)
+
+		print("status......")
+		gr.action(Gr.statusComponent, target)
+
 	def mergeSafe(self, name):
 		try:
 			path = self.changePath(name)
@@ -1887,49 +1886,69 @@ def run():
 
 	argc = len(sys.argv)	
 	if argc == 1:
-		target = ""	# basic cmd
+		cmd = ""	# basic cmd
 	else:
-		target = sys.argv[1]
+		cmd = sys.argv[1]
 		
-
 	removeEmptyArgv()
 
-	if target == "":
+	target = None
+	if len(sys.argv) >= 3:
+		target = sys.argv[2]
+		if target == ".":
+			# current repo
+			cur = os.getcwd() + "/"
+
+			# allow the repo that isn't registerted
+			target = cur
+
+			'''
+			for repo in gr.repoList:
+				repoPath = os.path.realpath(repo["path"])
+				if cur.startswith(repoPath+"/"):
+					second = repo["names"][0]
+					break
+			if second == ".":
+				self.log(0, "Current path[%s] is not git repo." % cur)
+				return
+			'''
+
+	if cmd == "":
 		uiMain(mDlgMainDc)
 		return
 
-	elif target == "push":
+	elif cmd == "push":
 		print("fetching first...")
 		git.fetch()
 		g.gitPush()
 		return
 		
-	elif target == "ci":
+	elif cmd == "ci":
 		uiMain(mDlgMainGitStatus)
 		return
 		
-	elif target == "list":
+	elif cmd == "list":
 		g.listPath()
 		return
 		
-	elif target == "config":
+	elif cmd == "config":
 		g.savePath("~/.devcmd")
 		return
 		
-	elif target == "which":
+	elif cmd == "which":
 		ss, status = systemSafe(" ".join(['"' + c + '"' for c in sys.argv[1:]]))
 		print(ss)
 		print("goto which path...")
 		g.savePath(os.path.dirname(ss))
 		return
 	
-	elif target == "find":
+	elif cmd == "find":
 		# dc find . -name "*.py"
 		cmds = sys.argv[1:]
 		doSubCmd(cmds, mDlgMainFind)
 		return
 		
-	elif target == "findg":
+	elif cmd == "findg":
 		pp = sys.argv[2]
 		if "*" not in pp:
 			pp = "*"+pp+"*"
@@ -1938,7 +1957,7 @@ def run():
 		doSubCmd(cmds, mDlgMainFind, 4)
 		return
 		
-	elif target == "ack":
+	elif cmd == "ack":
 		# dc ack printf
 		cmds = sys.argv[1:]
 		cmds.insert(1, "--group")
@@ -1946,7 +1965,7 @@ def run():
 		doSubCmd(cmds, mDlgMainAck)
 		return
 		
-	elif target == "ackg":
+	elif cmd == "ackg":
 		# dc ack printf
 		cmds = ["ack"] + sys.argv[2:]
 		cmds.insert(1, "--group")
@@ -1954,31 +1973,24 @@ def run():
 		doSubCmd(cmds, mDlgMainAck, 4)
 		return
 		
-	elif target == "st":
-		gr.action(Gr.statusComponent)
+	elif cmd == "st":
+		gr.action(Gr.statusComponent, target)
 		return
 		
-	elif target == "fetch":
-		gr.action(Gr.fetch)
+	elif cmd == "fetch":
+		gr.action(Gr.fetch, target)
 		return
 		
-	elif target == "merge":
-		gr.action(Gr.mergeSafe)
+	elif cmd == "merge":
+		gr.action(Gr.mergeSafe, target)
 		return
 		
-	elif target == "update":
-		print("fetch......")
-		gr.action(Gr.fetch)
-
-		print("merge......")
-		gr.action(Gr.mergeSafe)
-
-		print("status......")
-		gr.action(Gr.statusComponent)
+	elif cmd == "update":
+		gr.actionUpdate(target)
 		return
 
 	#print("target - %s" % target)
-	g.cd(target)
+	g.cd(cmd)
 	return 1
 	
 
