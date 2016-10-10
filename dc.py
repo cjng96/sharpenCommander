@@ -1654,6 +1654,11 @@ class Gr(object):
 			if second == ".":
 				# current repo
 				cur = os.getcwd() + "/"
+
+				# allow the repo that isn't registerted
+				second = cur
+
+				'''
 				for repo in gr.repoList:
 					repoPath = os.path.realpath(repo["path"]) 
 					if cur.startswith(repoPath+"/"):
@@ -1662,6 +1667,7 @@ class Gr(object):
 				if second == ".":
 					self.log(0, "Current path[%s] is not git repo." % cur)
 					return
+				'''
 				
 			action(self, second)
 			
@@ -1695,9 +1701,12 @@ class Gr(object):
 		return path
 				
 	def changePath(self, name):
-		path = self.getRepoPath(name)
-		if not os.path.isdir(path):
-			raise FileNotFoundError(path, "%s(%s) -> doesn't exist"  % (name, path))
+		if name.startswith("/"):
+			path = name
+		else:
+			path = self.getRepoPath(name)
+			if not os.path.isdir(path):
+				raise FileNotFoundError(path, "%s(%s) -> doesn't exist"  % (name, path))
 
 		os.chdir(path)
 		ss = "path:%s" % path
@@ -1792,19 +1801,21 @@ class Gr(object):
 		isSame = self.checkSameWith(name, branchName, remoteBranch)
 		if isSame:
 			return
-	
-		repo = self.getRepo(name)
-		if "type" in repo and repo["type"] == "bin":
-			self.log2(Color.blue, name, "merge with %s - %s - bin type" % (remoteBranch, path))
-		
-			uname = "###groupRepo###"	
-			ss = system("git stash save -u \"%s\"" % uname)
-			print(ss)
-			ss = system("git merge %s" % remoteBranch)
-			print(ss)
-			stashName = git.stashGetNameSafe(uname)
-			ss = system("git stash pop %s" % stashName)
-			print(ss)
+
+		# allow the repo that no registerted
+		if not name.startswith("/"):
+			repo = self.getRepo(name)
+			if "type" in repo and repo["type"] == "bin":
+				self.log2(Color.blue, name, "merge with %s - %s - bin type" % (remoteBranch, path))
+
+				uname = "###groupRepo###"
+				ss = system("git stash save -u \"%s\"" % uname)
+				print(ss)
+				ss = system("git merge %s" % remoteBranch)
+				print(ss)
+				stashName = git.stashGetNameSafe(uname)
+				ss = system("git stash pop %s" % stashName)
+				print(ss)
 	
 		diffList = git.checkFastForward(branchName, remoteBranch)
 		if len(diffList) != 0:
