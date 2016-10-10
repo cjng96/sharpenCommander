@@ -140,14 +140,18 @@ class MyProgram(Program):
 		sub = sub.lower()
 		lst = []
 		for pp in self.lstPath:
-			names = pp["names"]
-			names2 = map(str.lower, names)
-
-			hasList = list(filter(lambda s: sub in s, names2))
-			if len(hasList) > 0:
+			if self.matchItem(pp, sub):
 				lst.append(pp)
 
 		return lst
+
+	@staticmethod
+	def matchItem(item, sub):
+		names = item["names"]
+		names2 = map(str.lower, names)
+
+		hasList = list(filter(lambda s: sub in s, names2))
+		return len(hasList)
 
 	def cd(self, target):
 		if target == "~":
@@ -575,10 +579,11 @@ class mDlgMainDc(ur.cDialog):
 
 	def gotoRefresh(self, newText):
 		filterStr = self.edInput.get_edit_text() if newText is None else newText
-		if filterStr == "":
-			lst = [ ("greenfg", "greenfg_f", x["path"], x) for x in g.lstPath ]
-		else:
-			lst = [ ("greenfg", "greenfg_f", x["path"], x) for x in g.findItems(filterStr) ]
+		lstPath = []
+		if filterStr != "":
+			lstPath = g.findItems(filterStr)
+
+		lst = [("greenfg", "greenfg_f", x["path"], x) for x in lstPath]
 
 		self.headerText.set_text("%s - %d" % (self.title, len(lst)))
 		refreshBtnListMarkupTuple(lst, self.widgetFileList, lambda btn: self.onFileSelected(btn))
@@ -596,22 +601,40 @@ class mDlgMainDc(ur.cDialog):
 
 		pp = os.getcwd()
 		# TODO: use scandir
-		lst = [os.path.join(pp, x) for x in os.listdir(pp) if filterStr == "" or filterStr in x ]
+		lst = [ (x, 0) for x in os.listdir(pp) ]
+		if filterStr != "":
+			lst = [ (x[0], 1 if filterStr in x[0] else 0)  for x in lst ]
 
 		# list
-		lst2 = [ (x, os.stat(x)) for x in lst]
-		lst2.sort(key=lambda x: -1 if stat.S_ISDIR(x[1].st_mode) else 1)
-		lst2.insert(0, ("..", None))
+		lst2 = [ (x[0], os.stat(os.path.join(pp, x[0])), x[1]) for x in lst]
+		if filterStr != "":
+			lst2.sort(key=lambda x: -1 if x[2] == 1 else 1)
 
-		itemList = [ (os.path.basename(x[0]), x[1]) for x in lst2]
+		lst2.sort(key=lambda x: -1 if stat.S_ISDIR(x[1].st_mode) else 1)
+		lst2.insert(0, ("..", None, 0))
+
+		#itemList = [ (os.path.basename(x[0]), x[1], x[2]) for x in lst2]
+		itemList = lst2
 		def gen(x):
 			if x[0] == "..":
 				isDir = True
 			else:
 				isDir = stat.S_ISDIR(x[1].st_mode)
 
-			mstd = "greenfg" if isDir else "std"
-			mfocus = "greenfg_f" if isDir else "std_f"
+			if isDir:
+				mstd = "greenfg"
+				mfocus = "greenfg_f"
+			elif filterStr != "":
+				if x[2] == 0:
+					mstd = "grayfg"
+					mfocus = "grayfg_f"
+				else:
+					mstd = "cyanfg"
+					mfocus = "cyanfg_f"
+			else:
+				mstd = "std"
+				mfocus = "std_f"
+
 			return mstd, mfocus, x[0], x[1]
 
 		# status

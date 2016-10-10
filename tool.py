@@ -155,5 +155,5 @@ class git:
 			else:   # modification
 				return ""
 
-		itemList = [(x, getStatus(x)) for x in fileList2]
+		itemList = [(x, getStatus(x)) for x in fileList2 if len(x) > 0]
 		return itemList
