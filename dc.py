@@ -913,6 +913,19 @@ class mDlgMainDc(ur.cDialog):
 			g.loop.start()
 			self.fileRefresh()
 
+		elif key == "P":
+			g.loop.stop()
+			print("fetching first...")
+			try:
+				git.fetch()
+				g.gitPush()
+			except Exception as e:
+				print("Error - %s" % e)
+
+			input("Enter to return...")
+			g.loop.start()
+			self.fileRefresh()
+
 		elif key == "E":
 			pp = self.getFocusPath()
 
