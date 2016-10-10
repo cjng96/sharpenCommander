@@ -152,7 +152,7 @@ class git:
 				return "s"
 			elif "??" in terminal:
 				return "?"
-			else:
+			else:   # modification
 				return ""
 
 		itemList = [(x, getStatus(x)) for x in fileList2.split("\n")]

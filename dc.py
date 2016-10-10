@@ -626,8 +626,18 @@ class mDlgMainDc(ur.cDialog):
 
 		# git post
 		if self.gitBranch is not None:
+			cntStaged = 0
+			cntModified = 0
+			cntUntracked = 0
 			gitItemList = git.statusFileList()
 			for gitItem in gitItemList:
+				if gitItem[1] == "s":
+					cntStaged += 1
+				elif gitItem[1] == "?":
+					cntUntracked += 1
+				else:
+					cntModified += 1
+
 				name = ur.termianl2plainText(gitItem[0])[3:]
 				def gen2(x):
 					#print("target - [%s] - %s" % (x[2], name))
@@ -648,7 +658,22 @@ class mDlgMainDc(ur.cDialog):
 
 				itemList = list(map(gen2, itemList))
 
-		self.headerText.set_text("%s - %s%s - %d" % (self.title, pp, status, len(itemList)-1))
+		ss = "%s - %s%s - %d" % (self.title, pp, status, len(itemList)-1)
+		if self.gitBranch is not None:
+			ss1 = ""
+			if cntStaged > 0:
+				ss1 += "S:%d, " % cntStaged
+			if cntModified > 0:
+				ss1 += "M:%d, " % cntModified
+			if cntUntracked > 0:
+				ss1 += "?:%d, " % cntUntracked
+
+			if ss1 != "":
+				ss1 = ss1[:-2]
+
+			ss += " - git(%s)" % ss1
+
+		self.headerText.set_text(ss)
 
 		del self.widgetFileList.body[:]
 		self.widgetFileList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn))
