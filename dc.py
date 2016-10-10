@@ -876,6 +876,10 @@ class mDlgMainDc(ur.cDialog):
 			g.savePath(os.getcwd())
 			raise urwid.ExitMainLoop()
 
+		elif key == "f5":
+			self.fileRefresh()
+			return
+
 		elif key == "f":  # filter
 			self.inputSet("find")
 			return
@@ -967,6 +971,7 @@ class mDlgMainDc(ur.cDialog):
 				self.widgetFileList.focusNext()
 			else:
 				self.mainWidget.set_focus("body")
+
 		elif key == "esc":
 			self.inputSet("")
 			self.fileRefresh()
