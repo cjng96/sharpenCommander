@@ -43,6 +43,8 @@ palette = [
 	('cyanfg_b', 'bold,dark cyan', 'black'),
 	('cyanfg_f', 'light gray', 'dark cyan'),
 	('cyanfg_bf', 'bold,light gray', 'dark cyan'),
+	('grayfg', 'dark gray', 'black'),
+	('grayfg_f', 'light gray', 'black'),
 
 	('redbg', 'black', 'dark red'),
 	('yellowbg_b', 'black,bold', 'yellow'),

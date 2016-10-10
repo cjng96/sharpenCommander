@@ -140,20 +140,20 @@ class git:
 		fileList = bb.decode()
 
 		# remove "" in file name
-		fileList2 = ""
+		fileList2 = []
 		for line in fileList.splitlines():
 			fileType, fileName = line.split(" ", 1)
 			if fileName.startswith("\"") and fileName.endswith("\""):
 				fileName = fileName[1:-1]
-			fileList2 += fileType + " " + fileName + "\n"
+			fileList2.append(fileType + " " + fileName)
 
 		def getStatus(terminal):
 			if "[32m" in terminal:
 				return "s"
 			elif "??" in terminal:
 				return "?"
-			else:
+			else:   # modification
 				return ""
 
-		itemList = [(x, getStatus(x)) for x in fileList2.split("\n")]
+		itemList = [(x, getStatus(x)) for x in fileList2 if len(x) > 0]
 		return itemList

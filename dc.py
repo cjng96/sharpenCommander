@@ -140,14 +140,18 @@ class MyProgram(Program):
 		sub = sub.lower()
 		lst = []
 		for pp in self.lstPath:
-			names = pp["names"]
-			names2 = map(str.lower, names)
-
-			hasList = list(filter(lambda s: sub in s, names2))
-			if len(hasList) > 0:
+			if self.matchItem(pp, sub):
 				lst.append(pp)
 
 		return lst
+
+	@staticmethod
+	def matchItem(item, sub):
+		names = item["names"]
+		names2 = map(str.lower, names)
+
+		hasList = list(filter(lambda s: sub in s, names2))
+		return len(hasList)
 
 	def cd(self, target):
 		if target == "~":
@@ -575,10 +579,11 @@ class mDlgMainDc(ur.cDialog):
 
 	def gotoRefresh(self, newText):
 		filterStr = self.edInput.get_edit_text() if newText is None else newText
-		if filterStr == "":
-			lst = [ ("greenfg", "greenfg_f", x["path"], x) for x in g.lstPath ]
-		else:
-			lst = [ ("greenfg", "greenfg_f", x["path"], x) for x in g.findItems(filterStr) ]
+		lstPath = []
+		if filterStr != "":
+			lstPath = g.findItems(filterStr)
+
+		lst = [("greenfg", "greenfg_f", x["path"], x) for x in lstPath]
 
 		self.headerText.set_text("%s - %d" % (self.title, len(lst)))
 		refreshBtnListMarkupTuple(lst, self.widgetFileList, lambda btn: self.onFileSelected(btn))
@@ -596,22 +601,40 @@ class mDlgMainDc(ur.cDialog):
 
 		pp = os.getcwd()
 		# TODO: use scandir
-		lst = [os.path.join(pp, x) for x in os.listdir(pp) if filterStr == "" or filterStr in x ]
+		lst = [ (x, 0) for x in os.listdir(pp) ]
+		if filterStr != "":
+			lst = [ (x[0], 1 if filterStr in x[0] else 0)  for x in lst ]
 
 		# list
-		lst2 = [ (x, os.stat(x)) for x in lst]
-		lst2.sort(key=lambda x: -1 if stat.S_ISDIR(x[1].st_mode) else 1)
-		lst2.insert(0, ("..", None))
+		lst2 = [ (x[0], os.stat(os.path.join(pp, x[0])), x[1]) for x in lst]
+		if filterStr != "":
+			lst2.sort(key=lambda x: -1 if x[2] == 1 else 1)
 
-		itemList = [ (os.path.basename(x[0]), x[1]) for x in lst2]
+		lst2.sort(key=lambda x: -1 if stat.S_ISDIR(x[1].st_mode) else 1)
+		lst2.insert(0, ("..", None, 0))
+
+		#itemList = [ (os.path.basename(x[0]), x[1], x[2]) for x in lst2]
+		itemList = lst2
 		def gen(x):
 			if x[0] == "..":
 				isDir = True
 			else:
 				isDir = stat.S_ISDIR(x[1].st_mode)
 
-			mstd = "greenfg" if isDir else "std"
-			mfocus = "greenfg_f" if isDir else "std_f"
+			if isDir:
+				mstd = "greenfg"
+				mfocus = "greenfg_f"
+			elif filterStr != "":
+				if x[2] == 0:
+					mstd = "grayfg"
+					mfocus = "grayfg_f"
+				else:
+					mstd = "cyanfg"
+					mfocus = "cyanfg_f"
+			else:
+				mstd = "std"
+				mfocus = "std_f"
+
 			return mstd, mfocus, x[0], x[1]
 
 		# status
@@ -625,9 +648,20 @@ class mDlgMainDc(ur.cDialog):
 			status = "(%s)" % status
 
 		# git post
+		gitSt = ""
 		if self.gitBranch is not None:
+			cntStaged = 0
+			cntModified = 0
+			cntUntracked = 0
 			gitItemList = git.statusFileList()
 			for gitItem in gitItemList:
+				if gitItem[1] == "s":
+					cntStaged += 1
+				elif gitItem[1] == "?":
+					cntUntracked += 1
+				else:
+					cntModified += 1
+
 				name = ur.termianl2plainText(gitItem[0])[3:]
 				def gen2(x):
 					#print("target - [%s] - %s" % (x[2], name))
@@ -648,7 +682,21 @@ class mDlgMainDc(ur.cDialog):
 
 				itemList = list(map(gen2, itemList))
 
-		self.headerText.set_text("%s - %s%s - %d" % (self.title, pp, status, len(itemList)-1))
+			ss1 = ""
+			if cntStaged > 0:
+				ss1 += "S:%d, " % cntStaged
+			if cntModified > 0:
+				ss1 += "M:%d, " % cntModified
+			if cntUntracked > 0:
+				ss1 += "?:%d, " % cntUntracked
+
+			if ss1 != "":
+				ss1 = ss1[:-2]
+
+			gitSt = " - git(%s)" % ss1
+
+		ss = "%s - %s%s - %d%s" % (self.title, pp, status, len(itemList)-1, gitSt)
+		self.headerText.set_text(ss)
 
 		del self.widgetFileList.body[:]
 		self.widgetFileList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn))
@@ -876,6 +924,10 @@ class mDlgMainDc(ur.cDialog):
 			g.savePath(os.getcwd())
 			raise urwid.ExitMainLoop()
 
+		elif key == "f5":
+			self.fileRefresh()
+			return
+
 		elif key == "f":  # filter
 			self.inputSet("find")
 			return
@@ -904,6 +956,27 @@ class mDlgMainDc(ur.cDialog):
 			dlg = mDlgMainGitStatus(onExit)
 			g.doSetMain(dlg)
 			return
+
+		elif key == "U": # git update
+			cur = os.getcwd()
+			g.loop.stop()
+			gr.actionUpdate(cur)
+			input("Enter to return...")
+			g.loop.start()
+			self.fileRefresh()
+
+		elif key == "P":
+			g.loop.stop()
+			print("fetching first...")
+			try:
+				git.fetch()
+				g.gitPush()
+			except Exception as e:
+				print("Error - %s" % e)
+
+			input("Enter to return...")
+			g.loop.start()
+			self.fileRefresh()
 
 		elif key == "E":
 			pp = self.getFocusPath()
@@ -946,6 +1019,7 @@ class mDlgMainDc(ur.cDialog):
 				self.widgetFileList.focusNext()
 			else:
 				self.mainWidget.set_focus("body")
+
 		elif key == "esc":
 			self.inputSet("")
 			self.fileRefresh()
@@ -1645,30 +1719,17 @@ class Gr(object):
 	def repoAllName(self):
 		return [repo["names"][0] for repo in self.repoList]
 		
-	def action(self, action):
+	def action(self, action, target):
 		if not self.isInit:
 			self.init()
 
-		if len(sys.argv) >= 3:
-			second = sys.argv[2]
-			if second == ".":
-				# current repo
-				cur = os.getcwd() + "/"
-				for repo in gr.repoList:
-					repoPath = os.path.realpath(repo["path"]) 
-					if cur.startswith(repoPath+"/"):
-						second = repo["names"][0]
-						break
-				if second == ".":
-					self.log(0, "Current path[%s] is not git repo." % cur)
-					return
-				
-			action(self, second)
-			
+		if target is not None:
+			action(self, target)
+
 		else:
 			for comp in gr.repoAllName():
 				action(self, comp)
-		
+
 	def log(self, lv, msg):
 		if lv == 0:
 			print("%s%s%s" % (Ansi.redBold, msg, Ansi.clear))
@@ -1695,9 +1756,12 @@ class Gr(object):
 		return path
 				
 	def changePath(self, name):
-		path = self.getRepoPath(name)
-		if not os.path.isdir(path):
-			raise FileNotFoundError(path, "%s(%s) -> doesn't exist"  % (name, path))
+		if name.startswith("/"):
+			path = name
+		else:
+			path = self.getRepoPath(name)
+			if not os.path.isdir(path):
+				raise FileNotFoundError(path, "%s(%s) -> doesn't exist"  % (name, path))
 
 		os.chdir(path)
 		ss = "path:%s" % path
@@ -1772,7 +1836,17 @@ class Gr(object):
 			
 			#ss = system("git st")
 			#print(ss)
-			
+
+	def actionUpdate(self, target):
+		print("fetch......")
+		gr.action(Gr.fetch, target)
+
+		print("merge......")
+		gr.action(Gr.mergeSafe, target)
+
+		print("status......")
+		gr.action(Gr.statusComponent, target)
+
 	def mergeSafe(self, name):
 		try:
 			path = self.changePath(name)
@@ -1792,19 +1866,21 @@ class Gr(object):
 		isSame = self.checkSameWith(name, branchName, remoteBranch)
 		if isSame:
 			return
-	
-		repo = self.getRepo(name)
-		if "type" in repo and repo["type"] == "bin":
-			self.log2(Color.blue, name, "merge with %s - %s - bin type" % (remoteBranch, path))
-		
-			uname = "###groupRepo###"	
-			ss = system("git stash save -u \"%s\"" % uname)
-			print(ss)
-			ss = system("git merge %s" % remoteBranch)
-			print(ss)
-			stashName = git.stashGetNameSafe(uname)
-			ss = system("git stash pop %s" % stashName)
-			print(ss)
+
+		# allow the repo that no registerted
+		if not name.startswith("/"):
+			repo = self.getRepo(name)
+			if "type" in repo and repo["type"] == "bin":
+				self.log2(Color.blue, name, "merge with %s - %s - bin type" % (remoteBranch, path))
+
+				uname = "###groupRepo###"
+				ss = system("git stash save -u \"%s\"" % uname)
+				print(ss)
+				ss = system("git merge %s" % remoteBranch)
+				print(ss)
+				stashName = git.stashGetNameSafe(uname)
+				ss = system("git stash pop %s" % stashName)
+				print(ss)
 	
 		diffList = git.checkFastForward(branchName, remoteBranch)
 		if len(diffList) != 0:
@@ -1876,49 +1952,69 @@ def run():
 
 	argc = len(sys.argv)	
 	if argc == 1:
-		target = ""	# basic cmd
+		cmd = ""	# basic cmd
 	else:
-		target = sys.argv[1]
+		cmd = sys.argv[1]
 		
-
 	removeEmptyArgv()
 
-	if target == "":
+	target = None
+	if len(sys.argv) >= 3:
+		target = sys.argv[2]
+		if target == ".":
+			# current repo
+			cur = os.getcwd() + "/"
+
+			# allow the repo that isn't registerted
+			target = cur
+
+			'''
+			for repo in gr.repoList:
+				repoPath = os.path.realpath(repo["path"])
+				if cur.startswith(repoPath+"/"):
+					second = repo["names"][0]
+					break
+			if second == ".":
+				self.log(0, "Current path[%s] is not git repo." % cur)
+				return
+			'''
+
+	if cmd == "":
 		uiMain(mDlgMainDc)
 		return
 
-	elif target == "push":
+	elif cmd == "push":
 		print("fetching first...")
 		git.fetch()
 		g.gitPush()
 		return
 		
-	elif target == "ci":
+	elif cmd == "ci":
 		uiMain(mDlgMainGitStatus)
 		return
 		
-	elif target == "list":
+	elif cmd == "list":
 		g.listPath()
 		return
 		
-	elif target == "config":
+	elif cmd == "config":
 		g.savePath("~/.devcmd")
 		return
 		
-	elif target == "which":
+	elif cmd == "which":
 		ss, status = systemSafe(" ".join(['"' + c + '"' for c in sys.argv[1:]]))
 		print(ss)
 		print("goto which path...")
 		g.savePath(os.path.dirname(ss))
 		return
 	
-	elif target == "find":
+	elif cmd == "find":
 		# dc find . -name "*.py"
 		cmds = sys.argv[1:]
 		doSubCmd(cmds, mDlgMainFind)
 		return
 		
-	elif target == "findg":
+	elif cmd == "findg":
 		pp = sys.argv[2]
 		if "*" not in pp:
 			pp = "*"+pp+"*"
@@ -1927,7 +2023,7 @@ def run():
 		doSubCmd(cmds, mDlgMainFind, 4)
 		return
 		
-	elif target == "ack":
+	elif cmd == "ack":
 		# dc ack printf
 		cmds = sys.argv[1:]
 		cmds.insert(1, "--group")
@@ -1935,7 +2031,7 @@ def run():
 		doSubCmd(cmds, mDlgMainAck)
 		return
 		
-	elif target == "ackg":
+	elif cmd == "ackg":
 		# dc ack printf
 		cmds = ["ack"] + sys.argv[2:]
 		cmds.insert(1, "--group")
@@ -1943,31 +2039,24 @@ def run():
 		doSubCmd(cmds, mDlgMainAck, 4)
 		return
 		
-	elif target == "st":
-		gr.action(Gr.statusComponent)
+	elif cmd == "st":
+		gr.action(Gr.statusComponent, target)
 		return
 		
-	elif target == "fetch":
-		gr.action(Gr.fetch)
+	elif cmd == "fetch":
+		gr.action(Gr.fetch, target)
 		return
 		
-	elif target == "merge":
-		gr.action(Gr.mergeSafe)
+	elif cmd == "merge":
+		gr.action(Gr.mergeSafe, target)
 		return
 		
-	elif target == "update":
-		print("fetch......")
-		gr.action(Gr.fetch)
-
-		print("merge......")
-		gr.action(Gr.mergeSafe)
-
-		print("status......")
-		gr.action(Gr.statusComponent)
+	elif cmd == "update":
+		gr.actionUpdate(target)
 		return
 
 	#print("target - %s" % target)
-	g.cd(target)
+	g.cd(cmd)
 	return 1
 	
 
