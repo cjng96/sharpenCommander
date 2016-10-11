@@ -541,6 +541,7 @@ class mDlgMainDc(ur.cDialog):
 
 		self.cmd = ""
 		self.gitBranch = None
+		self.dcdata = None
 
 		# work space
 		pp = os.getcwd()
@@ -601,7 +602,16 @@ class mDlgMainDc(ur.cDialog):
 
 		pp = os.getcwd()
 		# TODO: use scandir
-		lst = [ (x, 0) for x in os.listdir(pp) ]
+
+		self.dcdata = None
+		lst = []
+		for x in os.listdir(pp):
+			if x == ".dcdata":
+				self.dcdataLoad()
+				continue
+			else:
+				lst.append( (x, 0) )
+
 		if filterStr != "":
 			lst = [ (x[0], 1 if filterStr in x[0] else 0)  for x in lst ]
 
@@ -713,6 +723,37 @@ class mDlgMainDc(ur.cDialog):
 
 		self.extraShow(lst)
 		'''
+
+	def dcdataLoad(self):
+		with open(".dcdata", "r") as fp:
+			self.dcdata = json.load(fp)
+
+	def dcdataSave(self):
+		if self.dcdata is None:
+			os.remove(".dcdata")
+			return
+
+		with open(".dcdata", "w") as fp:
+			json.dump(self.dcdata, fp)
+
+	def dcdataGet(self, fname):
+		for item in self.dcdata:
+			if item["name"] == fname:
+				return item
+		return None
+
+	def dcdataAdd(self, fname, obj):
+		if self.dcdata is None:
+			self.dcdata = []
+
+		obj["name"] = fname
+		self.dcdata.append(obj)
+
+	def dcdataRemove(self, item):
+		self.dcdata.remove(item)
+		if len(self.dcdata) == 0:
+			self.dcdata = None
+
 
 	def onFileSelected(self, btn):
 		pass
@@ -864,10 +905,14 @@ class mDlgMainDc(ur.cDialog):
 
 		return keys
 
-	def getFocusPath(self):
-		pp = os.getcwd()
+	def getFocusName(self):
 		btn = self.widgetFileList.focus
 		fname = btn.base_widget.get_label()
+		return fname
+
+	def getFocusPath(self):
+		pp = os.getcwd()
+		fname = self.getFocusName()
 		return os.path.join(pp, fname)
 
 	def workNew(self):
@@ -984,6 +1029,18 @@ class mDlgMainDc(ur.cDialog):
 			g.loop.stop()
 			systemRet("e %s" % pp)
 			g.loop.start()
+			self.fileRefresh()
+
+		elif key == "M":
+			fname = self.getFocusName()
+			item = self.dcdataGet(fname)
+			if item is None:
+				self.dcdataAdd(fname, dict(type="S"))
+			else:
+				if item.type == "S":
+					self.dcdataRemove(item)
+
+			self.dcdataSave()
 			self.fileRefresh()
 
 		#elif key == "ctrl h":
