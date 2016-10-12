@@ -541,6 +541,7 @@ class mDlgMainDc(ur.cDialog):
 		self.cmd = ""
 		self.gitBranch = None
 		self.dcdata = None
+		self.lastPath = None
 
 		# work space
 		pp = os.getcwd()
@@ -675,7 +676,7 @@ class mDlgMainDc(ur.cDialog):
 
 				name = ur.termianl2plainText(gitItem[0])[3:]
 				def gen2(x):
-					print("target - [%s] - %s" % (x[2], name))
+					#print("target - [%s] - %s" % (x[2], name))
 					if x[1] == name:
 						if gitItem[1] == "s":
 							mstd = "bluefg"
@@ -706,11 +707,19 @@ class mDlgMainDc(ur.cDialog):
 		ss = "%s - %s%s - %d%s" % (self.title, pp, status, len(itemList)-1, gitSt)
 		self.headerText.set_text(ss)
 
+		if filterStr == "" and self.lastPath == pp:
+			focusPos = self.widgetFileList.focus_position
+		else:
+			focusPos = 1
+
+		if focusPos >= len(itemList):
+			focusPos = 0
+
+		self.lastPath = pp
+
 		del self.widgetFileList.body[:]
 		self.widgetFileList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn))
-
-		if filterStr is not None and len(itemList) > 1:
-			self.widgetFileList.focus_position = 1
+		self.widgetFileList.focus_position = focusPos
 
 		# extra
 		'''
