@@ -632,8 +632,12 @@ class mDlgMainDc(ur.cDialog):
 				isDir = stat.S_ISDIR(x[1].st_mode)
 
 			if isDir:
-				if self.dcdataGet(x[0]) is not None:
-					mstd = "greenfgb"
+				dcItem = self.dcdataGet(x[0])
+				if dcItem is not None:
+					if dcItem["type"] == "S":
+						mstd = "bluefgb"
+					else:
+						mstd = "grayfg"
 				else:
 					mstd = "greenfg"
 			elif filterStr != "":
@@ -642,8 +646,12 @@ class mDlgMainDc(ur.cDialog):
 				else:
 					mstd = "cyanfg"
 			else:
-				if self.dcdataGet(x[0]) is not None:
-					mstd = "bold"
+				dcItem = self.dcdataGet(x[0])
+				if dcItem is not None:
+					if dcItem["type"] == "S":
+						mstd = "bold"
+					else:
+						mstd = "grayfg"
 				else:
 					mstd = "std"
 
@@ -1041,14 +1049,18 @@ class mDlgMainDc(ur.cDialog):
 			g.loop.start()
 			self.fileRefresh()
 
-		elif key == "M":
+		elif key == "M" or key == "N":
 			fname = self.getFocusName()
 			item = self.dcdataGet(fname)
+
+			ftype = "S" if key == "M" else "I"
 			if item is None:
-				self.dcdataAdd(fname, dict(type="S"))
+				self.dcdataAdd(fname, dict(type=ftype))
 			else:
-				if item["type"] == "S":
+				if item["type"] == ftype:
 					self.dcdataRemove(item)
+				else:
+					item["type"] = ftype
 
 			self.dcdataSave()
 			self.fileRefresh()
