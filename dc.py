@@ -604,12 +604,12 @@ class mDlgMainDc(ur.cDialog):
 
 		self.dcdata = None
 		lst = []
-		for x in os.listdir(pp):
-			if x == ".dcdata":
+		for item in os.listdir(pp):
+			if item == ".dcdata":
 				self.dcdataLoad()
 				continue
 			else:
-				lst.append( (x, 0) )
+				lst.append( (item, 0) )
 
 		if filterStr != "":
 			lst = [ (x[0], 1 if filterStr in x[0] else 0)  for x in lst ]
@@ -631,14 +631,20 @@ class mDlgMainDc(ur.cDialog):
 				isDir = stat.S_ISDIR(x[1].st_mode)
 
 			if isDir:
-				mstd = "greenfg"
+				if self.dcdataGet(x[0]) is not None:
+					mstd = "greenfgb"
+				else:
+					mstd = "greenfg"
 			elif filterStr != "":
 				if x[2] == 0:
 					mstd = "grayfg"
 				else:
 					mstd = "cyanfg"
 			else:
-				mstd = "std"
+				if self.dcdataGet(x[0]) is not None:
+					mstd = "bold"
+				else:
+					mstd = "std"
 
 			return mstd, x[0], x[1]
 
@@ -669,8 +675,8 @@ class mDlgMainDc(ur.cDialog):
 
 				name = ur.termianl2plainText(gitItem[0])[3:]
 				def gen2(x):
-					#print("target - [%s] - %s" % (x[2], name))
-					if x[2] == name:
+					print("target - [%s] - %s" % (x[2], name))
+					if x[1] == name:
 						if gitItem[1] == "s":
 							mstd = "bluefg"
 						elif gitItem[1] == "?":
@@ -678,7 +684,7 @@ class mDlgMainDc(ur.cDialog):
 						else:
 							mstd = "cyanfg"
 
-						return mstd, x[2], x[3]
+						return mstd, x[1], x[2]
 					else:
 						return x
 
@@ -1032,7 +1038,7 @@ class mDlgMainDc(ur.cDialog):
 			if item is None:
 				self.dcdataAdd(fname, dict(type="S"))
 			else:
-				if item.type == "S":
+				if item["type"] == "S":
 					self.dcdataRemove(item)
 
 			self.dcdataSave()
@@ -1528,8 +1534,7 @@ class mGitCommitDialog(ur.cDialog):
 	def refreshFileList(self):
 		del self.widgetFileList.body[:]
 
-
-		# staged file list		
+		# staged file list
 		fileList = system("git diff --name-only --cached")
 		itemList = [ (self.themes[0][0], x, "s") for x in fileList.split("\n") if x.strip() != "" ]
 		self.widgetFileList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn))
