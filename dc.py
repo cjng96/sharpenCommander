@@ -539,6 +539,7 @@ class mDlgMainDc(ur.cDialog):
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText, footer=self.edInput)
 
 		self.cmd = ""
+		self.mode = ""  # d면 등록된 폴더만 표시
 		self.gitBranch = None
 		self.dcdata = None
 		self.lastPath = None
@@ -580,9 +581,10 @@ class mDlgMainDc(ur.cDialog):
 
 	def gotoRefresh(self, newText):
 		filterStr = self.edInput.get_edit_text() if newText is None else newText
-		lstPath = []
 		if filterStr != "":
 			lstPath = g.findItems(filterStr)
+		else:
+			lstPath = g.lstPath[:]
 
 		lst = [("greenfg", x["path"], x) for x in lstPath]
 
@@ -619,6 +621,17 @@ class mDlgMainDc(ur.cDialog):
 		lst2 = [ (x[0], os.stat(os.path.join(pp, x[0])), x[1]) for x in lst]
 		if filterStr != "":
 			lst2.sort(key=lambda x: -1 if x[2] == 1 else 1)
+
+		# registered list only
+		if self.dcdata is not None and self.mode != "":
+			def __check(fname):
+				dcItem = self.dcdataGet(fname)
+				if dcItem is None:
+					return self.mode == "d1"
+				else:
+					return dcItem["type"] == "S"
+
+			lst2 = [ (x[0], x[1]) for x in lst2 if __check(x[0]) ]
 
 		lst2.sort(key=lambda x: -1 if stat.S_ISDIR(x[1].st_mode) else 1)
 		lst2.insert(0, ("..", None, 0))
@@ -793,6 +806,8 @@ class mDlgMainDc(ur.cDialog):
 
 		self.workList[self.workPt] = pp
 		self.workRefresh()
+
+		self.mode = ""  # 모드도 초기화
 
 		# filter상태도 클리어하는게 맞나?
 		self.inputSet("")
@@ -1000,6 +1015,16 @@ class mDlgMainDc(ur.cDialog):
 			self.fileRefresh()
 			return
 
+		elif key == "d":
+			if self.mode == "":
+				self.mode = "d1"
+			elif self.mode == "d1":
+				self.mode = "d2"
+			else:
+				self.mode = ""
+
+			self.fileRefresh()
+
 		elif key == "/":  # cmd
 			self.inputSet("cmd")
 			return
@@ -1100,6 +1125,7 @@ class mDlgMainDc(ur.cDialog):
 				self.mainWidget.set_focus("body")
 
 		elif key == "esc":
+			self.mode = ""  # 모드도 초기화
 			self.inputSet("")
 			self.fileRefresh()
 
