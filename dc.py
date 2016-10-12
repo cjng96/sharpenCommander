@@ -260,13 +260,13 @@ def refreshBtnListTerminal(terimalItemList, listBox, onClick):
 	listBox.body += ur.makeBtnListTerminal(terimalItemList, onClick)
 
 """
-itemList = list of (markup, markupF, attr)
+itemList = list of (markup,  attr)
 """
 def refreshBtnListMarkupTuple(markupItemList, listBox, onClick):
 	del listBox.body[:]
 	listBox.itemCount = len(markupItemList)
 	if listBox.itemCount == 0:
-		markupItemList = [("std", "std_f", "< Nothing > ", "")]
+		markupItemList = [("std", "< Nothing > ", "")]
 
 	listBox.body += ur.makeBtnListMarkup(markupItemList, onClick)
 
@@ -281,7 +281,7 @@ class AckFile:
 		
 	def getTitleMarkup(self, focus=False):
 		themeTitle = "greenfg" if not focus else "greenfg_f"
-		themeCount = "std" if not focus else "std_f"  
+		themeCount = "std" if not focus else "std_f"
 		return [(themeTitle, self.fname), (themeCount, "(%d)" % len(self.lstLine))]
 
 
@@ -482,9 +482,8 @@ class mDlgMainFind(ur.cDialog):
 			#markup = ur.terminal2markup(line, 0)
 			#markupF = ur.terminal2markup(line, 1)
 			markup = ("std", line)
-			markupF = ("std_f", line)
 
-			btn = ur.genBtn(markup, markupF, None, self.cbFileSelect, len(self.widgetFileList.body) == 0)
+			btn = ur.genBtn(markup, None, self.cbFileSelect, len(self.widgetFileList.body) == 0)
 			self.widgetFileList.body.append(btn)
 			if len(self.widgetFileList.body) == 1:
 				self.onFileFocusChanged(0)
@@ -571,7 +570,7 @@ class mDlgMainDc(ur.cDialog):
 			return
 
 		# list
-		lstItem = [ ("std", "std_f", x, None) for x in lstItem ]
+		lstItem = [ ("std", x, None) for x in lstItem ]
 		refreshBtnListMarkupTuple(lstItem, self.widgetCmdList, lambda btn: self.onFileSelected(btn))
 
 	def onInputChanged(self, edit, text):
@@ -584,7 +583,7 @@ class mDlgMainDc(ur.cDialog):
 		if filterStr != "":
 			lstPath = g.findItems(filterStr)
 
-		lst = [("greenfg", "greenfg_f", x["path"], x) for x in lstPath]
+		lst = [("greenfg", x["path"], x) for x in lstPath]
 
 		self.headerText.set_text("%s - %d" % (self.title, len(lst)))
 		refreshBtnListMarkupTuple(lst, self.widgetFileList, lambda btn: self.onFileSelected(btn))
@@ -633,19 +632,15 @@ class mDlgMainDc(ur.cDialog):
 
 			if isDir:
 				mstd = "greenfg"
-				mfocus = "greenfg_f"
 			elif filterStr != "":
 				if x[2] == 0:
 					mstd = "grayfg"
-					mfocus = "grayfg_f"
 				else:
 					mstd = "cyanfg"
-					mfocus = "cyanfg_f"
 			else:
 				mstd = "std"
-				mfocus = "std_f"
 
-			return mstd, mfocus, x[0], x[1]
+			return mstd, x[0], x[1]
 
 		# status
 		itemList = list(map(gen, itemList))
@@ -678,15 +673,12 @@ class mDlgMainDc(ur.cDialog):
 					if x[2] == name:
 						if gitItem[1] == "s":
 							mstd = "bluefg"
-							mfocus = "bluefg_f"
 						elif gitItem[1] == "?":
 							mstd = "underline"
-							mfocus = "underline_f"
 						else:
 							mstd = "cyanfg"
-							mfocus = "cyanfg_f"
 
-						return mstd, mfocus, x[2], x[3]
+						return mstd, x[2], x[3]
 					else:
 						return x
 
@@ -737,6 +729,9 @@ class mDlgMainDc(ur.cDialog):
 			json.dump(self.dcdata, fp)
 
 	def dcdataGet(self, fname):
+		if self.dcdata is None:
+			return None
+
 		for item in self.dcdata:
 			if item["name"] == fname:
 				return item
@@ -960,7 +955,7 @@ class mDlgMainDc(ur.cDialog):
 		del self.widgetWorkList.body[:]
 
 		# std, focus, text, attr
-		itemList =  [ ("std", "std_f", os.path.basename(x), x) for x in self.workList ]
+		itemList =  [ ("std", os.path.basename(x), x) for x in self.workList ]
 		self.widgetWorkList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn))
 		self.widgetWorkList.focus_position = self.workPt
 
@@ -1247,8 +1242,7 @@ class mDlgFolderList(ur.cDialog):
 
 		def gen(x):
 			mstd = "greenfg" if "repo" in x[1] and x[1]["repo"] else "std"
-			mfocus = mstd + "_f"
-			return mstd, mfocus, x[0], x[1]
+			return mstd, x[0], x[1]
 
 		# status
 		itemList = list(map(gen, itemList))
@@ -1537,7 +1531,7 @@ class mGitCommitDialog(ur.cDialog):
 
 		# staged file list		
 		fileList = system("git diff --name-only --cached")
-		itemList = [ (self.themes[0][0], self.themes[0][1], x, "s") for x in fileList.split("\n") if x.strip() != "" ]
+		itemList = [ (self.themes[0][0], x, "s") for x in fileList.split("\n") if x.strip() != "" ]
 		self.widgetFileList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn))
 
 		# general file list
