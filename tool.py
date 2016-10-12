@@ -17,13 +17,14 @@ def system(args, stderr=subprocess.STDOUT):
 	rr = rr.rstrip(' \r\n')
 	return rr
 
-def systemSafe(args):
+def systemSafe(args, stderr=subprocess.STDOUT):
 	if g.isPrintSystem:
 		print("system command - %s" % args)
+	# stderr를 지원못한다. getstatusoutput은 쓰면안된다.
 	status,output = subprocess.getstatusoutput(args)
 	#rr = output.decode("UTF-8")
 	rr = output
-	rr = rr.strip(' \r\n')
+	rr = rr.rstrip(' \r\n')
 	return rr,status
 
 def systemRet(args):
@@ -132,7 +133,7 @@ class git:
 		(terminal name, s or "")
 		:return:
 		"""
-		fileList = system("git -c color.status=always status -s", stderr=subprocess.DEVNULL)
+		fileList,ret = systemSafe("git -c color.status=always status -s", stderr=subprocess.DEVNULL)
 
 		# quoted octal notation to utf8
 		fileList = bytes(fileList, "utf-8").decode("unicode_escape")

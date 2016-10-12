@@ -260,13 +260,13 @@ def refreshBtnListTerminal(terimalItemList, listBox, onClick):
 	listBox.body += ur.makeBtnListTerminal(terimalItemList, onClick)
 
 """
-itemList = list of (markup, markupF, attr)
+itemList = list of (markup,  attr)
 """
 def refreshBtnListMarkupTuple(markupItemList, listBox, onClick):
 	del listBox.body[:]
 	listBox.itemCount = len(markupItemList)
 	if listBox.itemCount == 0:
-		markupItemList = [("std", "std_f", "< Nothing > ", "")]
+		markupItemList = [("std", "< Nothing > ", "")]
 
 	listBox.body += ur.makeBtnListMarkup(markupItemList, onClick)
 
@@ -281,7 +281,7 @@ class AckFile:
 		
 	def getTitleMarkup(self, focus=False):
 		themeTitle = "greenfg" if not focus else "greenfg_f"
-		themeCount = "std" if not focus else "std_f"  
+		themeCount = "std" if not focus else "std_f"
 		return [(themeTitle, self.fname), (themeCount, "(%d)" % len(self.lstLine))]
 
 
@@ -482,9 +482,8 @@ class mDlgMainFind(ur.cDialog):
 			#markup = ur.terminal2markup(line, 0)
 			#markupF = ur.terminal2markup(line, 1)
 			markup = ("std", line)
-			markupF = ("std_f", line)
 
-			btn = ur.genBtn(markup, markupF, None, self.cbFileSelect, len(self.widgetFileList.body) == 0)
+			btn = ur.genBtn(markup, None, self.cbFileSelect, len(self.widgetFileList.body) == 0)
 			self.widgetFileList.body.append(btn)
 			if len(self.widgetFileList.body) == 1:
 				self.onFileFocusChanged(0)
@@ -541,6 +540,8 @@ class mDlgMainDc(ur.cDialog):
 
 		self.cmd = ""
 		self.gitBranch = None
+		self.dcdata = None
+		self.lastPath = None
 
 		# work space
 		pp = os.getcwd()
@@ -570,7 +571,7 @@ class mDlgMainDc(ur.cDialog):
 			return
 
 		# list
-		lstItem = [ ("std", "std_f", x, None) for x in lstItem ]
+		lstItem = [ ("std", x, None) for x in lstItem ]
 		refreshBtnListMarkupTuple(lstItem, self.widgetCmdList, lambda btn: self.onFileSelected(btn))
 
 	def onInputChanged(self, edit, text):
@@ -583,7 +584,7 @@ class mDlgMainDc(ur.cDialog):
 		if filterStr != "":
 			lstPath = g.findItems(filterStr)
 
-		lst = [("greenfg", "greenfg_f", x["path"], x) for x in lstPath]
+		lst = [("greenfg", x["path"], x) for x in lstPath]
 
 		self.headerText.set_text("%s - %d" % (self.title, len(lst)))
 		refreshBtnListMarkupTuple(lst, self.widgetFileList, lambda btn: self.onFileSelected(btn))
@@ -601,7 +602,16 @@ class mDlgMainDc(ur.cDialog):
 
 		pp = os.getcwd()
 		# TODO: use scandir
-		lst = [ (x, 0) for x in os.listdir(pp) ]
+
+		self.dcdata = None
+		lst = []
+		for item in os.listdir(pp):
+			if item == ".dcdata":
+				self.dcdataLoad()
+				continue
+			else:
+				lst.append( (item, 0) )
+
 		if filterStr != "":
 			lst = [ (x[0], 1 if filterStr in x[0] else 0)  for x in lst ]
 
@@ -622,20 +632,30 @@ class mDlgMainDc(ur.cDialog):
 				isDir = stat.S_ISDIR(x[1].st_mode)
 
 			if isDir:
-				mstd = "greenfg"
-				mfocus = "greenfg_f"
+				dcItem = self.dcdataGet(x[0])
+				if dcItem is not None:
+					if dcItem["type"] == "S":
+						mstd = "bluefgb"
+					else:
+						mstd = "grayfg"
+				else:
+					mstd = "greenfg"
 			elif filterStr != "":
 				if x[2] == 0:
 					mstd = "grayfg"
-					mfocus = "grayfg_f"
 				else:
 					mstd = "cyanfg"
-					mfocus = "cyanfg_f"
 			else:
-				mstd = "std"
-				mfocus = "std_f"
+				dcItem = self.dcdataGet(x[0])
+				if dcItem is not None:
+					if dcItem["type"] == "S":
+						mstd = "bold"
+					else:
+						mstd = "grayfg"
+				else:
+					mstd = "std"
 
-			return mstd, mfocus, x[0], x[1]
+			return mstd, x[0], x[1]
 
 		# status
 		itemList = list(map(gen, itemList))
@@ -665,18 +685,15 @@ class mDlgMainDc(ur.cDialog):
 				name = ur.termianl2plainText(gitItem[0])[3:]
 				def gen2(x):
 					#print("target - [%s] - %s" % (x[2], name))
-					if x[2] == name:
+					if x[1] == name:
 						if gitItem[1] == "s":
 							mstd = "bluefg"
-							mfocus = "bluefg_f"
 						elif gitItem[1] == "?":
 							mstd = "underline"
-							mfocus = "underline_f"
 						else:
 							mstd = "cyanfg"
-							mfocus = "cyanfg_f"
 
-						return mstd, mfocus, x[2], x[3]
+						return mstd, x[1], x[2]
 					else:
 						return x
 
@@ -698,11 +715,19 @@ class mDlgMainDc(ur.cDialog):
 		ss = "%s - %s%s - %d%s" % (self.title, pp, status, len(itemList)-1, gitSt)
 		self.headerText.set_text(ss)
 
+		if filterStr == "" and self.lastPath == pp:
+			focusPos = self.widgetFileList.focus_position
+		else:
+			focusPos = 1
+
+		if focusPos >= len(itemList):
+			focusPos = 0
+
+		self.lastPath = pp
+
 		del self.widgetFileList.body[:]
 		self.widgetFileList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn))
-
-		if filterStr is not None and len(itemList) > 1:
-			self.widgetFileList.focus_position = 1
+		self.widgetFileList.focus_position = focusPos
 
 		# extra
 		'''
@@ -713,6 +738,40 @@ class mDlgMainDc(ur.cDialog):
 
 		self.extraShow(lst)
 		'''
+
+	def dcdataLoad(self):
+		with open(".dcdata", "r") as fp:
+			self.dcdata = json.load(fp)
+
+	def dcdataSave(self):
+		if self.dcdata is None:
+			os.remove(".dcdata")
+			return
+
+		with open(".dcdata", "w") as fp:
+			json.dump(self.dcdata, fp)
+
+	def dcdataGet(self, fname):
+		if self.dcdata is None:
+			return None
+
+		for item in self.dcdata:
+			if item["name"] == fname:
+				return item
+		return None
+
+	def dcdataAdd(self, fname, obj):
+		if self.dcdata is None:
+			self.dcdata = []
+
+		obj["name"] = fname
+		self.dcdata.append(obj)
+
+	def dcdataRemove(self, item):
+		self.dcdata.remove(item)
+		if len(self.dcdata) == 0:
+			self.dcdata = None
+
 
 	def onFileSelected(self, btn):
 		pass
@@ -864,10 +923,14 @@ class mDlgMainDc(ur.cDialog):
 
 		return keys
 
-	def getFocusPath(self):
-		pp = os.getcwd()
+	def getFocusName(self):
 		btn = self.widgetFileList.focus
 		fname = btn.base_widget.get_label()
+		return fname
+
+	def getFocusPath(self):
+		pp = os.getcwd()
+		fname = self.getFocusName()
 		return os.path.join(pp, fname)
 
 	def workNew(self):
@@ -915,7 +978,7 @@ class mDlgMainDc(ur.cDialog):
 		del self.widgetWorkList.body[:]
 
 		# std, focus, text, attr
-		itemList =  [ ("std", "std_f", os.path.basename(x), x) for x in self.workList ]
+		itemList =  [ ("std", os.path.basename(x), x) for x in self.workList ]
 		self.widgetWorkList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn))
 		self.widgetWorkList.focus_position = self.workPt
 
@@ -984,6 +1047,22 @@ class mDlgMainDc(ur.cDialog):
 			g.loop.stop()
 			systemRet("e %s" % pp)
 			g.loop.start()
+			self.fileRefresh()
+
+		elif key == "M" or key == "N":
+			fname = self.getFocusName()
+			item = self.dcdataGet(fname)
+
+			ftype = "S" if key == "M" else "I"
+			if item is None:
+				self.dcdataAdd(fname, dict(type=ftype))
+			else:
+				if item["type"] == ftype:
+					self.dcdataRemove(item)
+				else:
+					item["type"] = ftype
+
+			self.dcdataSave()
 			self.fileRefresh()
 
 		#elif key == "ctrl h":
@@ -1190,8 +1269,7 @@ class mDlgFolderList(ur.cDialog):
 
 		def gen(x):
 			mstd = "greenfg" if "repo" in x[1] and x[1]["repo"] else "std"
-			mfocus = mstd + "_f"
-			return mstd, mfocus, x[0], x[1]
+			return mstd, x[0], x[1]
 
 		# status
 		itemList = list(map(gen, itemList))
@@ -1477,10 +1555,9 @@ class mGitCommitDialog(ur.cDialog):
 	def refreshFileList(self):
 		del self.widgetFileList.body[:]
 
-
-		# staged file list		
+		# staged file list
 		fileList = system("git diff --name-only --cached")
-		itemList = [ (self.themes[0][0], self.themes[0][1], x, "s") for x in fileList.split("\n") if x.strip() != "" ]
+		itemList = [ (self.themes[0][0], x, "s") for x in fileList.split("\n") if x.strip() != "" ]
 		self.widgetFileList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn))
 
 		# general file list

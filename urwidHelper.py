@@ -24,31 +24,31 @@ palette = [
 	('underline_f', 'light gray,underline', 'dark cyan'),
 
 	('redfg', 'dark red', 'black'),
-	('redfg_b', 'bold,dark red', 'black'),
+	('redfgb', 'bold,dark red', 'black'),
 	('redfg_f', 'light red', 'dark cyan'),
-	('redfg_bf', 'bold,light red', 'dark cyan'),
+	('redfgb_f', 'bold,light red', 'dark cyan'),
 	('greenfg', 'dark green', 'black'),
-	('greenfg_b', 'bold,dark green', 'black'),
+	('greenfgb', 'bold,dark green', 'black'),
 	('greenfg_f', 'light green', 'dark cyan'),
-	('greenfg_bf', 'bold,light green', 'dark cyan'),
+	('greenfgb_f', 'bold,light green', 'dark cyan'),
 	('yellowfg', 'yellow', 'black'),
-	('yellowfg_b', 'bold,yellow', 'black'),
+	('yellowfgb', 'bold,yellow', 'black'),
 	('yellowfg_f', 'yellow', 'dark cyan'),
-	('yellowfg_bf', 'bold,yellow', 'dark cyan'),
+	('yellowfgb_f', 'bold,yellow', 'dark cyan'),
 	('bluefg', 'dark blue', 'black'),
-	('bluefg_b', 'bold,dark blue', 'black'),
+	('bluefgb', 'bold,dark blue', 'black'),
 	('bluefg_f', 'light blue', 'dark cyan'),
-	('bluefg_bf', 'bold,light blue', 'dark cyan'),
+	('bluefgb_f', 'bold,light blue', 'dark cyan'),
 	('cyanfg', 'dark cyan', 'black'),
-	('cyanfg_b', 'bold,dark cyan', 'black'),
+	('cyanfgb', 'bold,dark cyan', 'black'),
 	('cyanfg_f', 'light gray', 'dark cyan'),
-	('cyanfg_bf', 'bold,light gray', 'dark cyan'),
+	('cyanfgb_f', 'bold,light gray', 'dark cyan'),
 	('grayfg', 'dark gray', 'black'),
 	('grayfg_f', 'light gray', 'black'),
 
 	('redbg', 'black', 'dark red'),
-	('yellowbg_b', 'black,bold', 'yellow'),
-	('yellowbg_bf', 'black,bold', 'dark cyan'),  # it...
+	('yellowbgb', 'black,bold', 'yellow'),
+	('yellowbgb_f', 'black,bold', 'dark cyan'),  # it...
 
 	('reveal focus', "black", "dark cyan", "standout"),
 ]
@@ -226,22 +226,22 @@ def termianl2plainText(ss):
 
 def terminal2markup(ss, invert=0):
 	# source = "\033[31mFOO\033[0mBAR"
-	table = {"[1" :("bold" ,'bold_f'), "[4" :("underline" ,'underline_f'),
-	         "[22" :("std" ,'std_f'),
-	         "[24" :("std" ,'std_f'),
-	         "[31" :('redfg' ,'redfg_f'),
-	         "[32" :('greenfg', "greenfg_f"),
-	         "[33" :('yellowfg', "yellowfg_f"),
-	         "[36" :('cyanfg', "cyanfg_f"),
-	         "[41" :("redbg", "regbg_f"),
-	         "[1;31" :("redfg_b", "redfg_bf"),
-	         "[1;32" :("greenfg_b", "greenfg_bf"),
-	         "[1;33" :("yellowfg_b", "yellowfg_bf"),
-	         "[1;34" :("bluefg_b", "bluefg_bf"),
-	         "[1;36" :("cyanfg_b", "cyanfg_bf"),
-	         "[30;43" :("yellowbg_b", "yellowbg_bf"),
-	         "[0" :('std', "std_f"),
-	         "[" :('std', "std_f")}
+	table = {"[1" :"bold", "[4" :"underline",
+	         "[22" :"std" ,
+	         "[24" :"std",
+	         "[31" :'redfg',
+	         "[32" :'greenfg',
+	         "[33" :'yellowfg',
+	         "[36" :'cyanfg',
+	         "[41" :"redbg",
+	         "[1;31" :"redfgb",
+	         "[1;32" :"greenfgb",
+	         "[1;33" :"yellowfgb",
+	         "[1;34" :"bluefgb",
+	         "[1;36" :"cyanfgb",
+	         "[30;43" :"yellowbgb",
+	         "[0" :'std',
+	         "[" :'std'}
 	markup = []
 	st = ss.find("\x1b")
 	if st == -1:
@@ -258,7 +258,10 @@ def terminal2markup(ss, invert=0):
 
 		attr, text = at.split("m" ,1)
 		if text != "":	# skip empty string
-			markup.append((table[attr][invert], text))
+			txtAttr = table[attr]
+			if invert != 0:
+				txtAttr += "_f"
+			markup.append((txtAttr, text))
 
 	if len(markup) == 0:
 		return ""
@@ -314,11 +317,11 @@ def makeBtnListTerminal(lstTerminal, onClick, isFirstFocus=True, doApply=None):
 
 def makeBtnListMarkup(lstMarkup, onClick, isFirstFocus=True, doApply=None):
 	"""
-	lstMarkup = list of (std, focus, text, attr)
+	lstMarkup = list of (markup, text, attr)
 	"""
 	outList = []
-	for std, focus, text, attr in lstMarkup:
-		btn = genBtn((std, text), (focus, text), attr, onClick, isFirstFocus, doApply)
+	for markup, text, attr in lstMarkup:
+		btn = genBtn((markup, text), (markup+"_f", text), attr, onClick, isFirstFocus, doApply)
 		isFirstFocus = False
 		outList.append(btn)
 
