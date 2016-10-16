@@ -244,9 +244,14 @@ class MyProgram(Program):
 					break
 
 	def doSetMain(self, dlg):
+		if not dlg.init():
+			dlg.close()
+			return False
+
 		self.dialog = dlg
 		g.loop.widget = dlg.mainWidget
-		dlg.init()
+		return True
+
 
 """
 itemList = list of (terminal, attr)
@@ -1394,11 +1399,11 @@ class mDlgMainGitStatus(ur.cDialog):
 
 	def refreshFileList(self, focusMove=0):
 		itemList = git.statusFileList()
-		refreshBtnListTerminal(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
-
-		size = len(self.widgetFileList.body)
-		if size <= 0:
+		if len(itemList) <= 0:
 			return False
+
+		refreshBtnListTerminal(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
+		size = len(self.widgetFileList.body)
 
 		focusIdx = self.widgetFileList.focus_position + focusMove
 		if focusIdx >= size:
@@ -1588,7 +1593,7 @@ class mGitCommitDialog(ur.cDialog):
 
 		# general file list
 		fileList = system("git diff --name-only")
-		itemList = [ (self.themes[1][0], self.themes[1][1], x, "c") for x in fileList.split("\n") if x.strip() != ""  ]
+		itemList = [ (self.themes[1][0], x, "c") for x in fileList.split("\n") if x.strip() != ""  ]
 		self.widgetFileList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn), False)
 
 		#for widget in self.widgetFileList.body:
