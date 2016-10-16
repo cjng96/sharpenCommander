@@ -1588,7 +1588,7 @@ class mGitCommitDialog(ur.cDialog):
 
 		# general file list
 		fileList = system("git diff --name-only")
-		itemList = [ (self.themes[1][0], self.themes[1][1], x, "c") for x in fileList.split("\n") if x.strip() != ""  ]
+		itemList = [ (self.themes[1][0], x, "c") for x in fileList.split("\n") if x.strip() != ""  ]
 		self.widgetFileList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn), False)
 
 		#for widget in self.widgetFileList.body:
