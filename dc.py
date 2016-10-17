@@ -1073,9 +1073,11 @@ class mDlgMainDc(ur.cDialog):
 
 		elif key == "E":
 			pp = self.getFocusPath()
+			# /cygdrive/...을 제대로 인식못한다. 그냥 상대 경로로..
+			name = os.path.basename(pp)
 
 			g.loop.stop()
-			systemRet("e %s" % pp)
+			systemRet("e %s" % name)
 			g.loop.start()
 			self.fileRefresh()
 
