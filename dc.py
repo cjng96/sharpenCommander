@@ -1073,9 +1073,11 @@ class mDlgMainDc(ur.cDialog):
 
 		elif key == "E":
 			pp = self.getFocusPath()
+			# /cygdrive/...을 제대로 인식못한다. 그냥 상대 경로로..
+			name = os.path.basename(pp)
 
 			g.loop.stop()
-			systemRet("e %s" % pp)
+			systemRet("e %s" % name)
 			g.loop.start()
 			self.fileRefresh()
 
@@ -1402,10 +1404,11 @@ class mDlgMainGitStatus(ur.cDialog):
 		if len(itemList) <= 0:
 			return False
 
+		focusIdx = self.widgetFileList.focus_position
 		refreshBtnListTerminal(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
 		size = len(self.widgetFileList.body)
 
-		focusIdx = self.widgetFileList.focus_position + focusMove
+		focusIdx = focusIdx + focusMove
 		if focusIdx >= size:
 			focusIdx = size-1
 		#self.widgetFileList.focus_position = focusIdx
