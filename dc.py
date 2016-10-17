@@ -1404,10 +1404,11 @@ class mDlgMainGitStatus(ur.cDialog):
 		if len(itemList) <= 0:
 			return False
 
+		focusIdx = self.widgetFileList.focus_position
 		refreshBtnListTerminal(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
 		size = len(self.widgetFileList.body)
 
-		focusIdx = self.widgetFileList.focus_position + focusMove
+		focusIdx = focusIdx + focusMove
 		if focusIdx >= size:
 			focusIdx = size-1
 		#self.widgetFileList.focus_position = focusIdx
