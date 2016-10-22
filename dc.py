@@ -1757,7 +1757,7 @@ def gitFileLastName(btn):
 	# case1. a -> b
 	if not fname.startswith("\""):
 		pt = fname.rindex(" -> ")
-		fname = fname.substring(pt)
+		fname = fname[pt+4:]
 		return unwrapQutesFilename(fname)
 	else:
 		# case2. "test a" -> "test b"
