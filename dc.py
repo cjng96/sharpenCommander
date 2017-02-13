@@ -623,7 +623,13 @@ class mDlgMainDc(ur.cDialog):
 			lst = [ (x[0], 1 if filterStr in x[0] else 0)  for x in lst ]
 
 		# list
-		lst2 = [ (x[0], os.stat(os.path.join(pp, x[0])), x[1]) for x in lst]
+		def osStat(pp):
+			try:
+				return os.stat(pp)
+			except Exception as e:
+				return None
+							
+		lst2 = [ (x[0], osStat(os.path.join(pp, x[0])), x[1]) for x in lst]
 		if filterStr != "":
 			lst2.sort(key=lambda x: -1 if x[2] == 1 else 1)
 
@@ -638,7 +644,15 @@ class mDlgMainDc(ur.cDialog):
 
 			lst2 = [ (x[0], x[1]) for x in lst2 if __check(x[0]) ]
 
-		lst2.sort(key=lambda x: -1 if stat.S_ISDIR(x[1].st_mode) else 1)
+		def __sortStMode(stMode):
+			if stMode is None:
+				return 2
+			elif stat.S_ISDIR(stMode.st_mode):
+				return -1
+			else:
+				return 1
+				
+		lst2.sort(key=lambda x: __sortStMode(x[1]))
 		lst2.insert(0, ("..", None, 0))
 
 		#itemList = [ (os.path.basename(x[0]), x[1], x[2]) for x in lst2]
@@ -646,6 +660,8 @@ class mDlgMainDc(ur.cDialog):
 		def gen(x):
 			if x[0] == "..":
 				isDir = True
+			elif x[1] is None:
+				isDir = False
 			else:
 				isDir = stat.S_ISDIR(x[1].st_mode)
 
