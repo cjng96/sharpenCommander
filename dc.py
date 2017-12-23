@@ -227,10 +227,11 @@ class MyProgram(Program):
 		target = input("\nInput remote branch name you push to: ")
 		if target == "":
 			raise ErrFailure("Push is canceled")
-			
+
+		ss2 = remoteBranch.split("/")		
 
 		# push it	
-		ss, status = systemSafe("git push origin %s:%s" % (currentBranch, target))
+		ss, status = systemSafe("git push %s %s:%s" % (ss2[0], currentBranch, target))
 		print(ss)
 		
 		if status != 0:
