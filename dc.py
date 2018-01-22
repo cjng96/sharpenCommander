@@ -908,6 +908,7 @@ class mDlgMainDc(ur.cDialog):
 			else:
 				if self.cmd == "goto":
 					self.changePath(self.getFocusPath())
+					return
 				elif self.cmd == "shell":
 					ss = self.edInput.get_edit_text()
 					self.inputSet("")
