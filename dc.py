@@ -612,7 +612,7 @@ class mDlgMainDc(ur.cDialog):
 		# TODO: use scandir
 
 		self.dcdata = None
-		lst = []
+		lst = []	# name, order
 		for item in os.listdir(pp):
 			if item == ".dcdata":
 				self.dcdataLoad()
@@ -621,7 +621,17 @@ class mDlgMainDc(ur.cDialog):
 				lst.append( (item, 0) )
 
 		if filterStr != "":
-			lst = [ (x[0], 1 if filterStr in x[0] else 0)  for x in lst ]
+			lst2 = []
+			for x in lst:
+				ss = x[0].lower()
+				fil = filterStr.lower()
+				if ss.startswith(fil):
+					lst2.append((x[0], 2))
+				elif fil in ss:
+					lst2.append((x[0], 1))
+				else:
+					lst2.append((x[0], 0))
+			lst = lst2
 
 		# list
 		def osStat(pp):
@@ -629,10 +639,12 @@ class mDlgMainDc(ur.cDialog):
 				return os.stat(pp)
 			except Exception as e:
 				return None
-							
+
+		# name, osStat, order
 		lst2 = [ (x[0], osStat(os.path.join(pp, x[0])), x[1]) for x in lst]
 		if filterStr != "":
-			lst2.sort(key=lambda x: -1 if x[2] == 1 else 1)
+			#lst2.sort(key=lambda x: -1 if x[2] == 1 else 1)
+			lst2.sort(key=lambda item: -item[2])
 
 		# registered list only
 		if self.dcdata is not None and self.mode != "":
@@ -645,6 +657,7 @@ class mDlgMainDc(ur.cDialog):
 
 			lst2 = [ (x[0], x[1]) for x in lst2 if __check(x[0]) ]
 
+		# dir sort
 		def __sortStMode(stMode):
 			if stMode is None:
 				return 2
@@ -666,29 +679,31 @@ class mDlgMainDc(ur.cDialog):
 			else:
 				isDir = stat.S_ISDIR(x[1].st_mode)
 
-			if isDir:
-				dcItem = self.dcdataGet(x[0])
-				if dcItem is not None:
-					if dcItem["type"] == "S":
-						mstd = "bluefgb"
-					else:
-						mstd = "grayfg"
-				else:
-					mstd = "greenfg"
-			elif filterStr != "":
+			mstd = None
+			if filterStr != "":
 				if x[2] == 0:
 					mstd = "grayfg"
-				else:
+				elif x[2] == 1:
+					mstd = "bluefg"
+				elif x[2] == 2:
 					mstd = "cyanfg"
 			else:
-				dcItem = self.dcdataGet(x[0])
-				if dcItem is not None:
-					if dcItem["type"] == "S":
-						mstd = "bold"
-					else:
-						mstd = "grayfg"
+				if isDir:
+					dcItem = self.dcdataGet(x[0])
+					if dcItem is not None:
+						if dcItem["type"] == "S":
+							mstd = "bluefgb"
+						else:
+							mstd = "grayfg"
 				else:
-					mstd = "std"
+					dcItem = self.dcdataGet(x[0])
+					if dcItem is not None:
+						if dcItem["type"] == "S":
+							mstd = "bold"
+						else:
+							mstd = "grayfg"
+
+				mstd = 'greenfg' if isDir else 'std'
 
 			return mstd, x[0], x[1]
 
