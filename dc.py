@@ -892,6 +892,9 @@ class mDlgMainDc(ur.cDialog):
 				# self.mainWidget.set_focus("body")
 				self.changePath(self.getFocusPath(), "find")  # 바로 이동 + find유지
 
+			elif ur.filterKey(keys, "C"):
+				self.doCommit()
+
 			elif ur.filterKey(keys, "ctrl ^"):
 				if self.mainWidget.get_focus() == "body":
 					pass
@@ -1053,6 +1056,17 @@ class mDlgMainDc(ur.cDialog):
 		self.widgetWorkList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn))
 		self.widgetWorkList.focus_position = self.workPt
 
+	def doCommit(self):
+		def onExit():
+			g.doSetMain(self)
+
+		if self.gitBranch is None:
+			ur.popupMsg("Error", "Not git repository")
+			return
+
+		dlg = mDlgMainGitStatus(onExit)
+		g.doSetMain(dlg)
+
 	def unhandled(self, key):
 		if key == 'f4' or key == "q":
 			g.savePath(os.getcwd())
@@ -1090,18 +1104,10 @@ class mDlgMainDc(ur.cDialog):
 			return
 
 		elif key == "C": # git commit
-			def onExit():
-				g.doSetMain(self)
-
-			if self.gitBranch is None:
-				ur.popupMsg("Error", "Not git repository")
-				return
-
-			dlg = mDlgMainGitStatus(onExit)
-			g.doSetMain(dlg)
+			self.doCommit()
 			return
 
-		elif key == "U": # git update
+		elif key == "F": # git update
 			cur = os.getcwd()
 			g.loop.stop()
 			gr.actionUpdate(cur)
@@ -1161,14 +1167,14 @@ class mDlgMainDc(ur.cDialog):
 		elif key == "meta down" or key == "meta j":
 			self.workMove(1)
 
-		elif key == "j":   # we can't use ctrl+j since it's terminal key for enter replacement
+		elif key == "j" or key == "J":   # we can't use ctrl+j since it's terminal key for enter replacement
 			self.widgetFileList.focusNext()
-		elif key == "k":
+		elif key == "k" or key == "K":
 			self.widgetFileList.focusPrevious()
-		elif key == "u" or key == ".":
+		elif key == "u" or key == "." or key == "U":
 			self.changePath("..")
 
-		elif key == "h":   # enter
+		elif key == "h" or key == "H":   # enter
 			self.changePath(self.getFocusPath())
 
 		elif key == "up":
