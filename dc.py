@@ -10,6 +10,8 @@ import datetime
 import re
 import stat
 import json
+import traceback
+import inspect
 
 
 from enum import Enum
@@ -27,7 +29,6 @@ from tool import git, system, systemSafe, systemRet, programPath
 from globalBase import *
 
 import urwidHelper as ur
-
 
 
 
@@ -762,7 +763,11 @@ class mDlgMainDc(ur.cDialog):
 
 			gitSt = " - git(%s)" % ss1
 
-		ss = "%s - %s%s - %d%s" % (self.title, pp, status, len(itemList)-1, gitSt)
+		featureStr = "" if self.cmd is "" else "[%s]" % self.cmd
+		featureExtra = ""
+		if self.cmd == "find":
+			featureExtra = ""
+		ss = "%s%s - %s%s - %d%s %s" % (self.title, featureStr, pp, status, len(itemList)-1, gitSt, featureExtra)
 		self.headerText.set_text(ss)
 
 		if filterStr == "" and self.lastPath == pp:
@@ -826,7 +831,7 @@ class mDlgMainDc(ur.cDialog):
 	def onFileSelected(self, btn):
 		pass
 
-	def changePath(self, pp):
+	def changePath(self, pp, newCmd=""):
 		if not os.path.isdir(pp):
 			return False
 
@@ -847,13 +852,12 @@ class mDlgMainDc(ur.cDialog):
 		self.mode = ""  # 모드도 초기화
 
 		# filter상태도 클리어하는게 맞나?
-		self.inputSet("")
+		self.inputSet(newCmd)
 		self.edInput.set_edit_text("")
 		self.fileRefresh()
 
 	def inputSet(self, status):
 		"""
-
 		:param status: filter,
 		:return:
 		"""
@@ -870,13 +874,39 @@ class mDlgMainDc(ur.cDialog):
 		if g.loop.widget != g.dialog.mainWidget:
 			return keys
 
-		if ur.filterKey(keys, "enter"):
+		if self.cmd == "find":
+			# ctrl+j는 enter, alt+시리즈는 안오고.. 그냥 shift+JKH를 쓴다
+			if ur.filterKey(keys, "up"):
+				self.widgetFileList.focusPrevious()
+			elif ur.filterKey(keys, "down"):
+				self.widgetFileList.focusNext()
+			elif ur.filterKey(keys, "J"):
+				self.widgetFileList.focusNext()
+			elif ur.filterKey(keys, "K"):
+				self.widgetFileList.focusPrevious()
+			elif ur.filterKey(keys, "U"):
+				self.changePath("..", "find")
+			elif ur.filterKey(keys, "H"):
+				self.changePath(self.getFocusPath(), "find")
+			elif ur.filterKey(keys, "enter"):
+				# self.mainWidget.set_focus("body")
+				self.changePath(self.getFocusPath(), "find")  # 바로 이동 + find유지
+
+			elif ur.filterKey(keys, "ctrl ^"):
+				if self.mainWidget.get_focus() == "body":
+					pass
+				elif self.mainWidget.get_focus() == "footer":
+					# find cmd
+					ss = self.edInput.get_edit_text()
+					self.inputSet("")
+					self.doFind(ss)
+					return
+
+		elif ur.filterKey(keys, "enter"):
 			if self.mainWidget.get_focus() == "body":
 				self.changePath(self.getFocusPath())
 			else:
-				if self.cmd == "find":
-					self.mainWidget.set_focus("body")
-				elif self.cmd == "goto":
+				if self.cmd == "goto":
 					self.changePath(self.getFocusPath())
 				elif self.cmd == "shell":
 					ss = self.edInput.get_edit_text()
@@ -942,18 +972,6 @@ class mDlgMainDc(ur.cDialog):
 						return
 					else:
 						ur.popupMsg("Command", "No valid cmd\n -- %s" % ss)
-
-
-		elif ur.filterKey(keys, "ctrl ^"):
-			if self.mainWidget.get_focus() == "body":
-				pass
-			elif self.mainWidget.get_focus() == "footer":
-				if self.cmd == "find":
-					# find cmd
-					ss = self.edInput.get_edit_text()
-					self.inputSet("")
-					self.doFind(ss)
-					return
 
 			item = self.widgetCmdList.focus
 			pp = item.original_widget.get_label()
@@ -1910,7 +1928,6 @@ class Gr(object):
 		ss = "path:%s" % path
 		return ss
 
-				
 	def checkSameWith(self, name, branchName, remoteBranch):
 		rev = git.rev(branchName)
 		rev2 = git.rev("remotes/"+remoteBranch)
@@ -1945,7 +1962,6 @@ class Gr(object):
 
 		return True
 
-
 	def statusComponent(self, name):
 		try:
 			path = self.changePath(name)
@@ -1956,13 +1972,11 @@ class Gr(object):
 		if not self.stashCheck(name):
 			return
 
-		
 		branchName = git.getCurrentBranch()
 		remoteBranch = git.getTrackingBranch()
 		if remoteBranch is None:
 			self.log2(Color.red, name, "%s DONT'T HAVE TRACKING branch" % branchName)
 			return
-		
 
 		isSame = self.checkSameWith(name, branchName, remoteBranch)
 		if isSame:
