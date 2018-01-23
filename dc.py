@@ -671,7 +671,7 @@ class mDlgMainDc(ur.cDialog):
 		lst2.insert(0, ("..", None, 0))
 
 		#itemList = [ (os.path.basename(x[0]), x[1], x[2]) for x in lst2]
-		itemList = lst2
+		# mstd, name, fattr
 		def gen(x):
 			if x[0] == "..":
 				isDir = True
@@ -709,7 +709,7 @@ class mDlgMainDc(ur.cDialog):
 			return mstd, x[0], x[1]
 
 		# status
-		itemList = list(map(gen, itemList))
+		itemList = list(map(gen, lst2))
 		status = ""
 		item = g.findItemByPathSafe(pp)
 		if item is not None:
@@ -908,6 +908,7 @@ class mDlgMainDc(ur.cDialog):
 		elif ur.filterKey(keys, "enter"):
 			if self.mainWidget.get_focus() == "body":
 				self.changePath(self.getFocusPath())
+				return
 			else:
 				if self.cmd == "goto":
 					self.changePath(self.getFocusPath())

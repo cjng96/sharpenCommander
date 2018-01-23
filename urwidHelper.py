@@ -29,7 +29,7 @@ palette = [
 	('redfgb_f', 'bold,light red', 'dark cyan'),
 	('greenfg', 'dark green', 'black'),
 	('greenfgb', 'bold,dark green', 'black'),
-	('greenfg_f', 'light green', 'dark cyan'),
+	('greenfg_f', 'black', 'dark cyan'),
 	('greenfgb_f', 'bold,light green', 'dark cyan'),
 	('yellowfg', 'yellow', 'black'),
 	('yellowfgb', 'bold,yellow', 'black'),
