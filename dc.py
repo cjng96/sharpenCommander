@@ -890,7 +890,7 @@ class mDlgMainDc(ur.cDialog):
 				self.changePath(self.getFocusPath(), "find")
 			elif ur.filterKey(keys, "enter"):
 				# self.mainWidget.set_focus("body")
-				self.changePath(self.getFocusPath(), "find")  # 바로 이동 + find유지
+				self.changePath(self.getFocusPath())  # 바로 이동 + find는 푼다
 
 			elif ur.filterKey(keys, "C"):
 				self.doCommit()
