@@ -906,8 +906,14 @@ class mDlgMainDc(ur.cDialog):
 		ur.popupAsk("Remove the folder", "Do you want to delete that folder?\n%s" % pp, onOk)
 
 	def regAdd(self, pp):
+		oldPath = os.getcwd()
+		os.chdir(pp)
+		ss = system("git rev-parse --is-inside-work-tree")
+		isGitRepo = True if ss == "true" else False
+		os.chdir(oldPath)
+
 		name = os.path.basename(pp)
-		g.regList.append(dict(names=[name], path=pp, groups=[], repo=False))
+		g.regList.append(dict(names=[name], path=pp, groups=[], repo=isGitRepo))
 		g.configSave()
 		self.fileRefresh()
 		ur.popupMsg("Regiter the folder", "The path is registerted successfully\n%s" % pp, 60)
@@ -970,7 +976,7 @@ class mDlgMainDc(ur.cDialog):
 					self.inputSet("")
 
 					if ss == "list":
-						self.doFolderList()
+						self.doRegList()
 					elif ss == "reg":
 						pp = os.getcwd()
 						item = g.regFindByPath(pp)
@@ -1119,6 +1125,9 @@ class mDlgMainDc(ur.cDialog):
 			self.regToggle(pp)
 			return
 
+		elif key == "L":
+			self.doRegList()
+
 		elif key == "g":  # go
 			self.inputSet("goto")
 			self.fileRefresh()
@@ -1244,7 +1253,7 @@ class mDlgMainDc(ur.cDialog):
 		'''
 
 
-	def doFolderList(self):
+	def doRegList(self):
 		def onExit():
 			g.doSetMain(self)
 			'''
@@ -1386,19 +1395,50 @@ class mDlgRegList(ur.cDialog):
 		return True
 
 	def refreshFile(self):
-		def getStatus(item):
-			ss = ""
-			if item["repo"]:
-				ss = "(+)"
 
-			ss += " - "
+		def getTitle(item):
+			ss = os.path.basename(item["path"])
+
+			ss += "("
 			for n in item["names"]:
 				ss += n + ", "
 			ss = ss[:-2]
+			ss += ")"
+
+			if item["repo"]:
+				ss += "+ ==> ["
+
+				repoStatus = item["repoStatus"]
+				ss += " " if repoStatus["M"] == 0 else "M"
+
+				ss += "]"
+
 			return ss
 
-		itemList = [ (os.path.basename(x["path"]) + getStatus(x), x) for x in g.regList ]
+		def repoGetStatus(item):
+			status  = dict(M=0)
+			if not item["repo"]:
+				return
 
+			# todo: multi thread
+			pp = item["path"]
+			os.chdir(pp)
+			ss = system("git status -s")
+			if ss != "":
+				status["M"] = 1
+
+			return status
+
+		oldPath = os.getcwd()
+
+		# title, item
+		for x in g.regList:
+			x["repoStatus"] = repoGetStatus(x)
+
+		itemList = [ (getTitle(x), x) for x in g.regList ]
+		os.chdir(oldPath)
+
+		# mstd, title, item
 		def gen(x):
 			mstd = "greenfg" if "repo" in x[1] and x[1]["repo"] else "std"
 			return mstd, x[0], x[1]
