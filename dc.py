@@ -1294,7 +1294,7 @@ class mDlgFolderSetting(ur.cDialog):
 
 	def init(self):
 		self.showInfo()
-		pass
+		return True
 
 	def showInfo(self):
 		self.lbRepo.set_text("Repo: %s" % ("O" if self.item["repo"] else "X"))
@@ -1376,11 +1376,14 @@ class mDlgRegList(ur.cDialog):
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
 
 		#self.cbFileSelect = lambda btn: self.onFileSelected(btn)
+		self.onFileSelected = lambda btn: None
+
 		#self.content = ""
 		#self.selectFileName = ""
 
 	def init(self):
 		self.refreshFile()
+		return True
 
 	def refreshFile(self):
 		def getStatus(item):
@@ -1415,7 +1418,7 @@ class mDlgRegList(ur.cDialog):
 			self.widgetFileList.focusNext()
 		elif key == "k":
 			self.widgetFileList.focusPrevious()
-		elif key == "e":
+		elif key == "e" or key == "enter":
 			item = self.widgetFileList.focus
 			self.doEdit(item.original_widget.attr)
 
