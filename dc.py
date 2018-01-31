@@ -882,6 +882,34 @@ class mDlgMainDc(ur.cDialog):
 		self.edInput.set_edit_text("")
 		self.edInput.set_caption("%s%s$ " % ("" if self.gitBranch is None else "[%s] " % self.gitBranch, self.cmd))
 
+	def regToggle(self, pp):
+		item = g.findItemByPathSafe(pp)
+		if item is None:
+			self.regAdd(pp)
+		else:
+			self.regRemove(pp)
+
+	def regRemove(self, pp):
+		item = g.findItemByPathSafe(pp)
+		if item is None:
+			ur.popupMsg("Remove the folder", "The path is not registered\n%s" % pp, 60)
+			return
+
+		def onOk():
+			g.lstPath.remove(item)
+			g.configSave()
+			self.fileRefresh()
+			ur.popupMsg("Remove the folder", "The path is registerted successfully\n%s" % pp, 60)
+
+		ur.popupAsk("Remove the folder", "Do you want to delete that folder?\n%s" % pp, onOk)
+
+	def regAdd(self, pp):
+		name = os.path.basename(pp)
+		g.lstPath.append(dict(names=[name], path=pp, groups=[], repo=False))
+		g.configSave()
+		self.fileRefresh()
+		ur.popupMsg("Regiter the folder", "The path is registerted successfully\n%s" % pp, 60)
+
 	def inputFilter(self, keys, raw):
 		if g.loop.widget != g.dialog.mainWidget:
 			return keys
@@ -950,26 +978,11 @@ class mDlgMainDc(ur.cDialog):
 							return
 
 						# add
-						name = os.path.basename(pp)
-						g.lstPath.append(dict(names=[name], path=pp, groups=[], repo=False))
-						g.configSave()
-						self.fileRefresh()
-						ur.popupMsg("Regiter the folder", "The path is registerted successfully\n%s" % pp, 60)
+						self.regAdd(pp)
 						return
 					elif ss == "del":
 						pp = os.getcwd()
-						item = g.findItemByPathSafe(pp)
-						if item is None:
-							ur.popupMsg("Remove the folder", "The path is not registered\n%s" % pp, 60)
-							return
-
-						def onOk():
-							g.lstPath.remove(item)
-							g.configSave()
-							self.fileRefresh()
-							ur.popupMsg("Remove the folder", "The path is registerted successfully\n%s" % pp, 60)
-
-						ur.popupAsk("Remove the folder", "Do you want to delete that folder?\n%s" % pp, onOk)
+						self.regRemove(pp)
 						return
 
 					elif ss == "set repo":
@@ -1085,12 +1098,21 @@ class mDlgMainDc(ur.cDialog):
 			g.savePath(os.getcwd())
 			raise urwid.ExitMainLoop()
 
+		elif key == "f1":
+			# help
+			pass
+
 		elif key == "f5":
 			self.fileRefresh()
 			return
 
 		elif key == "f":  # filter
 			self.inputSet("find")
+			return
+
+		elif key == "R":
+			pp = self.getFocusPath()
+			self.regToggle(pp)
 			return
 
 		elif key == "g":  # go
