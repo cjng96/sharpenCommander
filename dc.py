@@ -1405,7 +1405,6 @@ class mDlgRegList(ur.cDialog):
 		os.chdir(pp)
 		self.close()
 
-
 	def refreshFile(self):
 		def getTitle(item):
 			ss = os.path.basename(item["path"])
@@ -1429,7 +1428,7 @@ class mDlgRegList(ur.cDialog):
 		def repoGetStatus(item):
 			status  = dict(M=0)
 			if not item["repo"]:
-				return
+				return status
 
 			# todo: multi thread
 			pp = item["path"]
@@ -1473,6 +1472,24 @@ class mDlgRegList(ur.cDialog):
 			item = self.widgetFileList.focus
 			self.doEdit(item.original_widget.attr)
 			self.refreshFile()
+		elif key == "p":
+			# 모든 repo udpate
+			oldPath = os.getcwd()
+			for item in self.widgetFileList.body:
+				attr = item.original_widget.attr
+				pp = attr["path"]
+				#os.chdir(pp)
+
+				if attr["repo"]:
+					isModified = attr["repoStatus"]["M"]
+					if isModified:
+						system("cd '%s'; git fetch" % pp)
+					else:
+						# TODO: no has tracking branch
+						system("cd '%s'; git pull -r" % pp)
+
+			os.chdir(oldPath)
+
 		elif key == "delete":
 			item = self.widgetFileList.focus
 			g.regRemove(item.original_widget.attr["path"])
