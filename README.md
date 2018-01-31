@@ -60,12 +60,18 @@ pathList = [
 * `U` - move upper folder
 * `H/enter` - enter the folder
 * `E` - edit the file
-* `T` - register/unregister the folder
+
+* `a~z` - find folder 
+* `/` - command mode - reg(R key) / list(L key)
+
+### workspace
 * `Alt+Right/Left` - Add or remove the folder in Workspace
 * `Alt+Up/Dowm` - Move workspace between folder list
 
-* `a~z` - find folder 
-* `/` - command mode - reg / list
+### git
+* `R` - register/unregister the folder
+* `L` - list register repo list
+
 
 
 
