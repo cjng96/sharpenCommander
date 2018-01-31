@@ -73,6 +73,8 @@ pathList = [
 * `L` - list register repo list
 
 
+## Register folder list
+* `p` - pull --rebase all repo
 
 
 ## change folder
