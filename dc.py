@@ -1420,7 +1420,7 @@ class mDlgRegList(ur.cDialog):
 
 				repoStatus = item["repoStatus"]
 				if repoStatus["E"] is not None:
-					ss += repoStatus["E"]
+					ss += "err: " + str(repoStatus["E"])
 				else:
 					ss += " " if repoStatus["M"] == 0 else "M"
 
