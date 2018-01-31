@@ -621,8 +621,8 @@ class mDlgMainDc(ur.cDialog):
 			else:
 				lst.append( (item, 0) )
 
+		lst2 = []
 		if filterStr != "":
-			lst2 = []
 			for x in lst:
 				ss = x[0].lower()
 				fil = filterStr.lower()
@@ -632,7 +632,16 @@ class mDlgMainDc(ur.cDialog):
 					lst2.append((x[0], 1))
 				else:
 					lst2.append((x[0], 0))
-			lst = lst2
+		else:
+			# 등록된 폴더 우선
+			regPathList = [ii['path'] for ii in g.lstPath]
+			for x in lst:
+				full = os.path.join(pp, x[0])
+				if full in regPathList:
+					lst2.append((x[0], 1))
+				else:
+					lst2.append((x[0], 0))
+		lst = lst2
 
 		# list
 		def osStat(pp):
@@ -643,9 +652,9 @@ class mDlgMainDc(ur.cDialog):
 
 		# name, osStat, order
 		lst2 = [ (x[0], osStat(os.path.join(pp, x[0])), x[1]) for x in lst]
-		if filterStr != "":
+		#if filterStr != "":
 			#lst2.sort(key=lambda x: -1 if x[2] == 1 else 1)
-			lst2.sort(key=lambda item: -item[2])
+		lst2.sort(key=lambda ii: -ii[2])
 
 		# registered list only
 		if self.dcdata is not None and self.mode != "":
@@ -689,22 +698,25 @@ class mDlgMainDc(ur.cDialog):
 				elif x[2] == 2:
 					mstd = "cyanfg"
 			else:
-				if isDir:
-					dcItem = self.dcdataGet(x[0])
-					if dcItem is not None:
-						if dcItem["type"] == "S":
-							mstd = "bluefgb"
-						else:
-							mstd = "grayfg"
+				if x[2] == 1:
+					mstd = 'bold'
 				else:
-					dcItem = self.dcdataGet(x[0])
-					if dcItem is not None:
-						if dcItem["type"] == "S":
-							mstd = "bold"
-						else:
-							mstd = "grayfg"
+					if isDir:
+						dcItem = self.dcdataGet(x[0])
+						if dcItem is not None:
+							if dcItem["type"] == "S":
+								mstd = "bluefgb"
+							else:
+								mstd = "grayfg"
+					else:
+						dcItem = self.dcdataGet(x[0])
+						if dcItem is not None:
+							if dcItem["type"] == "S":
+								mstd = "bold"
+							else:
+								mstd = "grayfg"
 
-				mstd = 'greenfg' if isDir else 'std'
+					mstd = 'greenfg' if isDir else 'std'
 
 			return mstd, x[0], x[1]
 
