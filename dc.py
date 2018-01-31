@@ -124,6 +124,32 @@ class MyProgram(Program):
 		with open("/tmp/cmdDevTool.path", "wb") as f:
 			f.write(os.path.expanduser(pp).encode())
 
+	def regAdd(self, pp):
+		oldPath = os.getcwd()
+		os.chdir(pp)
+		ss = system("git rev-parse --is-inside-work-tree")
+		isGitRepo = True if ss == "true" else False
+		os.chdir(oldPath)
+
+		name = os.path.basename(pp)
+		g.regList.append(dict(names=[name], path=pp, groups=[], repo=isGitRepo))
+		g.configSave()
+		ur.popupMsg("Regiter", "The path is registerted successfully\n%s" % pp, 60)
+
+	def regRemove(self, pp):
+		item = g.regFindByPath(pp)
+		if item is None:
+			ur.popupMsg("Unregister", "The path is not registered\n%s" % pp, 60)
+			return
+
+		def onOk():
+			g.regList.remove(item)
+			g.configSave()
+			#self.fileRefresh()
+			ur.popupMsg("Unregister", "The path is unregisterted successfully\n%s" % pp, 60)
+
+		ur.popupAsk("Unregister", "Do you want to unregister the folder?\n%s" % pp, onOk)
+
 	def regFindByName(self, target):
 		for pp in self.regList:
 			names = pp["names"]
@@ -887,36 +913,13 @@ class mDlgMainDc(ur.cDialog):
 	def regToggle(self, pp):
 		item = g.regFindByPath(pp)
 		if item is None:
-			self.regAdd(pp)
+			g.regAdd(pp)
 		else:
-			self.regRemove(pp)
-
-	def regRemove(self, pp):
-		item = g.regFindByPath(pp)
-		if item is None:
-			ur.popupMsg("Remove the folder", "The path is not registered\n%s" % pp, 60)
-			return
-
-		def onOk():
-			g.regList.remove(item)
-			g.configSave()
-			self.fileRefresh()
-			ur.popupMsg("Remove the folder", "The path is registerted successfully\n%s" % pp, 60)
-
-		ur.popupAsk("Remove the folder", "Do you want to delete that folder?\n%s" % pp, onOk)
-
-	def regAdd(self, pp):
-		oldPath = os.getcwd()
-		os.chdir(pp)
-		ss = system("git rev-parse --is-inside-work-tree")
-		isGitRepo = True if ss == "true" else False
-		os.chdir(oldPath)
-
-		name = os.path.basename(pp)
-		g.regList.append(dict(names=[name], path=pp, groups=[], repo=isGitRepo))
-		g.configSave()
+			g.regRemove(pp)
 		self.fileRefresh()
-		ur.popupMsg("Regiter the folder", "The path is registerted successfully\n%s" % pp, 60)
+
+
+
 
 	def inputFilter(self, keys, raw):
 		if g.loop.widget != g.dialog.mainWidget:
@@ -986,12 +989,15 @@ class mDlgMainDc(ur.cDialog):
 							return
 
 						# add
-						self.regAdd(pp)
+						g.regAdd(pp)
+						self.fileRefresh()
+
 						return
 
 					elif ss == "del":
 						pp = os.getcwd()
-						self.regRemove(pp)
+						g.regRemove(pp)
+						self.fileRefresh()
 						return
 
 					elif ss == "set repo":
@@ -1270,7 +1276,7 @@ class mDlgMainDc(ur.cDialog):
 		pass
 
 # 두칸씩 작은 오버레이로 띄우자
-class mDlgFolderSetting(ur.cDialog):
+class mDlgRegFolderSetting(ur.cDialog):
 	def __init__(self, onExit, item):
 		super().__init__()
 		self.onExit = onExit
@@ -1320,7 +1326,7 @@ class mDlgFolderSetting(ur.cDialog):
 		#self.widgetFrame.set_focus(self.widgetContent)
 
 	def unhandled(self, key):
-		if key == 'f4' or key == "q":
+		if key == 'f4' or key == "q" or key == "esc":
 			self.close()
 		elif key == "r":
 			self.item["repo"] = not self.item["repo"]
@@ -1385,7 +1391,6 @@ class mDlgRegList(ur.cDialog):
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
 
 		#self.cbFileSelect = lambda btn: self.onFileSelected(btn)
-		self.onFileSelected = lambda btn: None
 
 		#self.content = ""
 		#self.selectFileName = ""
@@ -1394,8 +1399,14 @@ class mDlgRegList(ur.cDialog):
 		self.refreshFile()
 		return True
 
-	def refreshFile(self):
+	def onFileSelected(self, btn):
+		widget = btn
+		pp = widget.attr["path"]
+		os.chdir(pp)
+		self.close()
 
+
+	def refreshFile(self):
 		def getTitle(item):
 			ss = os.path.basename(item["path"])
 
@@ -1406,7 +1417,7 @@ class mDlgRegList(ur.cDialog):
 			ss += ")"
 
 			if item["repo"]:
-				ss += "+ ==> ["
+				ss += " ==> ["
 
 				repoStatus = item["repoStatus"]
 				ss += " " if repoStatus["M"] == 0 else "M"
@@ -1458,15 +1469,20 @@ class mDlgRegList(ur.cDialog):
 			self.widgetFileList.focusNext()
 		elif key == "k":
 			self.widgetFileList.focusPrevious()
-		elif key == "e" or key == "enter":
+		elif key == "e":
 			item = self.widgetFileList.focus
 			self.doEdit(item.original_widget.attr)
+			self.refreshFile()
+		elif key == "delete":
+			item = self.widgetFileList.focus
+			g.regRemove(item.original_widget.attr["path"])
+			self.refreshFile()
 
 	def doEdit(self, item):
 		def onExit():
 			g.doSetMain(self)
 
-		dlg = mDlgFolderSetting(onExit, item)
+		dlg = mDlgRegFolderSetting(onExit, item)
 		g.doSetMain(dlg)
 
 
