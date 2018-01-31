@@ -1382,7 +1382,7 @@ class mDlgRegList(ur.cDialog):
 		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
 		#self.widgetContent.isViewContent = True
 
-		self.header = ">> dc V%s - folder list" % g.version
+		self.header = ">> dc V%s - folder list - jk(move), e(modify),p(pull all),del" % g.version
 		self.headerText = urwid.Text(self.header)
 
 		#self.widgetFrame = urwid.Pile(
@@ -1419,23 +1419,29 @@ class mDlgRegList(ur.cDialog):
 				ss += " ==> ["
 
 				repoStatus = item["repoStatus"]
-				ss += " " if repoStatus["M"] == 0 else "M"
+				if repoStatus["E"] is not None:
+					ss += repoStatus["E"]
+				else:
+					ss += " " if repoStatus["M"] == 0 else "M"
 
 				ss += "]"
 
 			return ss
 
 		def repoGetStatus(item):
-			status  = dict(M=0)
+			status  = dict(M=0, E=None)
 			if not item["repo"]:
 				return status
 
 			# todo: multi thread
 			pp = item["path"]
 			os.chdir(pp)
-			ss = system("git status -s")
-			if ss != "":
-				status["M"] = 1
+			try:
+				ss = system("git status -s")
+				if ss != "":
+					status["M"] = 1
+			except subprocess.CalledProcessError as e:
+				status["E"] = e
 
 			return status
 
@@ -1480,13 +1486,18 @@ class mDlgRegList(ur.cDialog):
 				pp = attr["path"]
 				#os.chdir(pp)
 
+				repoStatus = attr["repoStatus"]
 				if attr["repo"]:
-					isModified = attr["repoStatus"]["M"]
-					if isModified:
-						system("cd '%s'; git fetch" % pp)
-					else:
-						# TODO: no has tracking branch
-						system("cd '%s'; git pull -r" % pp)
+
+					isModified = repoStatus["M"]
+					try:
+						if isModified:
+							system("cd '%s'; git fetch" % pp)
+						else:
+							# TODO: no has tracking branch
+							system("cd '%s'; git pull -r" % pp)
+					except subprocess.CalledProcessError as e:
+						repoStatus["E"] = e
 
 			os.chdir(oldPath)
 
