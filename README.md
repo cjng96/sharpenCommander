@@ -53,7 +53,27 @@ pathList = [
 ]
 ```
 
-# How to use 
+# How to use
+
+## main ui
+* `J/K` - move focus
+* `U` - move upper folder
+* `H/enter` - enter the folder
+* `E` - edit the file
+
+* `a~z` - find folder 
+* `/` - command mode - reg(R key) / list(L key)
+
+### workspace
+* `Alt+Right/Left` - Add or remove the folder in Workspace
+* `Alt+Up/Dowm` - Move workspace between folder list
+
+### git
+* `R` - register/unregister the folder
+* `L` - list register repo list
+
+
+
 
 ## change folder
 * Go to a project folder

@@ -72,7 +72,7 @@ class Ansi:
 class MyProgram(Program):
 	def __init__(self):
 		super().__init__("1.1.0", programPath("dc.log"))
-		self.lstPath = []
+		self.regList = []
 		self.configPath = ""    # ~/.devcmd/path.py
 		self.isPrintSystem = False
 
@@ -93,7 +93,7 @@ class MyProgram(Program):
 	def configLoad(self):
 		if not os.path.isfile(g.configPath):
 			print("No path.json file. generate it...")
-			self.lstPath = []
+			self.regList = []
 			self.configSave()
 			return
 
@@ -102,9 +102,9 @@ class MyProgram(Program):
 		#self.lstPath = [ item for item in m.pathList if len(item["names"]) > 0 ]
 		with open(self.configPath, "r") as fp:
 			obj = json.load(fp)
-			self.lstPath = obj["path"]
+			self.regList = obj["path"]
 
-		for item in self.lstPath:
+		for item in self.regList:
 			item["path"] = os.path.expanduser(item["path"])
 			name = item["names"]
 			if type(name) is str:
@@ -116,7 +116,7 @@ class MyProgram(Program):
 
 	def configSave(self):
 		obj = dict()
-		obj["path"] = self.lstPath
+		obj["path"] = self.regList
 		with open(self.configPath, "w") as fp:
 			json.dump(obj, fp, separators=(',',':'))
 
@@ -124,8 +124,34 @@ class MyProgram(Program):
 		with open("/tmp/cmdDevTool.path", "wb") as f:
 			f.write(os.path.expanduser(pp).encode())
 
-	def findItem(self, target):
-		for pp in self.lstPath:
+	def regAdd(self, pp):
+		oldPath = os.getcwd()
+		os.chdir(pp)
+		ss = system("git rev-parse --is-inside-work-tree")
+		isGitRepo = True if ss == "true" else False
+		os.chdir(oldPath)
+
+		name = os.path.basename(pp)
+		g.regList.append(dict(names=[name], path=pp, groups=[], repo=isGitRepo))
+		g.configSave()
+		ur.popupMsg("Regiter", "The path is registerted successfully\n%s" % pp, 60)
+
+	def regRemove(self, pp):
+		item = g.regFindByPath(pp)
+		if item is None:
+			ur.popupMsg("Unregister", "The path is not registered\n%s" % pp, 60)
+			return
+
+		def onOk():
+			g.regList.remove(item)
+			g.configSave()
+			#self.fileRefresh()
+			ur.popupMsg("Unregister", "The path is unregisterted successfully\n%s" % pp, 60)
+
+		ur.popupAsk("Unregister", "Do you want to unregister the folder?\n%s" % pp, onOk)
+
+	def regFindByName(self, target):
+		for pp in self.regList:
 			names = pp["names"]
 
 			if target.lower() in map(str.lower, names):
@@ -133,14 +159,14 @@ class MyProgram(Program):
 
 		raise ErrFailure("No that target[%s]" % target)
 
-	def findItemByPathSafe(self, pp):
-		return next((x for x in g.lstPath if x["path"] == pp), None)
+	def regFindByPath(self, pp):
+		return next((x for x in g.regList if x["path"] == pp), None)
 
 	# path list that includes sub string
-	def findItems(self, sub):
+	def regFindItems(self, sub):
 		sub = sub.lower()
 		lst = []
-		for pp in self.lstPath:
+		for pp in self.regList:
 			if self.matchItem(pp, sub):
 				lst.append(pp)
 
@@ -159,11 +185,11 @@ class MyProgram(Program):
 			self.savePath(target)
 			return
 	
-		item = self.findItem(target)
+		item = self.regFindByName(target)
 		self.savePath(item["path"])
 
-	def listPath(self):
-		for pp in self.lstPath:
+	def regListPrint(self):
+		for pp in self.regList:
 			print(pp)
 
 	def printCommitLogForPush(self, currentBranch, remoteBranch):
@@ -489,8 +515,9 @@ class mDlgMainFind(ur.cDialog):
 			#markup = ur.terminal2markup(line, 0)
 			#markupF = ur.terminal2markup(line, 1)
 			markup = ("std", line)
+			markupF = ('std_f', line)
 
-			btn = ur.genBtn(markup, None, self.cbFileSelect, len(self.widgetFileList.body) == 0)
+			btn = ur.genBtn(markup, markupF, self.cbFileSelect, len(self.widgetFileList.body) == 0)
 			self.widgetFileList.body.append(btn)
 			if len(self.widgetFileList.body) == 1:
 				self.onFileFocusChanged(0)
@@ -527,7 +554,7 @@ class mDlgMainDc(ur.cDialog):
 
 		# content
 		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
-		self.widgetCmdList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
+		self.widgetCmdList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None))) # 이거 파일목록 아래에뭔가 보여주는건데..
 		self.widgetContent = urwid.Pile([self.widgetFileList, ('pack', urwid.Divider('-')), (8, self.widgetCmdList)])
 		self.widgetContent.isShow = True
 
@@ -562,9 +589,10 @@ class mDlgMainDc(ur.cDialog):
 		self.changePath(os.getcwd())
 		return True
 
+	# 이거 용도가 뭔지 까먹었다. lstItem을 보여주는건데... 아마... 부가기능인듯...
 	def cmdShow(self, lstItem):
 		isShow = len(lstItem) > 0
-		if isShow != self.widgetContent.isShow:
+		if isShow != self.widgetContent.isShow: # 이거 자체는 왼쪽 컨텐츠다.
 			self.widgetContent.isShow = isShow
 			if isShow:
 				#self.widgetContent.contents[1] = (self.widgetContent.contents[1][0], (urwid.widget.PACK, None))
@@ -589,9 +617,9 @@ class mDlgMainDc(ur.cDialog):
 	def gotoRefresh(self, newText):
 		filterStr = self.edInput.get_edit_text() if newText is None else newText
 		if filterStr != "":
-			lstPath = g.findItems(filterStr)
+			lstPath = g.regFindItems(filterStr)
 		else:
-			lstPath = g.lstPath[:]
+			lstPath = g.regList[:]
 
 		lst = [("greenfg", x["path"], x) for x in lstPath]
 
@@ -621,8 +649,8 @@ class mDlgMainDc(ur.cDialog):
 			else:
 				lst.append( (item, 0) )
 
+		lst2 = []
 		if filterStr != "":
-			lst2 = []
 			for x in lst:
 				ss = x[0].lower()
 				fil = filterStr.lower()
@@ -632,7 +660,16 @@ class mDlgMainDc(ur.cDialog):
 					lst2.append((x[0], 1))
 				else:
 					lst2.append((x[0], 0))
-			lst = lst2
+		else:
+			# 등록된 폴더 우선
+			regPathList = [ii['path'] for ii in g.regList]
+			for x in lst:
+				full = os.path.join(pp, x[0])
+				if full in regPathList:
+					lst2.append((x[0], 1))
+				else:
+					lst2.append((x[0], 0))
+		lst = lst2
 
 		# list
 		def osStat(pp):
@@ -643,9 +680,9 @@ class mDlgMainDc(ur.cDialog):
 
 		# name, osStat, order
 		lst2 = [ (x[0], osStat(os.path.join(pp, x[0])), x[1]) for x in lst]
-		if filterStr != "":
+		#if filterStr != "":
 			#lst2.sort(key=lambda x: -1 if x[2] == 1 else 1)
-			lst2.sort(key=lambda item: -item[2])
+		lst2.sort(key=lambda ii: -ii[2])
 
 		# registered list only
 		if self.dcdata is not None and self.mode != "":
@@ -689,29 +726,32 @@ class mDlgMainDc(ur.cDialog):
 				elif x[2] == 2:
 					mstd = "cyanfg"
 			else:
-				if isDir:
-					dcItem = self.dcdataGet(x[0])
-					if dcItem is not None:
-						if dcItem["type"] == "S":
-							mstd = "bluefgb"
-						else:
-							mstd = "grayfg"
+				if x[2] == 1:
+					mstd = 'bold'
 				else:
-					dcItem = self.dcdataGet(x[0])
-					if dcItem is not None:
-						if dcItem["type"] == "S":
-							mstd = "bold"
-						else:
-							mstd = "grayfg"
+					if isDir:
+						dcItem = self.dcdataGet(x[0])
+						if dcItem is not None:
+							if dcItem["type"] == "S":
+								mstd = "bluefgb"
+							else:
+								mstd = "grayfg"
+					else:
+						dcItem = self.dcdataGet(x[0])
+						if dcItem is not None:
+							if dcItem["type"] == "S":
+								mstd = "bold"
+							else:
+								mstd = "grayfg"
 
-				mstd = 'greenfg' if isDir else 'std'
+					mstd = 'greenfg' if isDir else 'std'
 
 			return mstd, x[0], x[1]
 
 		# status
 		itemList = list(map(gen, lst2))
 		status = ""
-		item = g.findItemByPathSafe(pp)
+		item = g.regFindByPath(pp)
 		if item is not None:
 			status = "*"
 			if "repo" in item and item["repo"]:
@@ -870,6 +910,17 @@ class mDlgMainDc(ur.cDialog):
 		self.edInput.set_edit_text("")
 		self.edInput.set_caption("%s%s$ " % ("" if self.gitBranch is None else "[%s] " % self.gitBranch, self.cmd))
 
+	def regToggle(self, pp):
+		item = g.regFindByPath(pp)
+		if item is None:
+			g.regAdd(pp)
+		else:
+			g.regRemove(pp)
+		self.fileRefresh()
+
+
+
+
 	def inputFilter(self, keys, raw):
 		if g.loop.widget != g.dialog.mainWidget:
 			return keys
@@ -928,41 +979,30 @@ class mDlgMainDc(ur.cDialog):
 					self.inputSet("")
 
 					if ss == "list":
-						self.doFolderList()
+						self.doRegList()
 					elif ss == "reg":
 						pp = os.getcwd()
-						item = g.findItemByPathSafe(pp)
+						item = g.regFindByPath(pp)
 						if item is not None:
 							# already registered
 							ur.popupMsg("Regiter the folder", "The path is already registerted\n%s" % pp, 60)
 							return
 
 						# add
-						name = os.path.basename(pp)
-						g.lstPath.append(dict(names=[name], path=pp, groups=[], repo=False))
-						g.configSave()
+						g.regAdd(pp)
 						self.fileRefresh()
-						ur.popupMsg("Regiter the folder", "The path is registerted successfully\n%s" % pp, 60)
+
 						return
+
 					elif ss == "del":
 						pp = os.getcwd()
-						item = g.findItemByPathSafe(pp)
-						if item is None:
-							ur.popupMsg("Remove the folder", "The path is not registered\n%s" % pp, 60)
-							return
-
-						def onOk():
-							g.lstPath.remove(item)
-							g.configSave()
-							self.fileRefresh()
-							ur.popupMsg("Remove the folder", "The path is registerted successfully\n%s" % pp, 60)
-
-						ur.popupAsk("Remove the folder", "Do you want to delete that folder?\n%s" % pp, onOk)
+						g.regRemove(pp)
+						self.fileRefresh()
 						return
 
 					elif ss == "set repo":
 						pp = os.getcwd()
-						item = g.findItemByPathSafe(pp)
+						item = g.regFindByPath(pp)
 						if item is None:
 							# no item
 							ur.popupMsg("Set repo status", "The path is no registered\n%s" % pp, 60)
@@ -978,9 +1018,10 @@ class mDlgMainDc(ur.cDialog):
 					else:
 						ur.popupMsg("Command", "No valid cmd\n -- %s" % ss)
 
-			item = self.widgetCmdList.focus
-			pp = item.original_widget.get_label()
-			self.changePath(pp)
+			# 이거 뭐하는 코드지?
+			#item = self.widgetCmdList.focus
+			#pp = item.original_widget.get_label()
+			#self.changePath(pp)
 
 		"""
 		if ur.filterKey(keys, "left"):
@@ -1073,6 +1114,10 @@ class mDlgMainDc(ur.cDialog):
 			g.savePath(os.getcwd())
 			raise urwid.ExitMainLoop()
 
+		elif key == "f1":
+			# help
+			pass
+
 		elif key == "f5":
 			self.fileRefresh()
 			return
@@ -1080,6 +1125,14 @@ class mDlgMainDc(ur.cDialog):
 		elif key == "f":  # filter
 			self.inputSet("find")
 			return
+
+		elif key == "R":
+			pp = self.getFocusPath()
+			self.regToggle(pp)
+			return
+
+		elif key == "L":
+			self.doRegList()
 
 		elif key == "g":  # go
 			self.inputSet("goto")
@@ -1206,7 +1259,7 @@ class mDlgMainDc(ur.cDialog):
 		'''
 
 
-	def doFolderList(self):
+	def doRegList(self):
 		def onExit():
 			g.doSetMain(self)
 			'''
@@ -1216,14 +1269,14 @@ class mDlgMainDc(ur.cDialog):
 				sys.exit(0)
 			'''
 
-		dlg = mDlgFolderList(onExit)
+		dlg = mDlgRegList(onExit)
 		g.doSetMain(dlg)
 
 	def doFind(self):
 		pass
 
 # 두칸씩 작은 오버레이로 띄우자
-class mDlgFolderSetting(ur.cDialog):
+class mDlgRegFolderSetting(ur.cDialog):
 	def __init__(self, onExit, item):
 		super().__init__()
 		self.onExit = onExit
@@ -1256,7 +1309,7 @@ class mDlgFolderSetting(ur.cDialog):
 
 	def init(self):
 		self.showInfo()
-		pass
+		return True
 
 	def showInfo(self):
 		self.lbRepo.set_text("Repo: %s" % ("O" if self.item["repo"] else "X"))
@@ -1273,7 +1326,7 @@ class mDlgFolderSetting(ur.cDialog):
 		#self.widgetFrame.set_focus(self.widgetContent)
 
 	def unhandled(self, key):
-		if key == 'f4' or key == "q":
+		if key == 'f4' or key == "q" or key == "esc":
 			self.close()
 		elif key == "r":
 			self.item["repo"] = not self.item["repo"]
@@ -1319,7 +1372,7 @@ class mDlgFolderSetting(ur.cDialog):
 				ur.popupAsk("Remove Group", "[%s] will be deleted. Are you sure?" % ss, onOk)
 
 
-class mDlgFolderList(ur.cDialog):
+class mDlgRegList(ur.cDialog):
 	def __init__(self, onExit):
 		super().__init__()
 
@@ -1338,26 +1391,64 @@ class mDlgFolderList(ur.cDialog):
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
 
 		#self.cbFileSelect = lambda btn: self.onFileSelected(btn)
+
 		#self.content = ""
 		#self.selectFileName = ""
 
 	def init(self):
 		self.refreshFile()
+		return True
+
+	def onFileSelected(self, btn):
+		widget = btn
+		pp = widget.attr["path"]
+		os.chdir(pp)
+		self.close()
 
 	def refreshFile(self):
-		def getStatus(item):
-			ss = ""
-			if item["repo"]:
-				ss = "(+)"
+		def getTitle(item):
+			ss = os.path.basename(item["path"])
 
-			ss += " - "
+			ss += "("
 			for n in item["names"]:
 				ss += n + ", "
 			ss = ss[:-2]
+			ss += ")"
+
+			if item["repo"]:
+				ss += " ==> ["
+
+				repoStatus = item["repoStatus"]
+				ss += " " if repoStatus["M"] == 0 else "M"
+
+				ss += "]"
+
 			return ss
 
-		itemList = [ (os.path.basename(x["path"]) + getStatus(x), x) for x in g.lstPath ]
+		def repoGetStatus(item):
+			status  = dict(M=0)
+			if not item["repo"]:
+				return status
 
+			# todo: multi thread
+			pp = item["path"]
+			os.chdir(pp)
+			ss = system("git status -s")
+			if ss != "":
+				status["M"] = 1
+
+			return status
+
+		oldPath = os.getcwd()
+
+		# title, item
+		for x in g.regList:
+			x["repoStatus"] = repoGetStatus(x)
+
+		itemList = [ (getTitle(x), x) for x in g.regList ]
+		os.chdir(oldPath)
+
+		# mstd, title, item
 		def gen(x):
 			mstd = "greenfg" if "repo" in x[1] and x[1]["repo"] else "std"
 			return mstd, x[0], x[1]
@@ -1380,12 +1471,35 @@ class mDlgFolderList(ur.cDialog):
 		elif key == "e":
 			item = self.widgetFileList.focus
 			self.doEdit(item.original_widget.attr)
+			self.refreshFile()
+		elif key == "p":
+			# 모든 repo udpate
+			oldPath = os.getcwd()
+			for item in self.widgetFileList.body:
+				attr = item.original_widget.attr
+				pp = attr["path"]
+				#os.chdir(pp)
+
+				if attr["repo"]:
+					isModified = attr["repoStatus"]["M"]
+					if isModified:
+						system("cd '%s'; git fetch" % pp)
+					else:
+						# TODO: no has tracking branch
+						system("cd '%s'; git pull -r" % pp)
+
+			os.chdir(oldPath)
+
+		elif key == "delete":
+			item = self.widgetFileList.focus
+			g.regRemove(item.original_widget.attr["path"])
+			self.refreshFile()
 
 	def doEdit(self, item):
 		def onExit():
 			g.doSetMain(self)
 
-		dlg = mDlgFolderSetting(onExit, item)
+		dlg = mDlgRegFolderSetting(onExit, item)
 		g.doSetMain(dlg)
 
 
@@ -1869,7 +1983,7 @@ def doSubCmd(cmds, dlgClass, targetItemIdx=-1):
 	
 	if targetItemIdx != -1 and len(sys.argv) == targetItemIdx:
 		target = cmds[targetItemIdx]
-		item = g.findItem(target)
+		item = g.regFindByName(target)
 		os.chdir(item["path"])
 		cmds = cmds[:targetItemIdx] + cmds[targetItemIdx+1:]
 
@@ -1882,7 +1996,7 @@ class Gr(object):
 		self.repoList = [dict(name=["test"], path="")]
 		
 	def init(self):
-		self.repoList = [repo for repo in g.lstPath if "repo" in repo and repo["repo"]]
+		self.repoList = [repo for repo in g.regList if "repo" in repo and repo["repo"]]
 		self.isInit = True
 		
 	def repoAllName(self):
@@ -2159,7 +2273,7 @@ def run():
 		return
 		
 	elif cmd == "list":
-		g.listPath()
+		g.regListPrint()
 		return
 		
 	elif cmd == "config":

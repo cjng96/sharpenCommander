@@ -84,7 +84,6 @@ class mListBox(urwid.ListBox):
 		self.maxcol = 0
 		self.maxrow = 0
 
-
 		# SimpleListWalker don't have focus cb
 		if getattr(self.body, 'set_focus_changed_callback', None):
 			self.body.set_focus_changed_callback(lambda newFocus: self.onFocusChanged(newFocus))
