@@ -222,18 +222,22 @@ class MyProgram(Program):
 			if rev2 == revCommon:
 				print("local branch is good situation")
 			else:
-				diffList = git.checkFastForward(currentBranch, remoteBranch)
+				diffList = git.checkRebaseable(currentBranch, remoteBranch)
 				if len(diffList) == 0:
 					while True:
-						hr = input("\n\n*** You can rebase local to remoteBranch. want? y/n: ").lower()
-						if hr == 'y':
+						hr = input("\n\n*** You can rebase local to remoteBranch. want? Y/n: ").lower()
+						if hr == "":
+							hr = 'y'
+
+						if hr == "n":
+							break
+						elif hr == 'y':
 							ss,st = git.rebase(remoteBranch)
 							# exe result?
 							print(ss)
 							if st != 0:
-								raise Exception("rebase failed. you should do [rebase --abort][%d]" % st)
-							break
-						elif hr == "n":
+								git.rebaseAbort()
+								raise Exception("rebase failed. you should manually merge it.[err:%d]" % st)
 							break
 				else:
 					while True:
@@ -922,9 +926,6 @@ class mDlgMainDc(ur.cDialog):
 			g.regRemove(pp)
 		self.fileRefresh()
 
-
-
-
 	def inputFilter(self, keys, raw):
 		if g.loop.widget != g.dialog.mainWidget:
 			return keys
@@ -1422,13 +1423,36 @@ class mDlgRegList(ur.cDialog):
 			if item["repo"]:
 				ss += " ==> ["
 
+				branch = ""
+				upstream = ""
 				repoStatus = item["repoStatus"]
-				if repoStatus["E"] is not None:
-					ss += "err: " + str(repoStatus["E"])
+				isSame = True
+				if repoStatus is None:
+					ss += "Not found"
 				else:
-					ss += " " if repoStatus["M"] == 0 else "M"
+					if repoStatus["E"] is not None:
+						ss += "err: " + str(repoStatus["E"])
+					else:
+						if repoStatus["M"] != 0:
+							ss += "M"
+							isSame = False
+
+					out = tool.git.getBranchStatus()
+					if out is None:
+						ss += "no branch"
+					else:
+						branch, rev, upstream, remoteRev, ahead, behind = out
+						#print(branch, rev, upstream, ahead, behind)
+						if ahead:
+							ss += "+%d" % ahead
+							isSame = False
+						if behind:
+							ss += "-%d" % behind
+							isSame = False
 
 				ss += "]"
+				ss += " %s -> %s" % (branch, upstream)
+				repoStatus["same"] = isSame
 
 			return ss
 
@@ -1437,9 +1461,6 @@ class mDlgRegList(ur.cDialog):
 			if not item["repo"]:
 				return status
 
-			# todo: multi thread
-			pp = item["path"]
-			os.chdir(pp)
 			try:
 				ss = system("git status -s")
 				if ss != "":
@@ -1452,15 +1473,31 @@ class mDlgRegList(ur.cDialog):
 		oldPath = os.getcwd()
 
 		# title, item
+		itemList = []
 		for x in g.regList:
-			x["repoStatus"] = repoGetStatus(x)
+			# todo: multi thread
+			pp = x["path"]
+			try:
+				os.chdir(pp)
+			except FileNotFoundError as e:
+				x["repoStatus"] = None
+				continue
 
-		itemList = [ (getTitle(x), x) for x in g.regList ]
+			x["repoStatus"] = repoGetStatus(x)
+			itemList.append((getTitle(x), x))
+
+		#itemList = [ (getTitle(x), x) for x in g.regList ]
 		os.chdir(oldPath)
 
 		# mstd, title, item
 		def gen(x):
-			mstd = "greenfg" if "repo" in x[1] and x[1]["repo"] else "std"
+			mstd = "std"
+			if "repo" in x[1] and x[1]["repo"]:
+				if x[1]["repoStatus"]["same"]:
+					mstd = "grayfg"
+				else:
+					mstd = "greenfg"
+
 			return mstd, x[0], x[1]
 
 		# status
@@ -1478,32 +1515,41 @@ class mDlgRegList(ur.cDialog):
 			self.widgetFileList.focusNext()
 		elif key == "k":
 			self.widgetFileList.focusPrevious()
-		elif key == "e":
+		elif key == "E":
 			item = self.widgetFileList.focus
 			self.doEdit(item.original_widget.attr)
 			self.refreshFile()
-		elif key == "p":
+		elif key == "P":
 			# 모든 repo udpate
+			g.loop.stop()
+
 			oldPath = os.getcwd()
-			for item in self.widgetFileList.body:
+			cnt = len(self.widgetFileList.body)
+			for idx, item in enumerate(self.widgetFileList.body):
 				attr = item.original_widget.attr
 				pp = attr["path"]
 				#os.chdir(pp)
 
 				repoStatus = attr["repoStatus"]
 				if attr["repo"]:
-
 					isModified = repoStatus["M"]
 					try:
+						print("[%d/%d] - %s" % (idx + 1, cnt, pp))
 						if isModified:
+							print("  git fetch")
 							system("cd '%s'; git fetch" % pp)
+							# 수정내역이 있으면 어차피 최신으로 못만든다.
 						else:
+							print("  git pull -r")
+
 							# TODO: no has tracking branch
 							system("cd '%s'; git pull -r" % pp)
 					except subprocess.CalledProcessError as e:
 						repoStatus["E"] = e
 
 			os.chdir(oldPath)
+			input("Enter to return...")
+			g.loop.start()
 
 		elif key == "delete":
 			item = self.widgetFileList.focus
@@ -2122,7 +2168,7 @@ class Gr(object):
 			if ss != "":
 				print(ss)
 		else:
-			diffList = git.checkFastForward(branchName, remoteBranch)
+			diffList = git.checkRebaseable(branchName, remoteBranch)
 			if len(diffList) == 0:
 				self.log2(Color.blue, name, "Be able to fast-forward... - %s" % path)
 			else:
@@ -2176,7 +2222,7 @@ class Gr(object):
 				ss = system("git stash pop %s" % stashName)
 				print(ss)
 	
-		diffList = git.checkFastForward(branchName, remoteBranch)
+		diffList = git.checkRebaseable(branchName, remoteBranch)
 		if len(diffList) != 0:
 			self.log2(Color.red, name, "NOT be able to fast forward - %s" % path)
 		else:			
@@ -2348,6 +2394,12 @@ def run():
 	elif cmd == "update":
 		gr.actionUpdate(target)
 		return
+
+
+	elif cmd == "test":
+		branch, rev, upstream, ahead, behind = tool.git.getBranchStatus()
+		print("%s - %s - %s - %d - %d" % (branch, rev, upstream, ahead, behind))
+		return 1
 
 	#print("target - %s" % target)
 	g.cd(cmd)

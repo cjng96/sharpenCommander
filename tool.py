@@ -2,6 +2,7 @@ import os
 import sys
 import re
 import subprocess
+import time
 
 class Config:
 	def __init__(self):
@@ -75,7 +76,8 @@ class git:
 
 	@staticmethod
 	def commitGap(brNew, brOld):
-		gap = system("git rev-list %s ^%s --count" % (brNew, brOld))
+		#gap = system("git rev-list %s ^%s --count" % (brNew, brOld))
+		gap = system("git rev-list --count %s..%s" % (brOld, brNew))
 		return int(gap)
 
 	@staticmethod
@@ -83,10 +85,46 @@ class git:
 		# color print
 		ss = system("git log --color --oneline --graph --decorate --abbrev-commit %s^..%s" % (brOld, brNew))
 		return ss
-		
+
+	# return: branch, rev, upstream, remoteRev, ahead, behind
+	@staticmethod
+	def getBranchStatus():
+		branchStatus = system("git -c color.branch=false branch -avv")
+		out = re.search(r"^\*\s(\w+)\s+(\w+)\s(.+)", branchStatus, re.MULTILINE)
+		if out is None:
+			return None
+
+		branch = out.group(1)
+		rev = out.group(2)
+		line = out.group(3)
+
+		remoteRev = ""
+		upstream = ""
+		ahead = 0
+		behind = 0
+		info = re.search(r"^\[(.+)\]", line)
+		if info is not None:
+			infos = info.group(1).split(":")
+			upstream = infos[0]
+			if len(infos) > 1:
+				plus = infos[1].split(",")
+				for ss2 in plus:
+					kk = ss2.strip().split(" ")
+					if kk[0] == "ahead":
+						ahead = int(kk[1])
+					elif kk[0] == "behind":
+						behind = int(kk[1])
+
+		out = re.search(r"\s\s%s\s+(\w+)" % upstream, branchStatus)
+		if out is not None:
+			remoteRev = out.group(1)
+
+		# upstrea있고, ahead + behind == 0이면 루트랑 동일한건데...
+		return branch, rev, upstream, remoteRev, ahead, behind
+
 
 	@staticmethod
-	def checkFastForward( br1, br2):
+	def checkRebaseable(br1, br2):
 		commonRev = git.commonParentRev(br1, br2)
 		
 		br1Diff = system("git diff --name-only %s %s" % (commonRev, br1))
@@ -110,6 +148,10 @@ class git:
 	@staticmethod
 	def rebase(branch):
 		return systemSafe("git rebase %s" % branch)
+
+	@staticmethod
+	def rebaseAbort():
+		return system("git rebase --abort")
 	
 	@staticmethod
 	def stashGetNameSafe(name):
