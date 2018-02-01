@@ -1439,18 +1439,21 @@ class mDlgRegList(ur.cDialog):
 							ss += "M"
 							isSame = False
 
-					out = tool.git.getBranchStatus()
-					if out is None:
-						ss += "no branch"
-					else:
-						branch, rev, upstream, remoteRev, ahead, behind = out
-						#print(branch, rev, upstream, ahead, behind)
-						if ahead:
-							ss += "+%d" % ahead
-							isSame = False
-						if behind:
-							ss += "-%d" % behind
-							isSame = False
+					try:
+						out = tool.git.getBranchStatus()
+						if out is None:
+							ss += "no branch"
+						else:
+							branch, rev, upstream, remoteRev, ahead, behind = out
+							#print(branch, rev, upstream, ahead, behind)
+							if ahead:
+								ss += "+%d" % ahead
+								isSame = False
+							if behind:
+								ss += "-%d" % behind
+								isSame = False
+					except subprocess.CalledProcessError as e:
+						ss += "Err - %s" % e
 
 				ss += "]"
 				ss += " %s -> %s" % (branch, upstream)
@@ -1468,7 +1471,7 @@ class mDlgRegList(ur.cDialog):
 				if ss != "":
 					status["M"] = 1
 			except subprocess.CalledProcessError as e:
-				status["E"] = e
+				status["E"] = str(e)
 
 			return status
 
