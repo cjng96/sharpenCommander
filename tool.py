@@ -89,7 +89,7 @@ class git:
 	# return: branch, rev, upstream, remoteRev, ahead, behind
 	@staticmethod
 	def getBranchStatus():
-		branchStatus = system("git -c color.branch=false branch -avv")
+		branchStatus = system("LANG=en_US git -c color.branch=false branch -avv")
 		out = re.search(r"^\*\s(\w+)\s+(\w+)\s(.+)", branchStatus, re.MULTILINE)
 		if out is None:
 			return None
