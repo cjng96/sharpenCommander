@@ -881,8 +881,12 @@ class mDlgMainDc(ur.cDialog):
 		# check git repo
 		try:
 			ss = subprocess.check_output(["git", "branch", "--color=never"], stderr=subprocess.DEVNULL).decode()
+			# TODO: "* develop", "* (HEAD detached at ae4c400d)"
 			name = re.search(r"^\*\s(\w+)", ss, re.MULTILINE)
-			self.gitBranch = name.group(1)
+			if name is None:
+				self.gitBranch = None
+			else:
+				self.gitBranch = name.group(1)
 		except subprocess.CalledProcessError:
 			self.gitBranch = None
 
