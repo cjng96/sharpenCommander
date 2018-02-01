@@ -6,12 +6,10 @@ import subprocess
 import os
 import sys
 import select
-import datetime
+import time
 import re
 import stat
 import json
-import traceback
-import inspect
 
 
 from enum import Enum
@@ -1405,6 +1403,10 @@ class mDlgRegList(ur.cDialog):
 		return True
 
 	def onFileSelected(self, btn):
+		#g.loop.stop()
+		#print(json.dumps(btn.attr))
+		#time.sleep(100)
+		#g.loop.start()
 		widget = btn
 		pp = widget.attr["path"]
 		os.chdir(pp)
@@ -1511,8 +1513,11 @@ class mDlgRegList(ur.cDialog):
 	def unhandled(self, key):
 		if key == 'f4' or key == "q" or key == "esc":
 			self.close()
+		elif key == "h" or key == "H":
+			self.onFileSelected(self.widgetFileList.body.get_focus()[0].original_widget)
 		elif key == "j":  # we can't use ctrl+j since it's terminal key for enter replacement
 			self.widgetFileList.focusNext()
+
 		elif key == "k":
 			self.widgetFileList.focusPrevious()
 		elif key == "E":
