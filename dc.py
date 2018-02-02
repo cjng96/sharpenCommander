@@ -1484,7 +1484,7 @@ class mDlgRegList(ur.cDialog):
 		last = ""
 		if len(text) > 0:
 			last = text[-1]
-		if last in ["E", 'J', 'K', "H", 'D', 'Q']:
+		if last in ["E", 'J', 'K', "H", 'D', 'Q', "P"]:
 			def _cb(self, data):
 				data["dlg"].edInput.set_edit_text(data["text"][:-1])
 
