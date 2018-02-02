@@ -1535,6 +1535,11 @@ class mDlgRegList(ur.cDialog):
 			item = self.widgetFileList.focus
 			self.doEdit(item.original_widget.attr)
 			self.refreshFile()
+		elif key == "D":
+			deleteItem = self.widgetFileList.focus.original_widget.attr
+			g.regRemove(deleteItem["path"])
+			self.refreshFile()
+
 		elif key == "P":
 			# 모든 repo udpate
 			g.loop.stop()
