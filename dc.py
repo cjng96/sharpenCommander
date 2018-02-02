@@ -1550,6 +1550,8 @@ class mDlgRegList(ur.cDialog):
 		if self.widgetFileList.body.focus is not None:
 			idx = self.widgetFileList.body.focus
 		refreshBtnListMarkupTuple(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
+		if idx >= len(self.widgetFileList.body):
+			idx = len(self.widgetFileList.body)-1
 		self.widgetFileList.set_focus(idx)
 		#del self.widgetFileList.body[:]
 		#self.widgetFileList.itemCount = len(lst2)
