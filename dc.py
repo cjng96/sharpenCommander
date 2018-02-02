@@ -10,7 +10,7 @@ import time
 import re
 import stat
 import json
-
+from multiprocessing import Pool
 
 from enum import Enum
 
@@ -281,6 +281,79 @@ class MyProgram(Program):
 		self.dialog = dlg
 		g.loop.widget = dlg.mainWidget
 		return True
+
+def getTitle(item):
+	ss = os.path.basename(item["path"])
+
+	ss += "("
+	for n in item["names"]:
+		ss += n + ", "
+	ss = ss[:-2]
+	ss += ")"
+
+	if item["repo"]:
+		ss += " ==> ["
+
+		branch = ""
+		upstream = ""
+		repoStatus = item["repoStatus"]
+		isSame = True
+		if repoStatus is None:
+			ss += "Not found"
+		else:
+			if repoStatus["E"] is not None:
+				ss += "err: " + str(repoStatus["E"])
+			else:
+				if repoStatus["M"] != 0:
+					ss += "M"
+					isSame = False
+
+				try:
+					out = tool.git.getBranchStatus()
+					if out is None:
+						ss += "no branch"
+					else:
+						branch, rev, upstream, remoteRev, ahead, behind = out
+						#print(branch, rev, upstream, ahead, behind)
+						if ahead:
+							ss += "+%d" % ahead
+							isSame = False
+						if behind:
+							ss += "-%d" % behind
+							isSame = False
+				except subprocess.CalledProcessError as e:
+					ss += "Err - %s" % e
+
+		ss += "]"
+		ss += " %s -> %s" % (branch, upstream)
+		repoStatus["same"] = isSame
+
+	return ss
+
+def repoGetStatus(item):
+	status  = dict(M=0, E=None)
+	if not item["repo"]:
+		return status
+
+	try:
+		ss = system("git status -s")
+		if ss != "":
+			status["M"] = 1
+	except subprocess.CalledProcessError as e:
+		status["E"] = str(e)
+
+	return status
+
+def genRepoItem(item):
+	pp = item["path"]
+	try:
+		os.chdir(pp)
+		item["repoStatus"] = repoGetStatus(item)
+	except FileNotFoundError as e:
+		item["repoStatus"] = dict(E="Not found")
+
+	item["title"] = getTitle(item)
+	return item
 
 
 """
@@ -1413,100 +1486,35 @@ class mDlgRegList(ur.cDialog):
 		self.close()
 
 	def refreshFile(self):
-		def getTitle(item):
-			ss = os.path.basename(item["path"])
-
-			ss += "("
-			for n in item["names"]:
-				ss += n + ", "
-			ss = ss[:-2]
-			ss += ")"
-
-			if item["repo"]:
-				ss += " ==> ["
-
-				branch = ""
-				upstream = ""
-				repoStatus = item["repoStatus"]
-				isSame = True
-				if repoStatus is None:
-					ss += "Not found"
-				else:
-					if repoStatus["E"] is not None:
-						ss += "err: " + str(repoStatus["E"])
-					else:
-						if repoStatus["M"] != 0:
-							ss += "M"
-							isSame = False
-
-					try:
-						out = tool.git.getBranchStatus()
-						if out is None:
-							ss += "no branch"
-						else:
-							branch, rev, upstream, remoteRev, ahead, behind = out
-							#print(branch, rev, upstream, ahead, behind)
-							if ahead:
-								ss += "+%d" % ahead
-								isSame = False
-							if behind:
-								ss += "-%d" % behind
-								isSame = False
-					except subprocess.CalledProcessError as e:
-						ss += "Err - %s" % e
-
-				ss += "]"
-				ss += " %s -> %s" % (branch, upstream)
-				repoStatus["same"] = isSame
-
-			return ss
-
-		def repoGetStatus(item):
-			status  = dict(M=0, E=None)
-			if not item["repo"]:
-				return status
-
-			try:
-				ss = system("git status -s")
-				if ss != "":
-					status["M"] = 1
-			except subprocess.CalledProcessError as e:
-				status["E"] = str(e)
-
-			return status
-
 		oldPath = os.getcwd()
 
 		# title, item
-		itemList = []
-		for x in g.regList:
-			# todo: multi thread
-			pp = x["path"]
-			try:
-				os.chdir(pp)
-			except FileNotFoundError as e:
-				x["repoStatus"] = None
-				continue
+		# itemList = []
+		# for x in g.regList:
+		# 	# todo: multi thread
+		# 	itemList.append(genRepoItem(x))
 
-			x["repoStatus"] = repoGetStatus(x)
-			itemList.append((getTitle(x), x))
+		pool = Pool(7)
+		itemList = pool.map(genRepoItem, g.regList)
+		itemList = [ (item["title"], item) for item in itemList]
 
 		#itemList = [ (getTitle(x), x) for x in g.regList ]
 		os.chdir(oldPath)
 
 		# mstd, title, item
-		def gen(x):
+		def gen(item):
 			mstd = "std"
-			if "repo" in x[1] and x[1]["repo"]:
-				if x[1]["repoStatus"]["same"]:
+			if "repo" in item[1] and item[1]["repo"]:
+				if item[1]["repoStatus"]["same"]:
 					mstd = "grayfg"
 				else:
 					mstd = "greenfg"
 
-			return mstd, x[0], x[1]
+			return mstd, item[0], item[1]
 
 		# status
 		itemList = list(map(gen, itemList))
+
 		#self.headerText.set_text("%s - %s%s - %d" % (self.title, pp, status, len(itemList)))
 		refreshBtnListMarkupTuple(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
 		#del self.widgetFileList.body[:]
