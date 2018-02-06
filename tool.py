@@ -66,7 +66,7 @@ class git:
 	@staticmethod
 	def commonParentRev(br1, br2):
 		commonRev = system("git merge-base %s %s" % (br1, br2))
-		return commonRev[:7]
+		return commonRev
 
 	@staticmethod
 	def printStatus():
