@@ -1540,7 +1540,7 @@ class mDlgRegList(ur.cDialog):
 			if filterStr == "":  return True
 
 			for name in item[2]["names"]:
-				if filterStr in name:
+				if filterStr.lower() in name.lower():
 					return True
 
 		itemList = list(filter(_filterList, self.itemList))
