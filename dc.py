@@ -1599,20 +1599,21 @@ class mDlgRegList(ur.cDialog):
 
 				repoStatus = attr["repoStatus"]
 				if attr["repo"]:
-					isModified = repoStatus["M"]
-					try:
-						print("[%d/%d] - %s" % (idx + 1, cnt, pp))
-						if isModified:
-							print("  git fetch")
-							system("cd '%s'; git fetch" % pp)
-							# 수정내역이 있으면 어차피 최신으로 못만든다.
-						else:
-							print("  git pull -r")
+					if "M" in repoStatus:
+						isModified = repoStatus["M"]
+						try:
+							print("[%d/%d] - %s" % (idx + 1, cnt, pp))
+							if isModified:
+								print("  git fetch")
+								system("cd '%s'; git fetch" % pp)
+								# 수정내역이 있으면 어차피 최신으로 못만든다.
+							else:
+								print("  git pull -r")
 
-							# TODO: no has tracking branch
-							system("cd '%s'; git pull -r" % pp)
-					except subprocess.CalledProcessError as e:
-						repoStatus["E"] = e
+								# TODO: no has tracking branch
+								system("cd '%s'; git pull -r" % pp)
+						except subprocess.CalledProcessError as e:
+							repoStatus["E"] = e
 
 			os.chdir(oldPath)
 			input("Enter to return...")
