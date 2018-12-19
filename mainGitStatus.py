@@ -3,6 +3,7 @@ import sys
 
 import urwid
 import subprocess
+from multiprocessing import Pool
 
 
 from globalBase import *

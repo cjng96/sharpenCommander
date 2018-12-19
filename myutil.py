@@ -1,4 +1,5 @@
 
+import urwidHelper as ur
 
 def unwrapQutesFilename(ss):
 	if ss.startswith('"'):
@@ -7,6 +8,17 @@ def unwrapQutesFilename(ss):
 		return ss
 	else:
 		return ss
+
+"""
+itemList = list of (markup,  attr)
+"""
+def refreshBtnListMarkupTuple(markupItemList, listBox, onClick):
+	del listBox.body[:]
+	listBox.itemCount = len(markupItemList)
+	if listBox.itemCount == 0:
+		markupItemList = [("std", "< Nothing > ", "")]
+
+	listBox.body += ur.makeBtnListMarkup(markupItemList, onClick)
 
 
 def gitFileBtnName(btn):
