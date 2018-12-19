@@ -856,7 +856,7 @@ class mDlgMainDc(ur.cDialog):
 		g.doSetMain(dlg)
 
 	def unhandled(self, key):
-		if key == 'f4' or key == "q":
+		if key == 'f4' or key == "q" or key == "Q":
 			g.savePath(os.getcwd())
 			raise urwid.ExitMainLoop()
 

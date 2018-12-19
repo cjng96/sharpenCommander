@@ -12,6 +12,7 @@ import tool
 import  myutil
 
 from globalBase import *
+from mainRegList import mDlgRegFolderSetting
 
 
 def repoGetStatus(item):
@@ -182,8 +183,9 @@ class mDlgGoto(ur.cDialog):
 
 		elif key == "E":
 			item = self.widgetFileList.focus
-			#self.doEdit(item.original_widget.attr)
+			self.doEdit(item.original_widget.attr)
 			self.refreshFile()
+
 		elif key == "D" or key == "delete":
 			deleteItem = self.widgetFileList.focus.original_widget.attr
 			g.regRemove(deleteItem["path"])
@@ -222,3 +224,9 @@ class mDlgGoto(ur.cDialog):
 			input("Enter to return...")
 			g.loop.start()
 
+	def doEdit(self, item):
+		def onExit():
+			g.doSetMain(self)
+
+		dlg = mDlgRegFolderSetting(onExit, item)
+		g.doSetMain(dlg)

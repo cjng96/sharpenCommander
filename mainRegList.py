@@ -13,8 +13,8 @@ import  myutil
 from globalBase import *
 
 
-def repoGetStatus(item):
-	status  = dict(M=0, E=None)
+def _repoGetStatus(item):
+	status = dict(M=0, E=None)
 	if not item["repo"]:
 		return status
 
@@ -26,6 +26,19 @@ def repoGetStatus(item):
 		status["E"] = str(e)
 
 	return status
+
+# pool.map에 줄꺼라 local func이면 안된다.
+def _genRepoItem(item):
+	pp = item["path"]
+	try:
+		os.chdir(pp)
+		item["repoStatus"] = _repoGetStatus(item)
+	except FileNotFoundError:
+		item["repoStatus"] = dict(E="Not found")
+
+	item["title"] = getTitle(item)
+	return item
+
 
 def getTitle(item):
 	ss = os.path.basename(item["path"])
@@ -74,19 +87,6 @@ def getTitle(item):
 		repoStatus["same"] = isSame
 
 	return ss
-
-
-def genRepoItem(item):
-	pp = item["path"]
-	try:
-		os.chdir(pp)
-		item["repoStatus"] = repoGetStatus(item)
-	except FileNotFoundError as e:
-		item["repoStatus"] = dict(E="Not found")
-
-	item["title"] = getTitle(item)
-	return item
-
 
 # 두칸씩 작은 오버레이로 띄우자
 class mDlgRegFolderSetting(ur.cDialog):
@@ -141,9 +141,13 @@ class mDlgRegFolderSetting(ur.cDialog):
 	def unhandled(self, key):
 		if key == 'f4' or key == "q" or key == "esc":
 			self.close()
-		elif key == "r":
+		elif key == "r" or key == "R":
 			self.item["repo"] = not self.item["repo"]
+
+			ii = g.regFindByPath(self.item["path"])
+			ii["repo"] = self.item["repo"]
 			g.configSave()
+
 			self.showInfo()
 
 		elif key == "insert":
@@ -247,17 +251,17 @@ class mDlgRegList(ur.cDialog):
 		# 	# todo: multi thread
 		# 	itemList.append(genRepoItem(x))
 
-		lst = filter(lambda x: x["repo"], g.regList)
 
 		pool = Pool(10)
-		self.itemList = pool.map(genRepoItem, lst)
+		lst = filter(lambda x: x["repo"], g.regList)
+		self.itemList = pool.map(_genRepoItem, lst)
 		#itemList = [ (item["title"], item) for item in itemList]
 
 		#itemList = [ (getTitle(x), x) for x in g.regList ]
 		os.chdir(oldPath)
 
 		# mstd, title, item
-		def gen(item):
+		def _gen(item):
 			mstd = "std"
 			if "repo" in item and item["repo"]:
 				if item["repoStatus"]["same"]:
@@ -268,7 +272,7 @@ class mDlgRegList(ur.cDialog):
 			return mstd, item["title"], item
 
 		# status
-		self.itemList = list(map(gen, self.itemList))
+		self.itemList = list(map(_gen, self.itemList))
 		self.refreshList("")
 
 	def refreshList(self, filterStr):
