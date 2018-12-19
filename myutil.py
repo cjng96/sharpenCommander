@@ -16,7 +16,7 @@ def refreshBtnListMarkupTuple(markupItemList, listBox, onClick):
 	del listBox.body[:]
 	listBox.itemCount = len(markupItemList)
 	if listBox.itemCount == 0:
-		markupItemList = [("std", "< Nothing > ", "")]
+		markupItemList = [("std", "< Nothing > ", None)]
 
 	listBox.body += ur.makeBtnListMarkup(markupItemList, onClick)
 

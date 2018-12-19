@@ -18,6 +18,7 @@ def system(args, stderr=subprocess.STDOUT):
 	rr = rr.rstrip(' \r\n')
 	return rr
 
+# result, exitcode
 def systemSafe(args, stderr=subprocess.STDOUT):
 	if g.isPrintSystem:
 		print("system command - %s" % args)

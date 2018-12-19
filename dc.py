@@ -34,6 +34,7 @@ from dlgAck import mDlgMainAck
 from dlgFind import mDlgMainFind
 from mainGitStatus import mDlgMainGitStatus
 from mainRegList import mDlgRegList
+from mainGoto import mDlgGoto
 
 
 '''
@@ -131,8 +132,11 @@ class MyProgram(Program):
 	def regAdd(self, pp):
 		oldPath = os.getcwd()
 		os.chdir(pp)
-		ss = system("git rev-parse --is-inside-work-tree")
-		isGitRepo = True if ss == "true" else False
+		ss, code = systemSafe("git rev-parse --is-inside-work-tree")
+		isGitRepo = False
+		if code == 0:
+			isGitRepo = True if ss == "true" else False
+
 		os.chdir(oldPath)
 
 		name = os.path.basename(pp)
@@ -169,11 +173,11 @@ class MyProgram(Program):
 	# path list that includes sub string
 	def regFindItems(self, sub):
 		sub = sub.lower()
-		lst = []
-		for pp in self.regList:
-			if self.matchItem(pp, sub):
-				lst.append(pp)
-
+		#lst = []
+		#for pp in self.regList:
+		#	if self.matchItem(pp, sub):
+		#		lst.append(pp)
+		lst = list(filter(lambda x: self.matchItem(x, sub), self.regList))
 		return lst
 
 	@staticmethod
@@ -288,69 +292,6 @@ class MyProgram(Program):
 		g.loop.widget = dlg.mainWidget
 		return True
 
-def getTitle(item):
-	ss = os.path.basename(item["path"])
-
-	ss += "("
-	for n in item["names"]:
-		ss += n + ", "
-	ss = ss[:-2]
-	ss += ")"
-
-	if item["repo"]:
-		ss += " ==> ["
-
-		branch = ""
-		upstream = ""
-		repoStatus = item["repoStatus"]
-		isSame = True
-		if repoStatus is None:
-			ss += "Not found"
-		else:
-			if repoStatus["E"] is not None:
-				ss += "err: " + str(repoStatus["E"])
-			else:
-				if repoStatus["M"] != 0:
-					ss += "M"
-					isSame = False
-
-				try:
-					out = tool.git.getBranchStatus()
-					if out is None:
-						ss += "no branch"
-					else:
-						branch, rev, upstream, remoteRev, ahead, behind = out
-						#print(branch, rev, upstream, ahead, behind)
-						if ahead:
-							ss += "+%d" % ahead
-							isSame = False
-						if behind:
-							ss += "-%d" % behind
-							isSame = False
-				except subprocess.CalledProcessError as e:
-					ss += "Err - %s" % e
-
-		ss += "]"
-		ss += " %s -> %s" % (branch, upstream)
-		repoStatus["same"] = isSame
-
-	return ss
-
-def repoGetStatus(item):
-	status  = dict(M=0, E=None)
-	if not item["repo"]:
-		return status
-
-	try:
-		ss = system("git status -s")
-		if ss != "":
-			status["M"] = 1
-	except subprocess.CalledProcessError as e:
-		status["E"] = str(e)
-
-	return status
-
-
 
 class mDlgMainDc(ur.cDialog):
 	def __init__(self):
@@ -431,7 +372,7 @@ class mDlgMainDc(ur.cDialog):
 		myutil.refreshBtnListMarkupTuple(lst, self.widgetFileList, lambda btn: self.onFileSelected(btn))
 
 	def fileRefresh(self, newText = None):
-		if self.cmd == "goto":
+		if self.cmd == "goto":  # deprecated code
 			self.gotoRefresh(newText)
 			return
 
@@ -941,8 +882,10 @@ class mDlgMainDc(ur.cDialog):
 			self.doRegList()
 
 		elif key == "g":  # go
-			self.inputSet("goto")
-			self.fileRefresh()
+			# use separated dialog for goto feature
+			#self.inputSet("goto")
+			#self.fileRefresh()
+			self.doGoto()
 			return
 
 		elif key == "d":
@@ -1065,6 +1008,19 @@ class mDlgMainDc(ur.cDialog):
 		'''
 
 
+	def doGoto(self):
+		def onExit():
+			g.doSetMain(self)
+			'''
+			if not self.refreshFileList():
+				g.loop.stop()
+				print("No modified or untracked files")
+				sys.exit(0)
+			'''
+
+		dlg = mDlgGoto(onExit)
+		g.doSetMain(dlg)
+
 	def doRegList(self):
 		def onExit():
 			g.doSetMain(self)
@@ -1165,7 +1121,7 @@ class Gr(object):
 		elif lv == 1:
 			print("%s%s%s" % (Ansi.blueBold, msg, Ansi.clear))
 		else:
-			print("%s" % (msg))
+			print("%s" % msg)
 			
 	def log2(self, color, name, msg):
 		ansiBold = Ansi.blueBold if Color.blue == color else Ansi.redBold
