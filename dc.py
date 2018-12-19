@@ -1105,11 +1105,14 @@ class GitActor(object):
 			self.init()
 
 		if target is not None:
-			action(self, target)
+			return action(self, target)
 
 		else:
 			for comp in self.repoAllName():
-				action(self, comp)
+				hr = action(self, comp)
+				if not hr:
+					return False
+		return True
 
 	def log(self, lv, msg):
 		if lv == 0:
@@ -1224,27 +1227,31 @@ class GitActor(object):
 		#print("status......")
 		#self.action(GitActor.actStatusComponent, target)
 		print("pull......")
-		self.action(GitActor.actPull, target)
+		if not self.action(GitActor.actPull, target):
+			return
+
+		print("status......")
+		self.action(GitActor.actStatusComponent, target)
 
 	def actMergeSafe(self, name):
 		try:
 			path = self.changePath(name)
 		except ErrNoExist as e:
 			self.log2(Color.red, name, "%s DOESN'T exist" % e.path)
-			return
+			return False
 
 		if not self.stashCheck(name):
-			return
+			return False
 
 		branchName = git.getCurrentBranch()
 		remoteBranch = git.getTrackingBranch()
 		if remoteBranch is None:
 			self.log2(Color.red, name, "%s DONT'T HAVE TRACKING branch" % branchName)
-			return
+			return False
 		
 		isSame = self.checkSameWith(name, branchName, remoteBranch)
 		if isSame:
-			return
+			return True
 
 		# allow the repo that no registerted
 		if not name.startswith("/"):
@@ -1268,29 +1275,35 @@ class GitActor(object):
 			self.log2(Color.blue, name, "merge with %s - %s" % (remoteBranch, path))
 			ss = tool.system("git rebase %s" % remoteBranch)
 			print(ss)
-            
-            
+
+		return True
+
 	def actFetch(self, name):
 		try:
 			path = self.changePath(name)
 		except ErrNoExist as e:
 			self.log2(Color.red, name, "%s DOESN'T exist" % e.path)
-			return
+			return False
 
 		self.log2(Color.blue, name, "fetch --prune - %s" % path)
 		tool.system("git fetch --prune")
+
+		return True
 
 	def actPull(self, name):
 		try:
 			path = self.changePath(name)
 		except ErrNoExist as e:
 			self.log2(Color.red, name, "%s DOESN'T exist" % e.path)
-			return
+			return False
 
 		self.log2(Color.blue, name, "pull -r - %s" % path)
 		ss, code = tool.systemSafe("git pull -r")
 		if code != 0:
 			self.log2(Color.red, name, "pull is failed\n%s" % ss)
+			return False
+
+		return True
 
 gr = GitActor()
 
