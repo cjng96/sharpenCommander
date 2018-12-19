@@ -29,6 +29,10 @@ from globalBase import *
 
 import urwidHelper as ur
 
+from dlgAck import mDlgMainAck
+from dlgFind import mDlgMainFind
+
+import myutil
 
 
 '''
@@ -380,250 +384,6 @@ def refreshBtnListMarkupTuple(markupItemList, listBox, onClick):
 	listBox.body += ur.makeBtnListMarkup(markupItemList, onClick)
 
 
-class AckFile:
-	def __init__(self, fnameTerminal):
-		self.fname = ur.termianl2plainText(fnameTerminal)
-		#self.fnameMarkup = Urwid.terminal2markup(fnameTerminal, 0)
-		#self.fnameOrig = fnameTerminal
-
-		self.lstLine = []	
-		
-	def getTitleMarkup(self, focus=False):
-		themeTitle = "greenfg" if not focus else "greenfg_f"
-		themeCount = "std" if not focus else "std_f"
-		return [(themeTitle, self.fname), (themeCount, "(%d)" % len(self.lstLine))]
-
-
-class mDlgMainAck(ur.cDialog):
-	def __init__(self):
-		super().__init__()
-
-		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
-		self.widgetFileList.setFocusCb(lambda newFocus: self.onFileFocusChanged(newFocus))
-
-		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList([])))
-
-		self.header = ">> dc V%s - ack-grep - q/F4(Quit),<-/->(Prev/Next file),Enter(goto),E(edit)..." % g.version
-		self.headerText = urwid.Text(self.header)
-		self.widgetFrame = urwid.Pile([(15, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
-		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
-		
-		self.cbFileSelect = lambda btn: self.onFileSelected(btn)
-		self.buf = ""
-		self.lstContent = []
-		
-	def btnUpdate(self, btn, focus):
-		btn.original_widget.set_label(btn.afile.getTitleMarkup(focus))
-		return btn
-
-	def onFileFocusChanged(self, new_focus):
-		self.btnUpdate(self.widgetFileList.focus, False)
-		newBtn = self.btnUpdate(self.widgetFileList.body[new_focus], True)
-		
-		self.widgetContent.focus_position = newBtn.afile.position
-		return False
-
-	def onFileSelected(self, btn):
-		pp = os.path.dirname(os.path.join(os.getcwd(), btn.afile.fname))
-		g.savePath(pp)
-		raise urwid.ExitMainLoop()
-		
-	def inputFilter(self, keys, raw):
-		if g.loop.widget != g.dialog.mainWidget:
-			return keys
-			
-		if ur.filterKey(keys, "down"):
-			self.widgetContent.scrollDown()
-
-		if ur.filterKey(keys, "up"):
-			self.widgetContent.scrollUp()
-
-		if ur.filterKey(keys, "enter"):
-			self.onFileSelected(self.widgetFileList.focus)
-
-		return keys
-		
-	def recvData(self, data):
-		ss = data.decode("UTF-8", "ignore")
-		self.buf += ss
-		pt = self.buf.rfind("\n")
-		if pt == -1:
-			return True
-
-		ss = self.buf[:pt]
-		self.buf = self.buf[pt:]
-		
-		for line in ss.splitlines():
-			line = line.strip()
-			
-			if line != "" and ":" not in line:	# file name
-				# new file				
-				afile = AckFile(line)
-				self.lstContent.append(afile)
-
-				isFirst = len(self.widgetFileList.body) == 0
-				btn = ur.genBtnMarkup(afile.getTitleMarkup(isFirst), self.cbFileSelect)
-				btn.afile = afile
-				afile.btn = btn
-				afile.position = len(self.widgetContent.body)
-				self.widgetFileList.body.append(btn)
-				
-				txt = urwid.Text(afile.getTitleMarkup(isFirst))
-				self.widgetContent.body.append(txt)
-				
-			else:
-				afile = self.lstContent[len(self.lstContent)-1]
-				line = line.replace("\t", "    ")
-				afile.lstLine.append(line)
-				
-				# update content
-				txt = ur.genText(line)
-				self.widgetContent.body.append(txt)
-				
-				self.btnUpdate(afile.btn, afile.position == 0)
-			
-		return True
-			
-
-	def unhandled(self, key):
-		if key == 'f4' or key == "q":
-			raise urwid.ExitMainLoop()
-		elif key == 'left' or key == "[":
-			self.widgetFileList.focusPrevious()
-		elif key == 'right' or key == "]":
-			self.widgetFileList.focusNext()
-
-		elif key == "k":
-			self.widgetContent.scrollUp()
-
-		elif key == "j":
-			self.widgetContent.scrollDown()
-
-		elif key == "e" or key == "E":
-			btn = self.widgetFileList.focus
-			g.loop.stop()
-			systemRet("vim %s" % btn.afile.fname)
-			g.loop.start()
-
-		elif key == "h":
-			ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
-	
-
-class mDlgMainFind(ur.cDialog):
-	def __init__(self):
-		super().__init__()
-
-		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
-		self.widgetFileList.setFocusCb(lambda newFocus: self.onFileFocusChanged(newFocus))
-		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
-		self.widgetContent.isViewContent = True
-
-		self.header = ">> dc V%s - find - q/F4(Quit),<-/->(Prev/Next file),Enter(goto),E(edit)..." % g.version
-		self.headerText = urwid.Text(self.header)
-		self.widgetFrame = urwid.Pile([(15, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
-		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
-		
-		self.cbFileSelect = lambda btn: self.onFileSelected(btn)
-		self.content = ""
-		self.selectFileName = ""
-
-	def onFileFocusChanged(self, newFocus):
-		# old widget
-		#widget = self.widgetFileList.focus
-		#markup = ("std", widget.base_widget.origTxt)
-		#widget.base_widget.set_label(markup)
-
-		#widget = self.widgetFileList.body[newFocus]
-		#markup = ("std_f", widget.base_widget.origTxt)
-		#widget.base_widget.set_label(markup)
-		widget = self.widgetFileList.body[newFocus]
-
-		self.widgetFileList.set_focus_valign("middle")
-
-		self.selectFileName = gitFileBtnName(widget)
-
-		try:
-			with open(self.selectFileName, "r", encoding="UTF-8") as fp:
-				ss = fp.read()
-		except UnicodeDecodeError:
-			ss = "No utf8 file[size:%d]" % os.path.getsize(self.selectFileName) 
-			
-		ss = ss.replace("\t", "    ")
-			
-		del self.widgetContent.body[:]
-		self.widgetContent.body += ur.makeTextList(ss.splitlines())
-		self.widgetFrame.set_focus(self.widgetContent)
-		return True
-
-	def onFileSelected(self, btn):
-		self.selectFileName = gitFileBtnName(btn)
-		pp = os.path.dirname(os.path.join(os.getcwd(), self.selectFileName))
-		g.savePath(pp)
-		raise urwid.ExitMainLoop()
-		
-	def inputFilter(self, keys, raw):
-		if ur.filterKey(keys, "down"):
-			self.widgetContent.scrollDown()
-
-		if ur.filterKey(keys, "up"):
-			self.widgetContent.scrollUp()
-
-		if ur.filterKey(keys, "enter"):
-			self.onFileSelected(self.widgetFileList.focus)
-
-		return keys
-		
-	def recvData(self, data):
-		ss = data.decode("UTF-8")
-		self.content += ss
-		pt = self.content.rfind("\n")
-		if pt == -1:
-			return True
-
-		ss = self.content[:pt]
-		self.content = self.content[pt:]
-		
-		for line in ss.splitlines():
-			line = line.strip()
-			if line == "":
-				continue
-
-			#markup = ur.terminal2markup(line, 0)
-			#markupF = ur.terminal2markup(line, 1)
-			markup = ("std", line)
-			markupF = ('std_f', line)
-
-			btn = ur.genBtn(markup, markupF, self.cbFileSelect, len(self.widgetFileList.body) == 0)
-			self.widgetFileList.body.append(btn)
-			if len(self.widgetFileList.body) == 1:
-				self.onFileFocusChanged(0)
-			
-		return True
-
-	def unhandled(self, key):
-		if key == 'f4' or key == "q":
-			raise urwid.ExitMainLoop()
-		elif key == 'left' or key == "[":
-			self.widgetFileList.focusPrevious()
-		elif key == 'right' or key == "]":
-			self.widgetFileList.focusNext()
-
-		elif key == "k":
-			self.widgetContent.scrollUp()
-		elif key == "j":
-			self.widgetContent.scrollDown()
-		
-		elif key == "e" or key == "E":
-			btn = self.widgetFileList.focus
-			fname = gitFileBtnName(btn)
-
-			g.loop.stop()
-			systemRet("vim %s" % fname)
-			g.loop.start()
-			
-		elif key == "h":
-			ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
-
 class mDlgMainDc(ur.cDialog):
 	def __init__(self):
 		super().__init__()
@@ -820,7 +580,8 @@ class mDlgMainDc(ur.cDialog):
 							else:
 								mstd = "grayfg"
 
-					mstd = 'greenfg' if isDir else 'std'
+					if mstd is None:
+						mstd = 'greenfg' if isDir else 'std'
 
 			return mstd, x[0], x[1]
 
@@ -1269,7 +1030,7 @@ class mDlgMainDc(ur.cDialog):
 			g.loop.start()
 			self.fileRefresh()
 
-		elif key == "M" or key == "N":
+		elif key == "M" or key == "N":  # M is important item, N is ignorable list
 			fname = self.getFocusName()
 			item = self.dcdataGet(fname)
 
@@ -1664,7 +1425,7 @@ class mDlgMainGitStatus(ur.cDialog):
 		# why btn.get_label() is impossible?
 		label = btn.original_widget.get_label()
 		#self.selectFileName = gitFileBtnName(btn)
-		self.selectFileName = gitFileLastName(btn)
+		self.selectFileName = myutil.gitFileLastName(btn)
 		#g.headerText.set_text("file - " + label)
 		
 		# display
@@ -1751,7 +1512,7 @@ class mDlgMainGitStatus(ur.cDialog):
 		elif key == "A":
 			btn = self.widgetFileList.focus
 			#fname = gitFileBtnName(btn)
-			fname = gitFileLastName(btn)
+			fname = myutil.gitFileLastName(btn)
 			system("git add \"%s\"" % fname)
 			self.refreshFileList(1)
 			
@@ -1763,12 +1524,12 @@ class mDlgMainGitStatus(ur.cDialog):
 				self.refreshFileList()
 					
 			btn = self.widgetFileList.focus
-			fname = gitFileBtnName(btn)
+			fname = myutil.gitFileBtnName(btn)
 			ur.popupAsk("Git add", "Do you want to add a file via prompt[%s]?" % fname, onPrompt)
 
 		elif key == "R":
 			btn = self.widgetFileList.focus
-			fname = gitFileBtnName(btn)
+			fname = myutil.gitFileBtnName(btn)
 			system("git reset \"%s\"" % fname)
 			self.refreshFileList()
 			
@@ -1782,15 +1543,15 @@ class mDlgMainGitStatus(ur.cDialog):
 				self.refreshFileList()
 					
 			btn = self.widgetFileList.focus
-			fname = gitFileBtnName(btn)
-			if gitFileBtnType(btn) == "??":
+			fname = myutil.gitFileBtnName(btn)
+			if myutil.gitFileBtnType(btn) == "??":
 				ur.popupAsk("Git reset(f)", "Do you want to delete file[%s]?" % fname, onDelete)
 			else:
 				ur.popupAsk("Git reset(f)", "Do you want to drop file[%s]s modification?" % fname, onDrop)
 		
 		elif key == "E":
 			btn = self.widgetFileList.focus
-			fname = gitFileBtnName(btn)
+			fname = myutil.gitFileBtnName(btn)
 
 			g.loop.stop()
 			systemRet("vim %s" % fname)
@@ -1950,7 +1711,7 @@ class mGitCommitDialog(ur.cDialog):
 				self.refreshFileList()
 					
 			btn = self.widgetFileList.focus
-			fname = gitFileBtnName(btn)
+			fname = myutil.gitFileBtnName(btn)
 			ur.popupAsk3("Git add", "Do you want to add a file[%s]?" % fname, "Add", "Prompt", "Cancel", onAdd, onPrompt)
 
 		elif key == "R":
@@ -1959,7 +1720,7 @@ class mGitCommitDialog(ur.cDialog):
 				self.refreshFileList()
 					
 			btn = self.widgetFileList.focus
-			fname = gitFileBtnName(btn)
+			fname = myutil.gitFileBtnName(btn)
 			ur.popupAsk("Git reset", "Do you want to reset a file[%s]?" % fname, onReset)
 			
 		elif key == "D":
@@ -1968,12 +1729,12 @@ class mGitCommitDialog(ur.cDialog):
 				self.refreshFileList()
 					
 			btn = self.widgetFileList.focus
-			fname = gitFileBtnName(btn)
+			fname = myutil.gitFileBtnName(btn)
 			ur.popupAsk("Git reset(f)", "Do you want to drop file[%s]s modification?" % fname, onDrop)
 		
 		elif key == "E":
 			btn = self.widgetFileList.focus
-			fname = gitFileBtnName(btn)
+			fname = myutil.gitFileBtnName(btn)
 
 			g.loop.stop()
 			systemRet("vim %s" % fname)
@@ -2023,54 +1784,6 @@ def urwidInputFilter(keys, raw):
 		return keys
 		
 	return g.dialog.inputFilter(keys, raw)
-
-def gitFileBtnName(btn):
-	label = btn.original_widget.get_label()
-	return label[2:].strip()
-
-# "??" - untracked file
-def gitFileBtnType(btn):
-	label = btn.original_widget.get_label()
-	return label[:2]
-
-def unwrapQutesFilename(ss):
-	if ss.startswith('"'):
-		# escape including qutes
-		ss = ss[1:-1].replace('"', '\\"')
-		return ss
-	else:
-		return ss
-
-def gitFileLastName(btn):
-	ftype = gitFileBtnType(btn)
-	fname = gitFileBtnName(btn)
-	#R  b -> d
-	#R  "test a.txt" -> "t sp"
-	#A  "test b.txt"
-	#A  "tt \"k\" tt"
-	if not ftype.startswith("R"):
-		return unwrapQutesFilename(fname)
-
-	# case1. a -> b
-	if not fname.startswith("\""):
-		pt = fname.rindex(" -> ")
-		fname = fname[pt+4:]
-		return unwrapQutesFilename(fname)
-	else:
-		# case2. "test a" -> "test b"
-		ss = fname[:-1]
-		while True:
-			pt = ss.rfind('"')
-			if pt == 0:
-				return ss[1:]
-
-			if pt != -1:
-				if ss[pt-1] != "\\":
-					return ss[pt+1:]
-				else:
-					# TODO:
-					raise Exception("Not supported file format[%s]" % fname)
-
 
 from distutils.spawn import find_executable
 
@@ -2317,9 +2030,9 @@ def winTest():
 	print("%d %x %x %x %x" % (st, ss[0], ss[1], ss[2], ss[3]))
 	sys.exit(0)
 
-def getNonblocingInput():
-	if select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], []):
-		return sys.stdin.read(255)
+def getNonblocingInput(timeout=0):
+	if select.select([sys.stdin], [], [], timeout) == ([sys.stdin], [], []):
+		return sys.stdin.read(10240)
 
 def removeEmptyArgv():		
 	#cmds = shlex.split(cmdLine)
@@ -2329,7 +2042,19 @@ def removeEmptyArgv():
 			sys.argv = sys.argv[:idx+1]
 			break
 
-def run():
+def main():
+	isTty = os.isatty(sys.stdin.fileno())
+	if not isTty:
+		ss = getNonblocingInput()
+		lines = ss.splitlines()
+		lines = (line.rstrip() for line in lines)
+		lines = list(line for line in lines if line)
+
+		if len(lines) == 1:
+			print("folder - %s" % lines[0])
+
+		return
+
 	#winTest()
 	try:
 		os.remove("/tmp/cmdDevTool.path")
@@ -2472,7 +2197,7 @@ def run():
 
 if __name__ == "__main__":
 	try:
-		ret = run()
+		ret = main()
 	except ErrFailure as e:
 		print(e)
 		sys.exit(1)
