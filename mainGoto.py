@@ -123,9 +123,10 @@ class mDlgGoto(ur.cDialog):
 			last = text[-1]
 		if last in ["E", 'J', 'K', "H", 'D', 'Q', "P"]:
 			def _cb(self, data):
-				data["dlg"].edInput.set_edit_text(data["text"][:-1])
+				#data["dlg"].edInput.set_edit_text(data["text"][:-1])
+				edit.set_edit_text(data["text"][:-1])
 
-			g.loop.set_alarm_in(0.00001, _cb, dict(dlg=self, text=text))
+			g.loop.set_alarm_in(0.00001, _cb, dict(dlg=self, edit=edit, text=text))
 			self.unhandled(last)
 
 			#traceback.print_stack()

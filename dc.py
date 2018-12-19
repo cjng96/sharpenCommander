@@ -78,6 +78,7 @@ class MyProgram(Program):
 		self.regList = []
 		self.configPath = ""    # ~/.devcmd/path.py
 		self.isPrintSystem = False
+		self.isPullRebase = True
 
 		# main dialog
 		self.dialog = None
@@ -88,14 +89,20 @@ class MyProgram(Program):
 		if not os.path.isdir(pp):
 			print("No .devcmd folder. generate it...")
 			os.mkdir(pp)
-			
-		self.configPath = os.path.join(pp, "path.json")
+
+		self.configPath = os.path.join(pp, "cfg.json")
+
+		cfgPath = os.path.join(pp, "path.json")
+		if os.path.exists(cfgPath):
+			print("renaming old path.json file to cfg.json...")
+			os.rename(cfgPath, self.configPath)
 
 		self.configLoad()
 
 	def configLoad(self):
-		if not os.path.isfile(g.configPath):
-			print("No path.json file. generate it...")
+		if not os.path.isfile(self.configPath):
+			print("No cfg.json file. generating it...")
+			print("%d" % 1 if os.path.exists(self.configPath) else 0)
 			self.regList = []
 			self.configSave()
 			return
@@ -106,6 +113,8 @@ class MyProgram(Program):
 		with open(self.configPath, "r") as fp:
 			obj = json.load(fp)
 			self.regList = obj["path"]
+			if "isPullRebase" in obj:
+				self.isPullRebase = obj["isPullRebase"]
 
 		for item in self.regList:
 			item["path"] = os.path.expanduser(item["path"])
@@ -353,8 +362,20 @@ class mDlgMainDc(ur.cDialog):
 
 	def onInputChanged(self, edit, text):
 		if self.cmd == "find" or self.cmd == "goto":
+			last = ""
+			if len(text) > 0:
+				last = text[-1]
+			if last in ["R", 'J', 'K', "H", "Q"]:
+				def _cb(_, data):
+					edit.set_edit_text(data["text"][:-1])
+
+				g.loop.set_alarm_in(0.00001, _cb, dict(dlg=self, edit=edit, text=text))
+				self.unhandled(last)
+				return
+
 			self.fileRefresh(text)
 
+	# not used code will be removed
 	def gotoRefresh(self, newText):
 		filterStr = self.edInput.get_edit_text() if newText is None else newText
 		if filterStr != "":
@@ -854,6 +875,11 @@ class mDlgMainDc(ur.cDialog):
 
 	def unhandled(self, key):
 		if key == 'f4' or key == "q" or key == "Q":
+			if self.cmd == "find":
+				self.inputSet("")
+				self.fileRefresh()
+				return
+
 			g.savePath(os.getcwd())
 			raise urwid.ExitMainLoop()
 
@@ -1224,8 +1250,6 @@ class GitActor(object):
 		#print("merge......")
 		#self.action(GitActor.actMergeSafe, target)
 
-		#print("status......")
-		#self.action(GitActor.actStatusComponent, target)
 		print("pull......")
 		if not self.action(GitActor.actPull, target):
 			return
@@ -1297,8 +1321,11 @@ class GitActor(object):
 			self.log2(Color.red, name, "%s DOESN'T exist" % e.path)
 			return False
 
-		self.log2(Color.blue, name, "pull -r - %s" % path)
-		ss, code = tool.systemSafe("git pull -r")
+		cmd = "pull"
+		if g.isPullRebase:
+			cmd += " -r"
+		self.log2(Color.blue, name, "%s - %s" % (cmd, path))
+		ss, code = tool.systemSafe("git %s" % cmd)
 		if code != 0:
 			self.log2(Color.red, name, "pull is failed\n%s" % ss)
 			return False
