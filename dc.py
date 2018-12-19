@@ -716,7 +716,7 @@ class mDlgMainDc(ur.cDialog):
 
 					g.loop.stop()
 					systemRet(ss)
-					input("Enter to return...")
+					input("Enter to return...") # TODO: support esc key?
 					g.loop.start()
 					self.fileRefresh()
 
