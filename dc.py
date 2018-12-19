@@ -118,7 +118,6 @@ class MyProgram(Program):
 			if "groups" not in item:
 				item["groups"] = []
 
-
 	def configSave(self):
 		obj = dict()
 		obj["path"] = self.regList

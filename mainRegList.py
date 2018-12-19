@@ -247,8 +247,10 @@ class mDlgRegList(ur.cDialog):
 		# 	# todo: multi thread
 		# 	itemList.append(genRepoItem(x))
 
+		lst = filter(lambda x: x["repo"], g.regList)
+
 		pool = Pool(10)
-		self.itemList = pool.map(genRepoItem, g.regList)
+		self.itemList = pool.map(genRepoItem, lst)
 		#itemList = [ (item["title"], item) for item in itemList]
 
 		#itemList = [ (getTitle(x), x) for x in g.regList ]
