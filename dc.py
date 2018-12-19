@@ -305,7 +305,7 @@ class mDlgMainDc(ur.cDialog):
 		# extra
 		self.widgetWorkLabel = urwid.Text("< Workspace >")
 		self.widgetWorkList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
-		self.widgetTempLabel = urwid.Text("< Temp >")
+		self.widgetTempLabel = urwid.Text("< Attr >")
 		self.widgetTempList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
 		self.widgetExtraList = urwid.Pile([("pack", self.widgetWorkLabel), self.widgetWorkList, ("pack", self.widgetTempLabel), self.widgetTempList])
 
