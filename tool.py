@@ -22,7 +22,7 @@ def system(args, stderr=subprocess.STDOUT):
 def systemSafe(args, stderr=subprocess.STDOUT):
 	if g.isPrintSystem:
 		print("system command - %s" % args)
-	# stderr를 지원못한다. getstatusoutput은 쓰면안된다.
+	# stderr를 지원못한다. getstatusoutput은 쓰면안된다. stderr는 output에 같이 온다.
 	status,output = subprocess.getstatusoutput(args)
 	#rr = output.decode("UTF-8")
 	rr = output

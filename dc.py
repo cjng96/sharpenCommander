@@ -6,12 +6,10 @@ import subprocess
 import os
 import sys
 import select
-import time
 import re
 import stat
 import json
 import traceback
-from multiprocessing import Pool
 
 from enum import Enum
 
@@ -23,7 +21,7 @@ from urwid.signals import connect_signal
 
 
 import tool
-from tool import git, system, systemSafe, systemRet, programPath
+from tool import git #, system, systemSafe, systemRet, programPath
 
 from globalBase import *
 
@@ -76,7 +74,7 @@ class Ansi:
 
 class MyProgram(Program):
 	def __init__(self):
-		super().__init__("1.1.0", programPath("dc.log"))
+		super().__init__("1.1.0", tool.programPath("dc.log"))
 		self.regList = []
 		self.configPath = ""    # ~/.devcmd/path.py
 		self.isPrintSystem = False
@@ -131,7 +129,7 @@ class MyProgram(Program):
 	def regAdd(self, pp):
 		oldPath = os.getcwd()
 		os.chdir(pp)
-		ss, code = systemSafe("git rev-parse --is-inside-work-tree")
+		ss, code = tool.systemSafe("git rev-parse --is-inside-work-tree")
 		isGitRepo = False
 		if code == 0:
 			isGitRepo = True if ss == "true" else False
@@ -259,7 +257,6 @@ class MyProgram(Program):
 				# print commit log again					
 				self.printCommitLogForPush(currentBranch, remoteBranch)
 
-		
 		git.printStatus()
 
 		target = input("\nInput remote branch name you push to: ")
@@ -269,14 +266,14 @@ class MyProgram(Program):
 		ss2 = remoteBranch.split("/")		
 
 		# push it	
-		ss, status = systemSafe("git push %s %s:%s" % (ss2[0], currentBranch, target))
+		ss, status = tool.systemSafe("git push %s %s:%s" % (ss2[0], currentBranch, target))
 		print(ss)
 		
 		if status != 0:
 			while True:
 				hr = input("\n\nPush failed. Do you want to push with force option?[y/N]: ").lower()
 				if hr == 'y':
-					ss = system("git push origin %s:%s -f" % (currentBranch, target))
+					ss = tool.system("git push origin %s:%s -f" % (currentBranch, target))
 					print(ss)				
 					break
 				elif hr == 'n' or hr == '':
@@ -715,7 +712,7 @@ class mDlgMainDc(ur.cDialog):
 					self.inputSet("")
 
 					g.loop.stop()
-					systemRet(ss)
+					tool.systemRet(ss)
 					input("Enter to return...") # TODO: support esc key?
 					g.loop.start()
 					self.fileRefresh()
@@ -936,7 +933,7 @@ class mDlgMainDc(ur.cDialog):
 			name = os.path.basename(pp)
 
 			g.loop.stop()
-			systemRet("e %s" % name)
+			tool.systemRet("e %s" % name)
 			g.loop.start()
 			self.fileRefresh()
 
@@ -1090,8 +1087,8 @@ def doSubCmd(cmds, dlgClass, targetItemIdx=-1):
 
 	uiMain(dlgClass, lambda writeFd: subprocess.Popen(cmds, bufsize=0, stdout=writeFd, close_fds=True))
 
-
-class Gr(object):
+# git action - update...
+class GitActor(object):
 	def __init__(self):
 		self.isInit = False
 		self.repoList = [dict(name=["test"], path="")]
@@ -1111,7 +1108,7 @@ class Gr(object):
 			action(self, target)
 
 		else:
-			for comp in gr.repoAllName():
+			for comp in self.repoAllName():
 				action(self, comp)
 
 	def log(self, lv, msg):
@@ -1185,7 +1182,7 @@ class Gr(object):
 
 		return True
 
-	def statusComponent(self, name):
+	def actStatusComponent(self, name):
 		try:
 			path = self.changePath(name)
 		except ErrNoExist as e:
@@ -1204,7 +1201,7 @@ class Gr(object):
 		isSame = self.checkSameWith(name, branchName, remoteBranch)
 		if isSame:
 			# check staged file and untracked file
-			ss = system("git status -s")
+			ss = tool.system("git status -s")
 			if ss != "":
 				print(ss)
 		else:
@@ -1218,16 +1215,18 @@ class Gr(object):
 			#print(ss)
 
 	def actionUpdate(self, target):
-		print("fetch......")
-		gr.action(Gr.fetch, target)
+		#print("fetch......")
+		#self.action(GitActor.actFetch, target)
 
-		print("merge......")
-		gr.action(Gr.mergeSafe, target)
+		#print("merge......")
+		#self.action(GitActor.actMergeSafe, target)
 
-		print("status......")
-		gr.action(Gr.statusComponent, target)
+		#print("status......")
+		#self.action(GitActor.actStatusComponent, target)
+		print("pull......")
+		self.action(GitActor.actPull, target)
 
-	def mergeSafe(self, name):
+	def actMergeSafe(self, name):
 		try:
 			path = self.changePath(name)
 		except ErrNoExist as e:
@@ -1254,12 +1253,12 @@ class Gr(object):
 				self.log2(Color.blue, name, "merge with %s - %s - bin type" % (remoteBranch, path))
 
 				uname = "###groupRepo###"
-				ss = system("git stash save -u \"%s\"" % uname)
+				ss = tool.system("git stash save -u \"%s\"" % uname)
 				print(ss)
-				ss = system("git merge %s" % remoteBranch)
+				ss = tool.system("git merge %s" % remoteBranch)
 				print(ss)
 				stashName = git.stashGetNameSafe(uname)
-				ss = system("git stash pop %s" % stashName)
+				ss = tool.system("git stash pop %s" % stashName)
 				print(ss)
 	
 		diffList = git.checkRebaseable(branchName, remoteBranch)
@@ -1267,26 +1266,37 @@ class Gr(object):
 			self.log2(Color.red, name, "NOT be able to fast forward - %s" % path)
 		else:			
 			self.log2(Color.blue, name, "merge with %s - %s" % (remoteBranch, path))
-			ss = system("git rebase %s" % remoteBranch)
+			ss = tool.system("git rebase %s" % remoteBranch)
 			print(ss)
             
             
-	def fetch(self, name):
+	def actFetch(self, name):
 		try:
-			path = gr.changePath(name)
+			path = self.changePath(name)
 		except ErrNoExist as e:
 			self.log2(Color.red, name, "%s DOESN'T exist" % e.path)
 			return
 
 		self.log2(Color.blue, name, "fetch --prune - %s" % path)
-		system("git fetch --prune")
+		tool.system("git fetch --prune")
 
+	def actPull(self, name):
+		try:
+			path = self.changePath(name)
+		except ErrNoExist as e:
+			self.log2(Color.red, name, "%s DOESN'T exist" % e.path)
+			return
 
-gr = Gr()
+		self.log2(Color.blue, name, "pull -r - %s" % path)
+		ss, code = tool.systemSafe("git pull -r")
+		if code != 0:
+			self.log2(Color.red, name, "pull is failed\n%s" % ss)
+
+gr = GitActor()
 
 
 def winTest():
-	ss = system("c:\\cygwin64\\bin\\git.exe diff --color dc.py")
+	ss = tool.system("c:\\cygwin64\\bin\\git.exe diff --color dc.py")
 
 	kk = ur.terminal2markup(ss)
 	st = ss.find("\x1b")
@@ -1400,7 +1410,7 @@ def main():
 		return
 		
 	elif cmd == "which":
-		ss, status = systemSafe(" ".join(['"' + c + '"' for c in sys.argv[1:]]))
+		ss, status = tool.systemSafe(" ".join(['"' + c + '"' for c in sys.argv[1:]]))
 		print(ss)
 		print("goto which path...")
 		g.savePath(os.path.dirname(ss))
@@ -1438,15 +1448,15 @@ def main():
 		return
 		
 	elif cmd == "st":
-		gr.action(Gr.statusComponent, target)
+		gr.action(GitActor.actStatusComponent, target)
 		return
 		
 	elif cmd == "fetch":
-		gr.action(Gr.fetch, target)
+		gr.action(GitActor.actFetch, target)
 		return
 		
 	elif cmd == "merge":
-		gr.action(Gr.mergeSafe, target)
+		gr.action(GitActor.actMergeSafe, target)
 		return
 		
 	elif cmd == "update":
@@ -1454,7 +1464,7 @@ def main():
 		return
 
 	elif cmd == "test":
-		branch, rev, upstream, ahead, behind = tool.git.getBranchStatus()
+		branch, rev, upstream, ahead, behind = git.getBranchStatus()
 		print("%s - %s - %s - %d - %d" % (branch, rev, upstream, ahead, behind))
 		return 1
 
