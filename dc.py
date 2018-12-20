@@ -810,12 +810,12 @@ class mDlgMainDc(ur.cDialog):
 						ur.popupMsg("Set repo status", "The path is set as %s\n%s" % ("Repo" if item["repo"] else "Not Repo", pp), 60)
 						return
 					else:
-						if ss.startswith("find "):
+						if ss.startswith("find ") or ss.startswith("ff "):
 							target = ss[ss.index(" ")+1:]
 							self.doFind(target)
 							return
 
-						elif ss.startswith("grep "):
+						elif ss.startswith("grep ") or ss.startswith("gg "):
 							target = ss[ss.index(" ")+1:]
 							self.doGrep(target)
 							return
