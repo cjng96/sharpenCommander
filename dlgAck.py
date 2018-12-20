@@ -83,6 +83,8 @@ class mDlgMainAck(ur.cDialog):
 		ss = self.buf[:pt]
 		self.buf = self.buf[pt:]
 
+		#g.loop.stop()
+
 		for line in ss.splitlines():
 			line = line.strip()
 

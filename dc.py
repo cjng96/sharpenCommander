@@ -89,6 +89,8 @@ class MyProgram(Program):
 		self.isPullRebase = True
 		self.isPushRebase = True
 
+		self.grepApp = "ag" # ""ack"
+
 		# main dialog
 		self.dialog = None
 		self.loop = None
@@ -127,6 +129,9 @@ class MyProgram(Program):
 			if "isPushRebase" in obj:
 				self.isPushRebase = obj["isPushRebase"]
 
+			if "grepApp" in obj:
+				self.grepApp = obj["grepApp"]
+
 			if "debugPrintSystem" in obj:
 				tool.g.debugPrintSystem = obj["debugPrintSystem"]
 
@@ -144,6 +149,8 @@ class MyProgram(Program):
 		obj["path"] = self.regList
 		obj["isPullRebase"] = self.isPullRebase
 		obj["isPushRebase"] = self.isPushRebase
+		obj["grepApp"] = self.grepApp
+
 		with open(self.configPath, "w") as fp:
 			json.dump(obj, fp, indent=4)  #, separators=(',',':'))
 
@@ -1125,8 +1132,6 @@ def uiMain(dlgClass, doSubMake=None):
 
 # workItemIdx: 지정되면 해당 번째 다음께 target이 된다.
 def doSubCmd(cmds, dlgClass, targetItemIdx=-1):
-	cmds[0] = find_executable(cmds[0])
-	
 	if targetItemIdx != -1 and len(sys.argv) == targetItemIdx:
 		target = cmds[targetItemIdx]
 		item = g.regFindByName(target)
@@ -1480,35 +1485,38 @@ def main():
 	elif cmd == "find":
 		# dc find . -name "*.py"
 		cmds = sys.argv[1:]
+		cmds[0] = find_executable(cmds[0])
 		doSubCmd(cmds, mDlgMainFind)
 		return
 		
-	elif cmd == "ack":
+	elif cmd == "grep":
 		# dc ack printf
 		cmds = sys.argv[1:]
+		app = g.grepApp
+		cmds[0] = find_executable(app)
 		cmds.insert(1, "--group")
 		cmds.insert(1, "--color")
 		doSubCmd(cmds, mDlgMainAck)
 		return
 
-		''' -- deprecated
-	elif cmd == "findg":
-		pp = sys.argv[2]
-		if "*" not in pp:
-			pp = "*" + pp + "*"
+	# -- deprecated
+	# elif cmd == "findg":
+	# 	pp = sys.argv[2]
+	# 	if "*" not in pp:
+	# 		pp = "*" + pp + "*"
+	#
+	# 	cmds = ["find", ".", "-name", pp]
+	# 	doSubCmd(cmds, mDlgMainFind, 4)
+	# 	return
+	#
+	# elif cmd == "ackg":
+	# 	# dc ack printf
+	# 	cmds = ["ack"] + sys.argv[2:]
+	# 	cmds.insert(1, "--group")
+	# 	cmds.insert(1, "--color")
+	# 	doSubCmd(cmds, mDlgMainAck, 4)
+	# 	return
 
-		cmds = ["find", ".", "-name", pp]
-		doSubCmd(cmds, mDlgMainFind, 4)
-		return
-
-	elif cmd == "ackg":
-		# dc ack printf
-		cmds = ["ack"] + sys.argv[2:]
-		cmds.insert(1, "--group")
-		cmds.insert(1, "--color")
-		doSubCmd(cmds, mDlgMainAck, 4)
-		return
-		'''
 	elif cmd == "st":
 		gr.action(GitActor.actStatusComponent, target)
 		return

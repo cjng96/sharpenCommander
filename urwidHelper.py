@@ -1,5 +1,6 @@
 # coding: utf-8
 
+import sys
 
 import urwid
 import urwid.raw_display
@@ -214,6 +215,11 @@ def termianl2plainText(ss):
 	items = ss.split("\x1b")
 	for at in items:
 		# at == "" or first string
+		if at.startswith("[K"):	# it... [K:fro...
+			if len(at) > 2:
+				out += at[2:]
+			continue
+
 		if at.find("m") == -1:
 			out += at
 			continue
@@ -241,26 +247,34 @@ def terminal2markup(ss, invert=0):
 	         "[30;43" :"yellowbgb",
 	         "[0" :'std',
 	         "[" :'std'}
-	markup = []
 	st = ss.find("\x1b")
 	if st == -1:
 		return ss
 
+	markup = []
 	items = ss.split("\x1b")
-	pt = 1
 	if not ss.startswith("\x1b"):
 		markup.append(items[0])
 
-	for at in items[pt:]:
-		if at == "[K":	# it...
+	for at in items[1:]:
+		if at.startswith("[K"):	# it... [K:fro...
+			if len(at) > 2:
+				markup.append(('std', at[2:]))
 			continue
 
-		attr, text = at.split("m" ,1)
-		if text != "":	# skip empty string
+		try:
+			attr, text = at.split("m" ,1)
+			if text == "":	# skip empty string
+				continue
+
 			txtAttr = table[attr]
 			if invert != 0:
 				txtAttr += "_f"
 			markup.append((txtAttr, text))
+		except Exception as e:
+			#print("at - %s - %s" % (at,e))
+			#sys.exit(1)
+			raise e
 
 	if len(markup) == 0:
 		return ""
