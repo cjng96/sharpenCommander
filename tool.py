@@ -9,6 +9,10 @@ class Config:
 	
 g = Config()
 
+def dlog(ss):
+	with open("/tmp/devCmd.log", "a") as fp:
+		fp.write(ss+"\n")
+
 
 def system(args, stderr=subprocess.STDOUT):
 	if g.debugPrintSystem:

@@ -168,7 +168,7 @@ class DlgAck(ur.cDialog):
 			#self.widgetContent.scrollDown()
 			item, pos = self.widgetContent.focusNext()
 			if item.original_widget.get_label() == "":
-				self.widgetContent.focusNext()
+				_, pos = self.widgetContent.focusNext()
 
 		elif key == "e" or key == "E":
 			btn = self.widgetFileList.focus
