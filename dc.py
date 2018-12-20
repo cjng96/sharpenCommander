@@ -89,7 +89,8 @@ class MyProgram(Program):
 		self.isPullRebase = True
 		self.isPushRebase = True
 
-		self.grepApp = "ag" # ""ack"
+		self.grepApp = "ag" # "ack"
+		self.editApp = "vi"
 
 		# main dialog
 		self.dialog = None
@@ -132,6 +133,9 @@ class MyProgram(Program):
 			if "grepApp" in obj:
 				self.grepApp = obj["grepApp"]
 
+			if "editApp" in obj:
+				self.editApp = obj["editApp"]
+
 			if "debugPrintSystem" in obj:
 				tool.g.debugPrintSystem = obj["debugPrintSystem"]
 
@@ -150,6 +154,7 @@ class MyProgram(Program):
 		obj["isPullRebase"] = self.isPullRebase
 		obj["isPushRebase"] = self.isPushRebase
 		obj["grepApp"] = self.grepApp
+		obj["editApp"] = self.editApp
 
 		with open(self.configPath, "w") as fp:
 			json.dump(obj, fp, indent=4)  #, separators=(',',':'))
@@ -988,7 +993,7 @@ class mDlgMainDc(ur.cDialog):
 			name = os.path.basename(pp)
 
 			g.loop.stop()
-			tool.systemRet("e %s" % name)
+			tool.systemRet("%s %s" % (g.editApp, name))
 			g.loop.start()
 			self.fileRefresh()
 
