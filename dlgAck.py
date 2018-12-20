@@ -160,11 +160,15 @@ class DlgAck(ur.cDialog):
 
 		elif key == "k":
 			#self.widgetContent.scrollUp()
-			self.widgetContent.focusPrevious()
+			item, pos = self.widgetContent.focusPrevious()
+			if item.original_widget.get_label() == "":
+				self.widgetContent.focusPrevious()
 
 		elif key == "j":
 			#self.widgetContent.scrollDown()
-			self.widgetContent.focusNext()
+			item, pos = self.widgetContent.focusNext()
+			if item.original_widget.get_label() == "":
+				self.widgetContent.focusNext()
 
 		elif key == "e" or key == "E":
 			btn = self.widgetFileList.focus

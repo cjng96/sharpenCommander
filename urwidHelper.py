@@ -118,8 +118,9 @@ class mListBox(urwid.ListBox):
 		if self.offset_rows < self.maxrow-1:
 			self.offset_rows += 1
 
-		nextRow = self.body.get_next(cur[1])
-		self.body.set_focus(nextRow[1])
+		item,pos = self.body.get_next(cur[1])
+		self.body.set_focus(pos)
+		return item, pos
 
 	def focusPrevious(self):
 		cur = self.body.get_focus()
@@ -129,7 +130,9 @@ class mListBox(urwid.ListBox):
 		if self.offset_rows > 0:
 			self.offset_rows -= 1
 
-		self.body.set_focus(self.body.get_prev(cur[1])[1])
+		item, pos = self.body.get_prev(cur[1])
+		self.body.set_focus(pos)
+		return item, pos
 
 	# TODO: scroll
 	# working but a little bit...
