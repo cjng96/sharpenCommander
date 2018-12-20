@@ -731,6 +731,22 @@ class mDlgMainDc(ur.cDialog):
 			g.regRemove(pp)
 		self.fileRefresh()
 
+	# return: index
+	def fileSelect(self, name):
+		for idx, item in enumerate(self.widgetFileList.body):
+			if name == item.base_widget.get_label():
+				self.widgetFileList.focus_position = idx
+				return idx
+		return -1
+
+	def fileRefreshKeepFocus(self):
+		pp = self.getFocusPath()
+		#self.mode = ""
+		self.inputSet("")
+		self.fileRefresh()
+
+		return self.fileSelect(os.path.basename(pp))
+
 	def inputFilter(self, keys, raw):
 		if g.loop.widget != g.dialog.mainWidget:
 			return keys
@@ -749,21 +765,16 @@ class mDlgMainDc(ur.cDialog):
 				self.changePath("..", "find")
 			elif ur.filterKey(keys, "H"):
 				self.changePath(self.getFocusPath(), "find")
+			elif ur.filterKey(keys, "esc"):
+				self.fileRefreshKeepFocus()
+
 			elif ur.filterKey(keys, "enter"):
 				# self.mainWidget.set_focus("body")
 				pp = self.getFocusPath()
 				if os.path.isdir(pp):
 					self.changePath(pp)  # 바로 이동 + find는 푼다
 				else:
-					self.mode = ""
-					self.inputSet("")
-					self.fileRefresh()
-
-					fn = os.path.basename(pp)
-					for idx, item in enumerate(self.widgetFileList.body):
-						if fn == item.base_widget.get_label():
-							self.widgetFileList.focus_position = idx
-							break
+					self.fileRefreshKeepFocus()
 
 			elif ur.filterKey(keys, "C"):
 				self.doCommit()
