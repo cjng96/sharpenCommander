@@ -29,66 +29,6 @@ def repoGetStatus(item):
 
 	return status
 
-def getTitle(item):
-	ss = os.path.basename(item["path"])
-
-	ss += "("
-	for n in item["names"]:
-		ss += n + ", "
-	ss = ss[:-2]
-	ss += ")"
-
-	if item["repo"]:
-		ss += " ==> ["
-
-		branch = ""
-		upstream = ""
-		repoStatus = item["repoStatus"]
-		isSame = True
-		if repoStatus is None:
-			ss += "Not found"
-		else:
-			if repoStatus["E"] is not None:
-				ss += "err: " + str(repoStatus["E"])
-			else:
-				if repoStatus["M"] != 0:
-					ss += "M"
-					isSame = False
-
-				try:
-					out = tool.git.getBranchStatus()
-					if out is None:
-						ss += "no branch"
-					else:
-						branch, rev, upstream, remoteRev, ahead, behind = out
-						#print(branch, rev, upstream, ahead, behind)
-						if ahead:
-							ss += "+%d" % ahead
-							isSame = False
-						if behind:
-							ss += "-%d" % behind
-							isSame = False
-				except subprocess.CalledProcessError as e:
-					ss += "Err - %s" % e
-
-		ss += "]"
-		ss += " %s -> %s" % (branch, upstream)
-		repoStatus["same"] = isSame
-
-	return ss
-
-
-def genRepoItem(item):
-	pp = item["path"]
-	try:
-		os.chdir(pp)
-		item["repoStatus"] = repoGetStatus(item)
-	except FileNotFoundError as e:
-		item["repoStatus"] = dict(E="Not found")
-
-	item["title"] = getTitle(item)
-	return item
-
 class mDlgGoto(ur.cDialog):
 	def __init__(self, onExit):
 		super().__init__()
