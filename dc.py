@@ -1399,7 +1399,6 @@ def main():
 
 		return
 
-
 	# under pipe line
 	'''
 	ss = getNonblocingInput()
@@ -1522,8 +1521,8 @@ def main():
 		return
 
 	elif cmd == "test":
-		branch, rev, upstream, ahead, behind = git.getBranchStatus()
-		print("%s - %s - %s - %d - %d" % (branch, rev, upstream, ahead, behind))
+		branch, rev, upstream, remoteRev, ahead, behind = git.getBranchStatus()
+		print("%s[%s] - %s[%s] - %d - %d" % (branch, rev, upstream, remoteRev, ahead, behind))
 		return 1
 
 	#print("target - %s" % target)

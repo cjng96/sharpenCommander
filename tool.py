@@ -89,6 +89,8 @@ class git:
 	# return: branch, rev, upstream, remoteRev, ahead, behind
 	@staticmethod
 	def getBranchStatus():
+		#* master                1fbf5de [origin/master: ahead 2] dc: rebase before push is option, print fetch err
+		#  remotes/origin/master 688d414 dc: cfg - isPullRebase flag
 		branchStatus = system("LANG=en_US git -c color.branch=false branch -avv")
 		out = re.search(r"^\*\s(\w+)\s+(\w+)\s(.+)", branchStatus, re.MULTILINE)
 		if out is None:
@@ -115,7 +117,7 @@ class git:
 					elif kk[0] == "behind":
 						behind = int(kk[1])
 
-		out = re.search(r"\s\s%s\s+(\w+)" % upstream, branchStatus)
+		out = re.search(r"\s\sremotes/%s\s+(\w+)" % upstream, branchStatus)
 		if out is not None:
 			remoteRev = out.group(1)
 
