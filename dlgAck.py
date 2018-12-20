@@ -24,9 +24,10 @@ class AckFile:
 
 
 class mDlgMainAck(ur.cDialog):
-	def __init__(self):
+	def __init__(self, onExit=None):
 		super().__init__()
 
+		self.onExit = onExit
 		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
 		self.widgetFileList.setFocusCb(lambda newFocus: self.onFileFocusChanged(newFocus))
 
@@ -118,7 +119,8 @@ class mDlgMainAck(ur.cDialog):
 
 	def unhandled(self, key):
 		if key == 'f4' or key == "q":
-			raise urwid.ExitMainLoop()
+			#raise urwid.ExitMainLoop()
+			self.close()
 		elif key == 'left' or key == "[":
 			self.widgetFileList.focusPrevious()
 		elif key == 'right' or key == "]":

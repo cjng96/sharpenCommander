@@ -92,8 +92,7 @@ class MyProgram(Program):
 		self.grepApp = "ag" # "ack"
 		self.editApp = "vi"
 
-		# main dialog
-		self.dialog = None
+		self.dialog = None 		# main dialog
 		self.loop = None
 
 	def init(self):
@@ -811,6 +810,16 @@ class mDlgMainDc(ur.cDialog):
 						ur.popupMsg("Set repo status", "The path is set as %s\n%s" % ("Repo" if item["repo"] else "Not Repo", pp), 60)
 						return
 					else:
+						if ss.startswith("find "):
+							target = ss[ss.index(" ")+1:]
+							self.doFind(target)
+							return
+
+						elif ss.startswith("grep "):
+							target = ss[ss.index(" ")+1:]
+							self.doGrep(target)
+							return
+
 						ur.popupMsg("Command", "No valid cmd\n -- %s" % ss)
 
 			# 이거 뭐하는 코드지?
@@ -1090,23 +1099,45 @@ class mDlgMainDc(ur.cDialog):
 		dlg = mDlgRegList(onExit)
 		g.doSetMain(dlg)
 
-	def doFind(self):
-		pass
+	def doFind(self, target):
+		def onExit():
+			g.doSetMain(self)
+
+		dlg = mDlgMainFind(onExit)
+		g.doSetMain(dlg)
+		cmds = [find_executable("find"), ".", "-name", target]
+
+		#g.loop.stop()
+		#print(cmds)
+		#sys.exit(1)
+
+		subMake(dlg, cmds)
+
+	def doGrep(self, target):
+		def onExit():
+			g.doSetMain(self)
+
+		dlg = mDlgMainAck(onExit)
+		g.doSetMain(dlg)
+
+		cmds = [find_executable(g.grepApp), "--group", "--color", target]
+		subMake(dlg, cmds)
 
 
+def subMake(dlg, cmds):
+	writeFd = g.loop.watch_pipe(lambda data: dlg.recvData(data))
+	g.subProc = subprocess.Popen(cmds, bufsize=0, stdout=writeFd, close_fds=True)
 
-def urwidUnhandled(key):
-	g.dialog.unhandled(key)
-		
-def urwidInputFilter(keys, raw):
-	op = getattr(g.dialog, "inputFilter", None)
-	if not callable(op):
-		return keys
-		
-	return g.dialog.inputFilter(keys, raw)
+	def subCheck(_handle, _userData):
+		if g.subProc.poll() is not None:
+			dlg.headerText.set_text(dlg.header + "!!!")
+		# g.loop.remove_alarm(handle)
+		else:
+			g.subTimerHandler = g.loop.set_alarm_in(0.1, subCheck, None)
 
+	subCheck(None, None)
 
-def uiMain(dlgClass, doSubMake=None):
+def uiMain(dlgClass, cmds=None):
 	try:
 		dlg = dlgClass()
 	except urwid.ExitMainLoop:
@@ -1115,23 +1146,22 @@ def uiMain(dlgClass, doSubMake=None):
 	if not dlg.init():
 		return
 
+	#def urwidUnhandled(key):
+	#	g.dialog.unhandled(key)
+
+	def urwidInputFilter(keys, raw):
+		op = getattr(g.dialog, "inputFilter", None)
+		if not callable(op):
+			return keys
+
+		return g.dialog.inputFilter(keys, raw)
+
 	g.dialog = dlg
 	g.loop = urwid.MainLoop(dlg.mainWidget, ur.palette, urwid.raw_display.Screen(),
-							unhandled_input=urwidUnhandled, input_filter=urwidInputFilter)
+							unhandled_input=lambda key: g.dialog.unhandled(key), input_filter=urwidInputFilter)
 
-	# it's not working well under WSL
-	if doSubMake is not None:
-		writeFd = g.loop.watch_pipe(lambda data: dlg.recvData(data))
-		g.subProc = doSubMake(writeFd)
-
-		def subCheck(_handle, _userData):
-			if g.subProc.poll() is not None:
-				dlg.headerText.set_text(dlg.header + "!!!")
-				#g.loop.remove_alarm(handle)
-			else:
-				g.subTimerHandler = g.loop.set_alarm_in(0.1, subCheck, None)
-
-		subCheck(None, None)
+	if cmds is not None:
+		subMake(dlg, cmds)
 
 	g.loop.run()
 
@@ -1143,7 +1173,7 @@ def doSubCmd(cmds, dlgClass, targetItemIdx=-1):
 		os.chdir(item["path"])
 		cmds = cmds[:targetItemIdx] + cmds[targetItemIdx+1:]
 
-	uiMain(dlgClass, lambda writeFd: subprocess.Popen(cmds, bufsize=0, stdout=writeFd, close_fds=True))
+	uiMain(dlgClass, cmds)
 
 # git action - update...
 class GitActor(object):
