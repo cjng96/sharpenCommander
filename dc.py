@@ -470,17 +470,17 @@ class mDlgMainDc(ur.cDialog):
 
 		# registered list only
 		if self.dcdata is not None and self.mode != "":
-			def __check(fname):
+			def _check(fname):
 				dcItem = self.dcdataGet(fname)
 				if dcItem is None:
 					return self.mode == "d1"
 				else:
 					return dcItem["type"] == "S"
 
-			lst2 = [ (x[0], x[1]) for x in lst2 if __check(x[0]) ]
+			lst2 = [ (x[0], x[1]) for x in lst2 if _check(x[0]) ]
 
 		# dir sort
-		def __sortStMode(stMode):
+		def _sortStMode(stMode):
 			if stMode is None:
 				return 2
 			elif stat.S_ISDIR(stMode.st_mode):
@@ -488,12 +488,25 @@ class mDlgMainDc(ur.cDialog):
 			else:
 				return 1
 				
-		lst2.sort(key=lambda x: __sortStMode(x[1]))
+		lst2.sort(key=lambda x: _sortStMode(x[1]))
 		lst2.insert(0, ("..", None, 0))
+
+		# set focus on first matched fitem
+		filterPos = -1
+		if filterStr != "":
+			for idx, ii in enumerate(lst2):
+				if ii[2] == 2:
+					filterPos = idx
+					break
+			if filterPos == -1:
+				for idx, ii in enumerate(lst2):
+					if ii[2] == 1:
+						filterPos = idx
+						break
 
 		#itemList = [ (os.path.basename(x[0]), x[1], x[2]) for x in lst2]
 		# mstd, name, fattr
-		def gen(x):
+		def genDisplayItem(x):
 			if x[0] == "..":
 				isDir = True
 			elif x[1] is None:
@@ -534,7 +547,7 @@ class mDlgMainDc(ur.cDialog):
 			return mstd, x[0], x[1]
 
 		# status
-		itemList = list(map(gen, lst2))
+		itemList = list(map(genDisplayItem, lst2))
 		status = ""
 		item = g.regFindByPath(curPath)
 		if item is not None:
@@ -606,6 +619,9 @@ class mDlgMainDc(ur.cDialog):
 					if item[1] == targetName:
 						focusPos = idx
 						break
+		else:
+			if filterPos != -1:
+				focusPos = filterPos
 
 		if focusPos >= len(itemList):
 			focusPos = 0
@@ -735,7 +751,19 @@ class mDlgMainDc(ur.cDialog):
 				self.changePath(self.getFocusPath(), "find")
 			elif ur.filterKey(keys, "enter"):
 				# self.mainWidget.set_focus("body")
-				self.changePath(self.getFocusPath())  # 바로 이동 + find는 푼다
+				pp = self.getFocusPath()
+				if os.path.isdir(pp):
+					self.changePath(pp)  # 바로 이동 + find는 푼다
+				else:
+					self.mode = ""
+					self.inputSet("")
+					self.fileRefresh()
+
+					fn = os.path.basename(pp)
+					for idx, item in enumerate(self.widgetFileList.body):
+						if fn == item.base_widget.get_label():
+							self.widgetFileList.focus_position = idx
+							break
 
 			elif ur.filterKey(keys, "C"):
 				self.doCommit()
