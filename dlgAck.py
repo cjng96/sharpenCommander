@@ -17,6 +17,7 @@ class AckFile:
 
 		self.lstLine = []
 
+	# return title(cnt) in color
 	def getTitleMarkup(self, focus=False):
 		themeTitle = "greenfg" if not focus else "greenfg_f"
 		themeCount = "std" if not focus else "std_f"
@@ -28,18 +29,19 @@ class DlgAck(ur.cDialog):
 		super().__init__()
 
 		self.onExit = onExit
-		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
+		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([], None)))
 		self.widgetFileList.setFocusCb(lambda newFocus: self.onFileFocusChanged(newFocus))
 
-		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList([])))
+		#self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.textListMakeTerminal([])))
+		self.widgetContent = ur.mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([], None)))
+		self.widgetContent.setFocusCb(lambda newFocus: self.onLineFocusChanged(newFocus))
 
-		self.header = ">> dc V%s - ack-grep - q/F4(Quit),<-/->(Prev/Next file),Enter(goto),E(edit)..." % g.version
+		self.header = ">> dc V%s - ack-grep - q/F4(Quit),<-,->/[,](Prev/Next file),Enter(goto),E(edit)..." % g.version
 		self.headerText = urwid.Text(self.header)
 		self.widgetFrame = urwid.Pile(
 			[(15, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
 
-		self.cbFileSelect = lambda btn: self.onFileSelected(btn)
 		self.buf = ""
 		self.lstContent = []
 
@@ -47,14 +49,31 @@ class DlgAck(ur.cDialog):
 		btn.original_widget.set_label(btn.afile.getTitleMarkup(focus))
 		return btn
 
-	def onFileFocusChanged(self, new_focus):
+	def onFileFocusChanged(self, newFocus):
 		self.btnUpdate(self.widgetFileList.focus, False)
-		newBtn = self.btnUpdate(self.widgetFileList.body[new_focus], True)
+		newBtn = self.btnUpdate(self.widgetFileList.body[newFocus], True)
 
 		self.widgetContent.focus_position = newBtn.afile.position
 		return False
 
+	def onLineFocusChanged(self, newFocus):
+		btn = self.widgetContent.focus
+		btn.original_widget.set_label(btn.markup[0])
+		btn = self.widgetContent.body[newFocus]
+		btn.original_widget.set_label(btn.markup[1])
+
+		#self.btnUpdate(self.widgetContent.focus, False)
+		#newBtn = self.btnUpdate(self.widgetContent.body[newFocus], True)
+
+		#self.widgetContent.focus_position = newBtn.afile.position
+		return False
+
 	def onFileSelected(self, btn):
+		pp = os.path.dirname(os.path.join(os.getcwd(), btn.afile.fname))
+		g.savePath(pp)
+		raise urwid.ExitMainLoop()
+
+	def onLineSelected(self, btn):
 		pp = os.path.dirname(os.path.join(os.getcwd(), btn.afile.fname))
 		g.savePath(pp)
 		raise urwid.ExitMainLoop()
@@ -97,14 +116,19 @@ class DlgAck(ur.cDialog):
 				self.lstContent.append(afile)
 
 				isFirst = len(self.widgetFileList.body) == 0
-				btn = ur.genBtnMarkup(afile.getTitleMarkup(isFirst), self.cbFileSelect)
+				btn = ur.btnGenMarkup(afile.getTitleMarkup(isFirst), lambda bb: self.onFileSelected(bb))
 				btn.afile = afile
 				afile.btn = btn
 				afile.position = len(self.widgetContent.body)
 				self.widgetFileList.body.append(btn)
 
-				txt = urwid.Text(afile.getTitleMarkup(isFirst))
-				self.widgetContent.body.append(txt)
+				#txt = urwid.Text(afile.getTitleMarkup(isFirst))
+				markup = (afile.getTitleMarkup(False), afile.getTitleMarkup(True))
+				btn2 = ur.btnGenMarkup(markup[1] if isFirst else markup[0], lambda bb: self.onLineSelected(bb))
+				btn2.isFile = True
+				btn2.afile = afile
+				btn2.markup = markup
+				self.widgetContent.body.append(btn2)
 
 			else:
 				afile = self.lstContent[len(self.lstContent) - 1]
@@ -112,10 +136,16 @@ class DlgAck(ur.cDialog):
 				afile.lstLine.append(line)
 
 				# update content
-				txt = ur.genText(line)
-				self.widgetContent.body.append(txt)
+				#txt = ur.textGenTerminal(line)
+				markup = (ur.terminal2markup(line, 0), ("std_f", ur.termianl2plainText(line)))
+				btn2 = ur.btnGenMarkup(markup[0], lambda bb: self.onLineSelected(bb))
+				btn2.isFile = False
+				btn2.afile = afile
+				btn2.markup = markup
+				self.widgetContent.body.append(btn2)
 
-				self.btnUpdate(afile.btn, afile.position == 0)
+				# we need it???
+				#self.btnUpdate(afile.btn, afile.position == 0)
 
 		return True
 

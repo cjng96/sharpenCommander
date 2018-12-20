@@ -16,9 +16,9 @@ class DlgFind(ur.cDialog):
 		super().__init__()
 
 		self.onExit = onExit
-		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
+		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([], None)))
 		self.widgetFileList.setFocusCb(lambda newFocus: self.onFileFocusChanged(newFocus))
-		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
+		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.textListMakeTerminal(["< Nothing to display >"])))
 		self.widgetContent.isViewContent = True
 
 		self.header = ">> dc V%s - find - q/F4(Quit),<-/->(Prev/Next file),Enter(goto),E(edit)..." % g.version
@@ -55,7 +55,7 @@ class DlgFind(ur.cDialog):
 		ss = ss.replace("\t", "    ")
 
 		del self.widgetContent.body[:]
-		self.widgetContent.body += ur.makeTextList(ss.splitlines())
+		self.widgetContent.body += ur.textListMakeTerminal(ss.splitlines())
 		self.widgetFrame.set_focus(self.widgetContent)
 		return True
 
@@ -97,7 +97,7 @@ class DlgFind(ur.cDialog):
 			markup = ("std", line)
 			markupF = ('std_f', line)
 
-			btn = ur.genBtn(markup, markupF, self.cbFileSelect, len(self.widgetFileList.body) == 0)
+			btn = ur.btnGen(markup, markupF, self.cbFileSelect, len(self.widgetFileList.body) == 0)
 			self.widgetFileList.body.append(btn)
 			if len(self.widgetFileList.body) == 1:
 				self.onFileFocusChanged(0)

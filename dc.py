@@ -332,23 +332,23 @@ class mDlgMainDc(ur.cDialog):
 		super().__init__()
 
 		# content
-		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
-		self.widgetCmdList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None))) # 이거 파일목록 아래에뭔가 보여주는건데..
+		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([], None)))
+		self.widgetCmdList = ur.mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([], None))) # 이거 파일목록 아래에뭔가 보여주는건데..
 		self.widgetContent = urwid.Pile([self.widgetFileList, ('pack', urwid.Divider('-')), (8, self.widgetCmdList)])
 		self.widgetContent.isShow = True
 
 		# extra
 		self.widgetWorkLabel = urwid.Text("< Workspace >")
-		self.widgetWorkList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
+		self.widgetWorkList = ur.mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([], None)))
 		self.widgetTempLabel = urwid.Text("< Attr >")
-		self.widgetTempList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
+		self.widgetTempList = ur.mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([], None)))
 		self.widgetExtraList = urwid.Pile([("pack", self.widgetWorkLabel), self.widgetWorkList, ("pack", self.widgetTempLabel), self.widgetTempList])
 
 		# main frame + input
 		self.title = ">> dc V%s" % g.version
 		self.headerText = urwid.Text(self.title)
 		self.widgetFrame = urwid.Columns([(100, self.widgetContent), (20, self.widgetExtraList)])
-		self.edInput = ur.genEdit("$ ", "", lambda edit,text: self.onInputChanged(edit, text))
+		self.edInput = ur.editGen("$ ", "", lambda edit, text: self.onInputChanged(edit, text))
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText, footer=self.edInput)
 
 		self.cmd = ""
@@ -627,7 +627,7 @@ class mDlgMainDc(ur.cDialog):
 			focusPos = 0
 
 		del self.widgetFileList.body[:]
-		self.widgetFileList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn))
+		self.widgetFileList.body += ur.btnListMakeMarkup(itemList, lambda btn: self.onFileSelected(btn))
 		self.widgetFileList.focus_position = focusPos
 
 		self.lastPath = curPath
@@ -938,7 +938,7 @@ class mDlgMainDc(ur.cDialog):
 
 		# std, focus, text, attr
 		itemList =  [ ("std", os.path.basename(x), x) for x in self.workList ]
-		self.widgetWorkList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn))
+		self.widgetWorkList.body += ur.btnListMakeMarkup(itemList, lambda btn: self.onFileSelected(btn))
 		self.widgetWorkList.focus_position = self.workPt
 
 	def doCommit(self):

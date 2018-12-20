@@ -2,7 +2,6 @@ import os
 import sys
 import re
 import subprocess
-import time
 
 class Config:
 	def __init__(self):

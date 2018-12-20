@@ -24,7 +24,7 @@ def refreshBtnListTerminal(terimalItemList, listBox, onClick):
 	if listBox.itemCount == 0:
 		terimalItemList = [("< Nothing > ", None)]
 
-	listBox.body += ur.makeBtnListTerminal(terimalItemList, onClick)
+	listBox.body += ur.btnListMakeTerminal(terimalItemList, onClick)
 
 
 class mGitCommitDialog(ur.cDialog):
@@ -36,10 +36,10 @@ class mGitCommitDialog(ur.cDialog):
 		self.selectFileName = ""
 
 		self.onExit = onExit
-		self.edInput = ur.genEdit("Input commit message => ", "", lambda edit ,text: self.onMsgChanged(edit ,text))
+		self.edInput = ur.editGen("Input commit message => ", "", lambda edit, text: self.onMsgChanged(edit, text))
 		self.widgetFileList = ur.mListBox \
-			(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([("< No files >", None)], None)))
-		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
+			(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([("< No files >", None)], None)))
+		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.textListMakeTerminal(["< Nothing to display >"])))
 
 		self.headerText = urwid.Text(">> Commit...")
 		self.widgetFrame = urwid.Pile \
@@ -73,7 +73,7 @@ class mGitCommitDialog(ur.cDialog):
 		ss = ss.replace("\t", "    ")
 
 		del self.widgetContent.body[:]
-		self.widgetContent.body += ur.makeTextList(ss.split("\n"))
+		self.widgetContent.body += ur.textListMakeTerminal(ss.split("\n"))
 		self.widgetFrame.set_focus(self.widgetContent)
 
 	def refreshFileContentCur(self):
@@ -85,18 +85,18 @@ class mGitCommitDialog(ur.cDialog):
 		# staged file list
 		fileList = system("git diff --name-only --cached")
 		itemList = [ (self.themes[0][0], x, "s") for x in fileList.split("\n") if x.strip() != "" ]
-		self.widgetFileList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn))
+		self.widgetFileList.body += ur.btnListMakeMarkup(itemList, lambda btn: self.onFileSelected(btn))
 
 		# general file list
 		fileList = system("git diff --name-only")
 		itemList = [ (self.themes[1][0], x, "c") for x in fileList.split("\n") if x.strip() != ""  ]
-		self.widgetFileList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn), False)
+		self.widgetFileList.body += ur.btnListMakeMarkup(itemList, lambda btn: self.onFileSelected(btn), False)
 
 		# for widget in self.widgetFileList.body:
 		#	self._applyFileColorTheme(widget, 0)
 
 		if len(self.widgetFileList.body) == 0:
-			self.widgetFileList.body += ur.makeBtnListTerminal([("< Nothing >", None)], None, False)
+			self.widgetFileList.body += ur.btnListMakeTerminal([("< Nothing >", None)], None, False)
 
 		# self.onFileFocusChanged(self.widgetFileList.focus_position)
 		self.onFileSelected(self.widgetFileList.focus)	# auto display
@@ -218,8 +218,8 @@ class DlgGitStatus(ur.cDialog):
 		self.selectFileName = ""
 
 		self.widgetFileList = ur.mListBox(
-			urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([("< No files >", None)], None)))
-		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
+			urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([("< No files >", None)], None)))
+		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.textListMakeTerminal(["< Nothing to display >"])))
 
 		self.headerText = urwid.Text(
 			">> dc V%s - q/F4(Quit),<-/->(Prev/Next file),A(Add),P(Prompt),R(Reset),D(drop),C(Commit),I(Ignore)" % g.version)
@@ -275,7 +275,7 @@ class DlgGitStatus(ur.cDialog):
 		ss = ss.replace("\t", "    ")
 
 		del self.widgetContent.body[:]
-		self.widgetContent.body += ur.makeTextList(ss.splitlines())
+		self.widgetContent.body += ur.textListMakeTerminal(ss.splitlines())
 		self.widgetFrame.set_focus(self.widgetContent)
 
 	def refreshFileContentCur(self):

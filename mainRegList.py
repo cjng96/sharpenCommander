@@ -103,8 +103,8 @@ class DlgRegFolderSetting(ur.cDialog):
 
 		self.lbNames = urwid.Text("Names -----------")
 		self.lbGroups = urwid.Text("Groups -----------")
-		self.widgetListName = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
-		self.widgetListGroup = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal(["< No group >"], None)))
+		self.widgetListName = ur.mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([], None)))
+		self.widgetListGroup = ur.mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal(["< No group >"], None)))
 
 		#urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
 		self.lbHelp = urwid.Text("Insert: new name/group, Delete: remove name/group, R: toggle repo status")
@@ -129,12 +129,12 @@ class DlgRegFolderSetting(ur.cDialog):
 
 		names = self.item["names"]
 		del self.widgetListName.body[:]
-		self.widgetListName.body += ur.makeBtnListTerminal(names, None)
+		self.widgetListName.body += ur.btnListMakeTerminal(names, None)
 
 		groups = self.item["groups"]
 		if len(groups) > 0:
 			del self.widgetListGroup.body[:]
-			self.widgetListGroup.body += ur.makeBtnListTerminal(groups, None)
+			self.widgetListGroup.body += ur.btnListMakeTerminal(groups, None)
 
 		#self.widgetFrame.set_focus(self.widgetContent)
 
@@ -194,9 +194,9 @@ class DlgRegList(ur.cDialog):
 		super().__init__()
 
 		self.onExit = onExit
-		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
+		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([], None)))
 		#self.widgetFileList.setFocusCb(lambda newFocus: self.onFileFocusChanged(newFocus))
-		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
+		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.textListMakeTerminal(["< Nothing to display >"])))
 		#self.widgetContent.isViewContent = True
 
 		self.header = ">> dc V%s - repo list - jk(move), e(modify),p(pull all),del" % g.version
@@ -205,7 +205,7 @@ class DlgRegList(ur.cDialog):
 		#self.widgetFrame = urwid.Pile(
 		#	[(15, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
 		self.widgetFrame = urwid.AttrMap(self.widgetFileList, 'std')
-		self.edInput = ur.genEdit("$ ", "", lambda edit,text: self.onInputChanged(edit, text))
+		self.edInput = ur.editGen("$ ", "", lambda edit, text: self.onInputChanged(edit, text))
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText, footer=self.edInput)
 
 		self.itemList = None

@@ -282,28 +282,28 @@ def terminal2markup(ss, invert=0):
 
 	return markup
 
-def genEdit(label, text, cbChange):
+def editGen(label, text, cbChange):
 	w = urwid.Edit(label, text)
 	urwid.connect_signal(w, 'change', cbChange)
 	#cbChange(w, text)
 	# w = urwid.AttrWrap(w, 'edit')
 	return w
 
-def genText(terminalText):
+def textGenTerminal(terminalText):
 	line2 = terminal2markup(terminalText)
 	txt = urwid.Text(line2)
 	# txt.origText = terminalText
 	return txt
 
 
-def makeTextList(lstStr):
+def textListMakeTerminal(lstStr):
 	outList = []
 	for line in lstStr:
-		outList.append(genText(line))
+		outList.append(textGenTerminal(line))
 	return outList
 
 
-def makeBtnListTerminal(lstTerminal, onClick, isFirstFocus=True, doApply=None):
+def btnListMakeTerminal(lstTerminal, onClick, isFirstFocus=True, doApply=None):
 	"""
 	[31와 같은 터미널 문자열을 지원한다.
 	lstTerminal = list of (termianlText, attr)
@@ -323,34 +323,34 @@ def makeBtnListTerminal(lstTerminal, onClick, isFirstFocus=True, doApply=None):
 
 		markup = terminal2markup(terminalTxt, 0)
 		markupF = terminal2markup(terminalTxt, 1)
-		btn = genBtn(markup, markupF, attr, onClick, isFirstFocus, doApply)
+		btn = btnGen(markup, markupF, attr, onClick, isFirstFocus, doApply)
 		isFirstFocus = False
 		outList.append(btn)
 	return outList
 
 
-def makeBtnListMarkup(lstMarkup, onClick, isFirstFocus=True, doApply=None):
+def btnListMakeMarkup(lstMarkup, onClick, isFirstFocus=True, doApply=None):
 	"""
 	lstMarkup = list of (markup, text, attr)
 	"""
 	outList = []
 	for markup, text, attr in lstMarkup:
-		btn = genBtn((markup, text), (markup+"_f", text), attr, onClick, isFirstFocus, doApply)
+		btn = btnGen((markup, text), (markup + "_f", text), attr, onClick, isFirstFocus, doApply)
 		isFirstFocus = False
 		outList.append(btn)
 
 	return outList
 
-def genBtn(markup, markupF, attr, onClick, isFocus=False, doApply=None):
+def btnGen(markup, markupF, attr, onClick, isFocus=False, doApply=None):
 	text2 = markupF if isFocus else markup
-	btn = genBtnMarkup(text2, onClick, doApply)
+	btn = btnGenMarkup(text2, onClick, doApply)
 	btn.base_widget.markup = (markup, markupF)
 	btn.base_widget.attr = attr
 	#btn.base_widget.origTxt = terminalText
 
 	return btn
 
-def genBtnMarkup(markup, onClick, doApply=None):
+def btnGenMarkup(markup, onClick, doApply=None):
 	btn = mButton(markup, onClick)
 	if doApply is not None:
 		doApply(btn)

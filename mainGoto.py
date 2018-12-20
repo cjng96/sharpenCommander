@@ -34,7 +34,7 @@ class mDlgGoto(ur.cDialog):
 		super().__init__()
 
 		self.onExit = onExit
-		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
+		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([], None)))
 		#self.widgetFileList.setFocusCb(lambda newFocus: self.onFileFocusChanged(newFocus))
 		#self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
 		#self.widgetContent.isViewContent = True
@@ -45,7 +45,7 @@ class mDlgGoto(ur.cDialog):
 		#self.widgetFrame = urwid.Pile(
 		#	[(15, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
 		self.widgetFrame = urwid.AttrMap(self.widgetFileList, 'std')
-		self.edInput = ur.genEdit("$ ", "", lambda edit,text: self.onInputChanged(edit, text))
+		self.edInput = ur.editGen("$ ", "", lambda edit, text: self.onInputChanged(edit, text))
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText, footer=self.edInput)
 
 		self.itemList = None
