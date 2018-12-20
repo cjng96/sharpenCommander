@@ -23,7 +23,7 @@ class AckFile:
 		return [(themeTitle, self.fname), (themeCount, "(%d)" % len(self.lstLine))]
 
 
-class mDlgMainAck(ur.cDialog):
+class DlgAck(ur.cDialog):
 	def __init__(self, onExit=None):
 		super().__init__()
 
@@ -64,10 +64,12 @@ class mDlgMainAck(ur.cDialog):
 			return keys
 
 		if ur.filterKey(keys, "down"):
-			self.widgetContent.scrollDown()
+			#self.widgetContent.scrollDown()
+			self.widgetContent.focusNext()
 
 		if ur.filterKey(keys, "up"):
-			self.widgetContent.scrollUp()
+			#self.widgetContent.scrollUp()
+			self.widgetContent.focusPrevious()
 
 		if ur.filterKey(keys, "enter"):
 			self.onFileSelected(self.widgetFileList.focus)
@@ -127,10 +129,12 @@ class mDlgMainAck(ur.cDialog):
 			self.widgetFileList.focusNext()
 
 		elif key == "k":
-			self.widgetContent.scrollUp()
+			#self.widgetContent.scrollUp()
+			self.widgetContent.focusPrevious()
 
 		elif key == "j":
-			self.widgetContent.scrollDown()
+			#self.widgetContent.scrollDown()
+			self.widgetContent.focusNext()
 
 		elif key == "e" or key == "E":
 			btn = self.widgetFileList.focus

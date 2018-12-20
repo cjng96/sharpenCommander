@@ -89,7 +89,7 @@ def getTitle(item):
 	return ss
 
 # 두칸씩 작은 오버레이로 띄우자
-class mDlgRegFolderSetting(ur.cDialog):
+class DlgRegFolderSetting(ur.cDialog):
 	def __init__(self, onExit, item):
 		super().__init__()
 		self.onExit = onExit
@@ -189,7 +189,7 @@ class mDlgRegFolderSetting(ur.cDialog):
 				ur.popupAsk("Remove Group", "[%s] will be deleted. Are you sure?" % ss, onOk)
 
 
-class mDlgRegList(ur.cDialog):
+class DlgRegList(ur.cDialog):
 	def __init__(self, onExit):
 		super().__init__()
 
@@ -366,5 +366,5 @@ class mDlgRegList(ur.cDialog):
 		def onExit():
 			g.doSetMain(self)
 
-		dlg = mDlgRegFolderSetting(onExit, item)
+		dlg = DlgRegFolderSetting(onExit, item)
 		g.doSetMain(dlg)

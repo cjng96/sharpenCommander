@@ -132,6 +132,7 @@ class mListBox(urwid.ListBox):
 		self.body.set_focus(self.body.get_prev(cur[1])[1])
 
 	# TODO: scroll
+	# working but a little bit...
 	def scrollDown(self):
 		focusPt = self.focus_position
 		if focusPt >= len(self.body) - 1:

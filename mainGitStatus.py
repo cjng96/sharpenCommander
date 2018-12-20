@@ -210,7 +210,7 @@ class mGitCommitDialog(ur.cDialog):
 
 
 
-class mDlgMainGitStatus(ur.cDialog):
+class DlgGitStatus(ur.cDialog):
 	def __init__(self, onExit=None):
 		super().__init__()
 

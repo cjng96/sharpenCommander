@@ -12,7 +12,7 @@ import tool
 import  myutil
 
 from globalBase import *
-from mainRegList import mDlgRegFolderSetting
+from mainRegList import DlgRegFolderSetting
 
 
 def repoGetStatus(item):
@@ -36,7 +36,7 @@ class mDlgGoto(ur.cDialog):
 		self.onExit = onExit
 		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
 		#self.widgetFileList.setFocusCb(lambda newFocus: self.onFileFocusChanged(newFocus))
-		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
+		#self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
 		#self.widgetContent.isViewContent = True
 
 		self.header = ">> dc V%s - folder list - JK(move), E(modify), del" % g.version
@@ -169,5 +169,5 @@ class mDlgGoto(ur.cDialog):
 		def onExit():
 			g.doSetMain(self)
 
-		dlg = mDlgRegFolderSetting(onExit, item)
+		dlg = DlgRegFolderSetting(onExit, item)
 		g.doSetMain(dlg)

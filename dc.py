@@ -29,10 +29,10 @@ from globalBase import *
 import urwidHelper as ur
 import myutil
 
-from dlgAck import mDlgMainAck
-from dlgFind import mDlgMainFind
-from mainGitStatus import mDlgMainGitStatus
-from mainRegList import mDlgRegList
+from dlgAck import DlgAck
+from dlgFind import DlgFind
+from mainGitStatus import DlgGitStatus
+from mainRegList import DlgRegList
 from mainGoto import mDlgGoto
 
 
@@ -949,7 +949,7 @@ class mDlgMainDc(ur.cDialog):
 			ur.popupMsg("Error", "Not git repository")
 			return
 
-		dlg = mDlgMainGitStatus(onExit)
+		dlg = DlgGitStatus(onExit)
 		g.doSetMain(dlg)
 
 	def unhandled(self, key):
@@ -1135,14 +1135,14 @@ class mDlgMainDc(ur.cDialog):
 				sys.exit(0)
 			'''
 
-		dlg = mDlgRegList(onExit)
+		dlg = DlgRegList(onExit)
 		g.doSetMain(dlg)
 
 	def doFind(self, target):
 		def onExit():
 			g.doSetMain(self)
 
-		dlg = mDlgMainFind(onExit)
+		dlg = DlgFind(onExit)
 		g.doSetMain(dlg)
 		cmds = [find_executable("find"), ".", "-name", target]
 
@@ -1156,7 +1156,7 @@ class mDlgMainDc(ur.cDialog):
 		def onExit():
 			g.doSetMain(self)
 
-		dlg = mDlgMainAck(onExit)
+		dlg = DlgAck(onExit)
 		g.doSetMain(dlg)
 
 		cmds = [find_executable(g.grepApp), "--group", "--color", target]
@@ -1538,7 +1538,7 @@ def main():
 		return
 		
 	elif cmd == "ci":
-		uiMain(mDlgMainGitStatus)
+		uiMain(DlgGitStatus)
 		return
 		
 	elif cmd == "list":
@@ -1560,7 +1560,7 @@ def main():
 		# dc find . -name "*.py"
 		cmds = sys.argv[1:]
 		cmds[0] = find_executable(cmds[0])
-		doSubCmd(cmds, mDlgMainFind)
+		doSubCmd(cmds, DlgFind)
 		return
 		
 	elif cmd == "grep":
@@ -1570,7 +1570,7 @@ def main():
 		cmds[0] = find_executable(app)
 		cmds.insert(1, "--group")
 		cmds.insert(1, "--color")
-		doSubCmd(cmds, mDlgMainAck)
+		doSubCmd(cmds, DlgAck)
 		return
 
 	# -- deprecated

@@ -11,7 +11,7 @@ import tool
 import myutil
 
 
-class mDlgMainFind(ur.cDialog):
+class DlgFind(ur.cDialog):
 	def __init__(self, onExit=None):
 		super().__init__()
 
