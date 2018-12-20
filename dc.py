@@ -19,6 +19,7 @@ import urwid.raw_display
 import urwid.web_display
 from urwid.signals import connect_signal
 
+from distutils.spawn import find_executable
 
 import tool
 from tool import git #, system, systemSafe, systemRet, programPath
@@ -69,7 +70,7 @@ Color = Enum('color', 'blue red')
 def osStat(pp):
 	try:
 		return os.stat(pp)
-	except Exception as e:
+	except Exception:
 		return None
 
 class Ansi:
@@ -84,7 +85,7 @@ class MyProgram(Program):
 		super().__init__("1.1.0", tool.programPath("dc.log"))
 		self.regList = []
 		self.configPath = ""    # ~/.devcmd/path.py
-		self.isPrintSystem = False
+
 		self.isPullRebase = True
 		self.isPushRebase = True
 
@@ -125,6 +126,9 @@ class MyProgram(Program):
 				self.isPullRebase = obj["isPullRebase"]
 			if "isPushRebase" in obj:
 				self.isPushRebase = obj["isPushRebase"]
+
+			if "debugPrintSystem" in obj:
+				tool.g.debugPrintSystem = obj["debugPrintSystem"]
 
 		for item in self.regList:
 			item["path"] = os.path.expanduser(item["path"])
@@ -1089,7 +1093,6 @@ def urwidInputFilter(keys, raw):
 		
 	return g.dialog.inputFilter(keys, raw)
 
-from distutils.spawn import find_executable
 
 def uiMain(dlgClass, doSubMake=None):
 	try:
@@ -1104,6 +1107,7 @@ def uiMain(dlgClass, doSubMake=None):
 	g.loop = urwid.MainLoop(dlg.mainWidget, ur.palette, urwid.raw_display.Screen(),
 							unhandled_input=urwidUnhandled, input_filter=urwidInputFilter)
 
+	# it's not working well under WSL
 	if doSubMake is not None:
 		writeFd = g.loop.watch_pipe(lambda data: dlg.recvData(data))
 		g.subProc = doSubMake(writeFd)
@@ -1479,15 +1483,6 @@ def main():
 		doSubCmd(cmds, mDlgMainFind)
 		return
 		
-	elif cmd == "findg":
-		pp = sys.argv[2]
-		if "*" not in pp:
-			pp = "*"+pp+"*"
-
-		cmds = ["find", ".", "-name", pp]
-		doSubCmd(cmds, mDlgMainFind, 4)
-		return
-		
 	elif cmd == "ack":
 		# dc ack printf
 		cmds = sys.argv[1:]
@@ -1495,7 +1490,17 @@ def main():
 		cmds.insert(1, "--color")
 		doSubCmd(cmds, mDlgMainAck)
 		return
-		
+
+		''' -- deprecated
+	elif cmd == "findg":
+		pp = sys.argv[2]
+		if "*" not in pp:
+			pp = "*" + pp + "*"
+
+		cmds = ["find", ".", "-name", pp]
+		doSubCmd(cmds, mDlgMainFind, 4)
+		return
+
 	elif cmd == "ackg":
 		# dc ack printf
 		cmds = ["ack"] + sys.argv[2:]
@@ -1503,7 +1508,7 @@ def main():
 		cmds.insert(1, "--color")
 		doSubCmd(cmds, mDlgMainAck, 4)
 		return
-		
+		'''
 	elif cmd == "st":
 		gr.action(GitActor.actStatusComponent, target)
 		return

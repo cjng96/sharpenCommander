@@ -6,13 +6,13 @@ import time
 
 class Config:
 	def __init__(self):
-		self.isPrintSystem = False
+		self.debugPrintSystem = False
 	
 g = Config()
 
 
 def system(args, stderr=subprocess.STDOUT):
-	if g.isPrintSystem:
+	if g.debugPrintSystem:
 		print("system command - %s" % args)
 	rr = subprocess.check_output(args, stderr=stderr, shell=True).decode("UTF-8")
 	rr = rr.rstrip(' \r\n')
@@ -20,7 +20,7 @@ def system(args, stderr=subprocess.STDOUT):
 
 # result, exitcode
 def systemSafe(args, stderr=subprocess.STDOUT):
-	if g.isPrintSystem:
+	if g.debugPrintSystem:
 		print("system command - %s" % args)
 	# stderr를 지원못한다. getstatusoutput은 쓰면안된다. stderr는 output에 같이 온다.
 	status,output = subprocess.getstatusoutput(args)
@@ -30,7 +30,7 @@ def systemSafe(args, stderr=subprocess.STDOUT):
 	return rr,status
 
 def systemRet(args):
-	if g.isPrintSystem:
+	if g.debugPrintSystem:
 		print("system command - %s" % args)
 		
 	ret = subprocess.call(args, shell=True)
