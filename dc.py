@@ -65,6 +65,13 @@ dc - devCmd
 
 Color = Enum('color', 'blue red')
 
+
+def osStat(pp):
+	try:
+		return os.stat(pp)
+	except Exception as e:
+		return None
+
 class Ansi:
 	redBold = "\033[1;31m"
 	red = "\033[0;31m"
@@ -399,12 +406,12 @@ class mDlgMainDc(ur.cDialog):
 		else:
 			filterStr = ""
 
-		pp = os.getcwd()
+		curPath = os.getcwd()
 		# TODO: use scandir
 
 		self.dcdata = None
 		lst = []	# name, order
-		for item in os.listdir(pp):
+		for item in os.listdir(curPath):
 			if item == ".dcdata":
 				self.dcdataLoad()
 				continue
@@ -426,22 +433,15 @@ class mDlgMainDc(ur.cDialog):
 			# 등록된 폴더 우선
 			regPathList = [ii['path'] for ii in g.regList]
 			for x in lst:
-				full = os.path.join(pp, x[0])
+				full = os.path.join(curPath, x[0])
 				if full in regPathList:
 					lst2.append((x[0], 1))
 				else:
 					lst2.append((x[0], 0))
 		lst = lst2
 
-		# list
-		def osStat(pp):
-			try:
-				return os.stat(pp)
-			except Exception as e:
-				return None
-
 		# name, osStat, order
-		lst2 = [ (x[0], osStat(os.path.join(pp, x[0])), x[1]) for x in lst]
+		lst2 = [ (x[0], osStat(os.path.join(curPath, x[0])), x[1]) for x in lst]
 		#if filterStr != "":
 			#lst2.sort(key=lambda x: -1 if x[2] == 1 else 1)
 		lst2.sort(key=lambda ii: -ii[2])
@@ -514,7 +514,7 @@ class mDlgMainDc(ur.cDialog):
 		# status
 		itemList = list(map(gen, lst2))
 		status = ""
-		item = g.regFindByPath(pp)
+		item = g.regFindByPath(curPath)
 		if item is not None:
 			status = "*"
 			if "repo" in item and item["repo"]:
@@ -570,22 +570,29 @@ class mDlgMainDc(ur.cDialog):
 		featureExtra = ""
 		if self.cmd == "find":
 			featureExtra = ""
-		ss = "%s%s - %s%s - %d%s %s" % (self.title, featureStr, pp, status, len(itemList)-1, gitSt, featureExtra)
+		ss = "%s%s - %s%s - %d%s %s" % (self.title, featureStr, curPath, status, len(itemList)-1, gitSt, featureExtra)
 		self.headerText.set_text(ss)
 
-		if filterStr == "" and self.lastPath == pp:
-			focusPos = self.widgetFileList.focus_position
-		else:
-			focusPos = 1
+		focusPos = 1
+		if filterStr == "":
+			if self.lastPath == curPath:
+				focusPos = self.widgetFileList.focus_position
+			elif self.lastPath is not None and os.path.dirname(self.lastPath) == curPath:
+				# set focus on the last path
+				targetName = os.path.basename(self.lastPath)
+				for idx, item in enumerate(itemList):
+					if item[1] == targetName:
+						focusPos = idx
+						break
 
 		if focusPos >= len(itemList):
 			focusPos = 0
 
-		self.lastPath = pp
-
 		del self.widgetFileList.body[:]
 		self.widgetFileList.body += ur.makeBtnListMarkup(itemList, lambda btn: self.onFileSelected(btn))
 		self.widgetFileList.focus_position = focusPos
+
+		self.lastPath = curPath
 
 		# extra
 		'''
