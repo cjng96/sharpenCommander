@@ -72,8 +72,7 @@ class git:
 	@staticmethod
 	def printStatus():
 		ss = system("git -c color.status=always status -s")
-		print("\n"+ss+"\n")
-		
+		print(ss+"\n")
 
 	@staticmethod
 	def commitGap(brNew, brOld):
@@ -144,7 +143,7 @@ class git:
 
 	@staticmethod
 	def fetch():
-		return system("git fetch --prune")
+		return systemSafe("git fetch --prune")
 		
 	@staticmethod
 	def rebase(branch):

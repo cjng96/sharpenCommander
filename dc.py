@@ -86,6 +86,7 @@ class MyProgram(Program):
 		self.configPath = ""    # ~/.devcmd/path.py
 		self.isPrintSystem = False
 		self.isPullRebase = True
+		self.isPushRebase = True
 
 		# main dialog
 		self.dialog = None
@@ -122,6 +123,8 @@ class MyProgram(Program):
 			self.regList = obj["path"]
 			if "isPullRebase" in obj:
 				self.isPullRebase = obj["isPullRebase"]
+			if "isPushRebase" in obj:
+				self.isPushRebase = obj["isPushRebase"]
 
 		for item in self.regList:
 			item["path"] = os.path.expanduser(item["path"])
@@ -135,6 +138,8 @@ class MyProgram(Program):
 	def configSave(self):
 		obj = dict()
 		obj["path"] = self.regList
+		obj["isPullRebase"] = self.isPullRebase
+		obj["isPushRebase"] = self.isPushRebase
 		with open(self.configPath, "w") as fp:
 			json.dump(obj, fp, indent=4)  #, separators=(',',':'))
 
@@ -225,6 +230,9 @@ class MyProgram(Program):
 		print(ss)
 
 	def gitPush(self):
+		print("\nCurrent file status...")
+		git.printStatus()
+
 		currentBranch = git.getCurrentBranch()
 		remoteBranch = git.getTrackingBranch()
 		if remoteBranch is None:
@@ -233,47 +241,46 @@ class MyProgram(Program):
 
 		else:
 			print("currentBranch:%s, remote:%s" % (currentBranch, remoteBranch))
-			
+
 			self.printCommitLogForPush(currentBranch, remoteBranch)
 
-			# check if fast-forward of remoteBranch
-			rev1 = git.rev(currentBranch)
-			rev2 = git.rev("remotes/"+remoteBranch)
-			revCommon = git.commonParentRev(currentBranch, remoteBranch)
-			if revCommon.startswith(rev2):
-				print("local branch is good situation")
-			else:
-				diffList = git.checkRebaseable(currentBranch, remoteBranch)
-				if len(diffList) == 0:
-					while True:
-						hr = input("\n\n*** You can rebase local to remoteBranch. want? Y/n: ").lower()
-						if hr == "":
-							hr = 'y'
-
-						if hr == "n":
-							break
-						elif hr == 'y':
-							ss,st = git.rebase(remoteBranch)
-							# exe result?
-							print(ss)
-							if st != 0:
-								git.rebaseAbort()
-								raise Exception("rebase failed. you should manually merge it.[err:%d]" % st)
-							break
+			if self.isPushRebase:
+				# check if fast-forward of remoteBranch
+				rev1 = git.rev(currentBranch)
+				rev2 = git.rev("remotes/"+remoteBranch)
+				revCommon = git.commonParentRev(currentBranch, remoteBranch)
+				if revCommon.startswith(rev2):
+					print("local branch is good situation")
 				else:
-					while True:
-						hr = input("\n\n*** It could be impossible to rebase onto remoteBranch. rebase/skip: ").lower()
-						if hr == 'rebase':
-							ss = git.rebase(remoteBranch)
-							print(ss)
-							break
-						elif hr == 'skip':
-							break
-		
-				# print commit log again					
-				self.printCommitLogForPush(currentBranch, remoteBranch)
+					diffList = git.checkRebaseable(currentBranch, remoteBranch)
+					if len(diffList) == 0:
+						while True:
+							hr = input("\n\n*** You can rebase local to remoteBranch. want? Y/n: ").lower()
+							if hr == "":
+								hr = 'y'
 
-		git.printStatus()
+							if hr == "n":
+								break
+							elif hr == 'y':
+								ss,st = git.rebase(remoteBranch)
+								# exe result?
+								print(ss)
+								if st != 0:
+									git.rebaseAbort()
+									raise Exception("rebase failed. you should manually merge it.[err:%d]" % st)
+								break
+					else:
+						while True:
+							hr = input("\n\n*** It could be impossible to rebase onto remoteBranch. rebase/skip: ").lower()
+							if hr == 'rebase':
+								ss = git.rebase(remoteBranch)
+								print(ss)
+								break
+							elif hr == 'skip':
+								break
+
+					# print commit log again
+					self.printCommitLogForPush(currentBranch, remoteBranch)
 
 		target = input("\nInput remote branch name you push to: ")
 		if target == "":
@@ -647,6 +654,7 @@ class mDlgMainDc(ur.cDialog):
 
 		pp = os.path.realpath(pp)
 		os.chdir(pp)
+		g.savePath(pp)  # always change folder
 
 		# check git repo
 		try:
@@ -887,7 +895,7 @@ class mDlgMainDc(ur.cDialog):
 				self.fileRefresh()
 				return
 
-			g.savePath(os.getcwd())
+			#g.savePath(os.getcwd())
 			raise urwid.ExitMainLoop()
 
 		elif key == "f1":
@@ -951,8 +959,11 @@ class mDlgMainDc(ur.cDialog):
 			g.loop.stop()
 			print("fetching first...")
 			try:
-				git.fetch()
-				g.gitPush()
+				ss, code = git.fetch()
+				if code != 0:
+					print("Error - %s" % ss)
+				else:
+					g.gitPush()
 			except Exception as e:
 				print("Error - %s" % e)
 
