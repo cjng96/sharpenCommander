@@ -1585,7 +1585,7 @@ def main():
 		return
 	
 	elif cmd == "find":
-		# dc find . -name "*.py"
+		# dc find -name "*.py"
 		cmds = sys.argv[1:]
 		cmds[0] = find_executable(cmds[0])
 		doSubCmd(cmds, DlgFind)

@@ -2,6 +2,8 @@
 # DEV_CMD_PATH=~/devCmdTool
 # . $DEV_CMD_PATH/bash-script.sh
 
+DEV_CMD_DIR=$(dirname "$0")
+DEV_CMD_DIR=$(realpath "$PP")
 
 function goPath()
 {
@@ -15,30 +17,29 @@ function goPath()
 }
 function dc()
 {
-	python3 $DEV_CMD_PATH/dc.py "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9"
+	python3 $DEV_CMD_DIR/dc.py "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9"
 	goPath
 		
 }
 function dcf()
 {
-	python3 $DEV_CMD_PATH/dc.py findg "$1" "$2" "$3" "$4" "$5"
+	python3 $DEV_CMD_DIR/dc.py find "$1" "$2" "$3" "$4" "$5"
 	goPath
 }
 function dcg()
 {
-	python3 $DEV_CMD_PATH/dc.py ackg "$1" "$2" "$3" "$4" "$5"
+	python3 $DEV_CMD_DIR/dc.py grep "$1" "$2" "$3" "$4" "$5"
 	goPath
 }
 function dcw()
 {
-	python3 $DEV_CMD_PATH/dc.py which "$1" "$2" "$3" "$4" "$5"
+	python3 $DEV_CMD_DIR/dc.py which "$1" "$2" "$3" "$4" "$5"
 	goPath
 }
 
-
 function dcd()
 {
-	python3 -m pudb.run $DEV_CMD_PATH/dc.py "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9"
+	python3 -m pudb.run $DEV_CMD_DIR/dc.py "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9"
 	goPath
 }
 

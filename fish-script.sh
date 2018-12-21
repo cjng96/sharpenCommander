@@ -2,6 +2,7 @@
 # DEV_CMD_PATH=~/devCmdTool
 # . $DEV_CMD_PATH/bash-script.sh
 
+set DEV_CMD_DIR (realpath (dirname (status -f)))
 
 function goPath
 	# goto that path
@@ -13,27 +14,28 @@ function goPath
 end
 
 function dc
-	python3 $DEV_CMD_PATH/dc.py $argv
+    echo $PP
+	python3 $DEV_CMD_DIR/dc.py $argv
 	goPath
 end
 		
 function dcf
-	python3 $DEV_CMD_PATH/dc.py findg $argv
+	python3 $DEV_CMD_DIR/dc.py find $argv
 	goPath
 end
 
 function dcg
-	python3 $DEV_CMD_PATH/dc.py ackg $argv
+	python3 $DEV_CMD_DIR/dc.py grep $argv
 	goPath
 end
 
 function dcw
-	python3 $DEV_CMD_PATH/dc.py which $argv
+	python3 $DEV_CMD_DIR/dc.py which $argv
 	goPath
 end
 
 function dcd
-	python3 -m pudb.run $DEV_CMD_PATH/dc.py $argv
+	python3 -m pudb.run $DEV_CMD_DIR/dc.py $argv
 	goPath
 end
 
