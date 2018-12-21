@@ -21,4 +21,8 @@ else
     echo "Setting is done already. Type 'dc' for starting"
 fi
 
+cd devCmdTool
+virtualenv env
+./env/bin/pip3 install -r requirements.txt
+
 
