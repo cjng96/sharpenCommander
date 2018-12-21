@@ -27,7 +27,7 @@ def refreshBtnListTerminal(terimalItemList, listBox, onClick):
 	listBox.body += ur.btnListMakeTerminal(terimalItemList, onClick)
 
 
-class mGitCommitDialog(ur.cDialog):
+class DlgGitCommit(ur.cDialog):
 	themes = [("greenfg", "greenfg_f"), ("std", "std_f")]
 
 	def __init__(self, onExit):
@@ -41,7 +41,7 @@ class mGitCommitDialog(ur.cDialog):
 			(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([("< No files >", None)], None)))
 		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.textListMakeTerminal(["< Nothing to display >"])))
 
-		self.headerText = urwid.Text(">> Commit...")
+		self.headerText = urwid.Text(">> Commit - f11/f12(Prev/Next file) f4(cancel operation)")
 		self.widgetFrame = urwid.Pile \
 			([("pack", self.edInput), (8, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
@@ -120,14 +120,14 @@ class mGitCommitDialog(ur.cDialog):
 			self.widgetContent.scrollUp()
 		elif key == 'j':
 			self.widgetContent.scrollDown()
-		elif key == "left" or key == "[" or key == "f11":
+		elif key == "left" or key == "[" or key == "f11" or key == "h":
 			self.widgetFileList.focusPrevious()
 			self.refreshFileContentCur()
 
 			if key == "f11":
 				self.widgetFrame.set_focus(self.edInput)
 
-		elif key == "right" or key == "]" or key == "f12":
+		elif key == "right" or key == "]" or key == "f12" or key == "l":
 			self.widgetFileList.focusNext()
 			self.refreshFileContentCur()
 
@@ -205,8 +205,8 @@ class mGitCommitDialog(ur.cDialog):
 
 			ur.popupAsk("Git commit(all)", "Do you want to commit all content?", onCommit)
 
-		elif key == "h":
-			ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
+		#elif key == "h":
+		#	ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 
 
 
@@ -222,7 +222,7 @@ class DlgGitStatus(ur.cDialog):
 		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.textListMakeTerminal(["< Nothing to display >"])))
 
 		self.headerText = urwid.Text(
-			">> dc V%s - q/F4(Quit),<-/->(Prev/Next file),A(Add),P(Prompt),R(Reset),D(drop),C(Commit),I(Ignore)" % g.version)
+			">> dc stage - q/F4(Quit) h/l(Prev/Next file) j/k(scroll) A(Add) P(Prompt) R(Reset) D(drop) C(Commit) I(Ignore)")
 		self.widgetFrame = urwid.Pile(
 			[(8, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
@@ -325,10 +325,10 @@ class DlgGitStatus(ur.cDialog):
 			self.widgetContent.scrollUp()
 		elif key == 'j':
 			self.widgetContent.scrollDown()
-		elif key == "left" or key == "[" or key == "f11":
+		elif key == "left" or key == "[" or key == "f11" or key == "h":
 			self.widgetFileList.focusPrevious()
 			self.refreshFileContentCur()
-		elif key == "right" or key == "]" or key == "f12":
+		elif key == "right" or key == "]" or key == "f12" or key == "l":
 			self.widgetFileList.focusNext()
 			self.refreshFileContentCur()
 
@@ -410,7 +410,7 @@ class DlgGitStatus(ur.cDialog):
 				ur.popupMsg("Alert", "There is no staged file to commit")
 				return
 
-			dlg = mGitCommitDialog(onExit)
+			dlg = DlgGitCommit(onExit)
 			g.doSetMain(dlg)
 
 		elif key == "h":
