@@ -79,11 +79,11 @@ class mListBox(urwid.ListBox):
 		super().__init__(body)
 		self.isViewContent = False
 		self.maxrow = 0  # for view content
+
 		self.itemCount = 0
 		self.focusCb = None
 
 		self.maxcol = 0
-		self.maxrow = 0
 
 		# SimpleListWalker don't have focus cb
 		if getattr(self.body, 'set_focus_changed_callback', None):

@@ -21,7 +21,7 @@ class DlgFind(ur.cDialog):
 		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.textListMakeTerminal(["< Nothing to display >"])))
 		self.widgetContent.isViewContent = True
 
-		self.header = ">> dc V%s - find - q/F4(Quit),<-/->(Prev/Next file),Enter(goto),E(edit)..." % g.version
+		self.header = ">> dc find - q/F4(Quit) </>,h/l(Prev/Next file) Enter(goto) E(edit)..."
 		self.headerText = urwid.Text(self.header)
 		self.widgetFrame = urwid.Pile(
 			[(15, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
@@ -40,7 +40,11 @@ class DlgFind(ur.cDialog):
 		# widget = self.widgetFileList.body[newFocus]
 		# markup = ("std_f", widget.base_widget.origTxt)
 		# widget.base_widget.set_label(markup)
+		widget = self.widgetFileList.focus
+		widget.original_widget.set_label(widget.base_widget.markup[0])
+
 		widget = self.widgetFileList.body[newFocus]
+		widget.base_widget.set_label(widget.base_widget.markup[1])
 
 		self.widgetFileList.set_focus_valign("middle")
 
@@ -109,15 +113,20 @@ class DlgFind(ur.cDialog):
 			#raise urwid.ExitMainLoop()
 			self.close()
 
-		elif key == 'left' or key == "[":
+		elif key == 'left' or key == "[" or key == "h":
 			self.widgetFileList.focusPrevious()
-		elif key == 'right' or key == "]":
+		elif key == 'right' or key == "]" or key == "l":
 			self.widgetFileList.focusNext()
 
 		elif key == "k":
 			self.widgetContent.scrollUp()
 		elif key == "j":
 			self.widgetContent.scrollDown()
+
+		elif key == "K":
+			pass
+		elif key == "J":
+			pass
 
 		elif key == "e" or key == "E":
 			btn = self.widgetFileList.focus
