@@ -1084,10 +1084,17 @@ class mDlgMainDc(ur.cDialog):
 		elif key == "meta down" or key == "meta j":
 			self.workMove(1)
 
-		elif key == "j" or key == "J":   # we can't use ctrl+j since it's terminal key for enter replacement
+		elif key == "j":   # we can't use ctrl+j since it's terminal key for enter replacement
 			self.widgetFileList.focusNext()
-		elif key == "k" or key == "K":
+		elif key == "k":
 			self.widgetFileList.focusPrevious()
+		elif key == "J":
+			for i in range(10):
+				self.widgetFileList.focusNext()
+		elif key == "K":
+			for i in range(10):
+				self.widgetFileList.focusPrevious()
+
 		elif key == "u" or key == "." or key == "U":
 			self.changePath("..")
 
