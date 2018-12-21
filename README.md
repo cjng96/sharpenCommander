@@ -1,12 +1,12 @@
 
 # Feature
-* change project folder
+* Can move to the project folder
 * git command helper 
  * fetch, merge, status for multiple project
  * CUI for git add/reset, commit
  * CUI for git push from commit message
-* CUI for find(Alpha)
-* CUI for ack-grep(Alpha)
+* CUI for find
+* CUI for grep
 
 # Advantage
 * The convenient CUI interface based on urwid(CUI)
@@ -18,42 +18,21 @@
 # How to install
 
 ## Environment setup
+if you have installed pip3 and virtualenv already, skip it
 
 $ apt-get install python3-setuptools
 
-$ easy_install-3.4 pip
+$ easy_install3 pip
 
-$ pip3 install click urwid
+$ pip3 install virtualenv
 
 
 ## Install 
 
-$ mkdir ~/tool
-
-$ git clone https://github.com/cjng96/devCmdTool.git
-
-$ vi ~/.bashrc
-** append the following lines
-DEV_CMD_PATH=~/tool/devCmdTool
-
-. $DEV_CMD_PATH/bash-script.sh
-
-$ dc config
-
-$ vi path.py
-
-** write your path.py file as follows
-```python
-gp=~/git
-pathList = [
-  dict(name="coll", path=os.path.join(gp, "collector"), repo=1),
-  dict(name=["collplus", "plus"], path=os.path.join(gp, "collPlus"), repo=1),  # you can define multiple name for repo
-  dict(name=["Sample", "sample"], path=os.path.join(gp, "sample"), repo=1),
-  dict(name="") # it's just dummy
-]
-```
+$ ./install.sh
 
 # How to use
+Type 'dc'
 
 ## main ui
 * `J/K` - move focus
@@ -61,33 +40,61 @@ pathList = [
 * `H/enter` - enter the folder
 * `E` - edit the file
 
-* `a~z` - find folder 
-* `/` - command mode - reg(R key) / list(L key)
+* `N` - Mark current item as trivial
+* `M` - Mark current item as important
+
+* `f` - filtering current folder items 
+* `s` - running shell command with $ for current selected file name
+
+* `/` - command mode
+ * reg - Register current folder
+ * find/ff - Running find command with CUI result
+   ex> ff **.py
+ * grep/gg - Running grep command with CUI result
+   ex> gg Metric
+
+* `R` - Register/unregister this selected folder
+* `L` - Show the list of repository folders
+* `C` - Show commit dialog for current repo
 
 ### workspace
 * `Alt+Right/Left` - Add or remove the folder in Workspace
 * `Alt+Up/Dowm` - Move workspace between folder list
 
-### git
-* `R` - register/unregister the folder
-* `L` - list register repo list
+## Commit helper(C key)
+* `A` - git add current file
+* `P` - prompty for git add -p command
+* `R` - reset current staged file
+* `D` - drop modification
+* `[`/`]` - move next/previous file
+* `J`/`K` - scroll down/up - you can use arrow key too
+* `C` - popup commit dialog
+* `F4`/`Q` - quit the program
+
+### on commit dialog,
+** you can see all staged modification for input commit message
+* up/down - scroll current file's content
+* f11/f12 - prev/next file to see modification
+
+** then input commit message and then enter to do commit
 
 
-## Register folder list
-* `p` - pull --rebase all repo
 
+## Register folder list(L key)
+* `P` - pull --rebase all repo
+* `Enter` - move to the selected repo
 
-## change folder
-* Go to a project folder
-$ dc coll
+# Commandline commends
 
-* Go to another project folder
-$ dc plus
+$ dcf -name "**.py"
+
+$ dcg "printf"
+ 
 
 ## update all project repositories
 $ dc update
 
-** all projects that defined in path.py with repo=1 flag are updated(git fetch + rebase to remote tracking branch + print status)
+** all projects that regsitered as repo are updated(git fetch + rebase to remote tracking branch + print status)
 
 ** `update` command is comprised of `dc fetch` + `dc merge` + `dc st(status)`
 
@@ -108,22 +115,6 @@ $ dc update plus
 $ dc ci
 
 ** you can use the following keys
-* `A` - git add current file
-* `P` - prompty for git add -p command
-* `R` - reset current staged file
-* `D` - drop modification
-* `[`/`]` - move next/previous file
-* `J`/`K` - scroll down/up - you can use arrow key too
-* `C` - popup commit dialog
-* `F4`/`Q` - quit the program
-
-### on commit dialog,
-** you can see all staged modification for input commit message
-* up/down - scroll current file's content
-* left/right - prev/next file to see modification
-
-** then input commit message and then enter to do commit
-
 
 ## git push
 ** you can conveniently push commits just specify target branch name
@@ -134,9 +125,4 @@ $ dc push
 
 ** just type target branch you want to push to
 
-# Others
-$ dcf "*.py"
-
-$ dcg "printf"
- 
 
