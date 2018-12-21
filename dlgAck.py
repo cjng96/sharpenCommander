@@ -6,7 +6,6 @@ from globalBase import *
 import urwidHelper as ur
 
 import tool
-from tool import git, system, systemSafe, systemRet, programPath
 
 
 class AckFile:
@@ -168,7 +167,7 @@ class DlgAck(ur.cDialog):
 		elif key == "L":
 			for i in range(10):
 				self.widgetFileList.focusNext()
-				
+
 		elif key == "k":
 			#self.widgetContent.scrollUp()
 			item, pos = self.widgetContent.focusPrevious()
@@ -184,7 +183,7 @@ class DlgAck(ur.cDialog):
 		elif key == "e" or key == "E":
 			btn = self.widgetFileList.focus
 			g.loop.stop()
-			systemRet("vim %s" % btn.afile.fname)
+			tool.systemRet("%s %s" % (g.editApp, btn.afile.fname))
 			g.loop.start()
 
 		elif key == "h":
