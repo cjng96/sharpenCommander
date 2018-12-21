@@ -199,7 +199,7 @@ class DlgRegList(ur.cDialog):
 		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.textListMakeTerminal(["< Nothing to display >"])))
 		#self.widgetContent.isViewContent = True
 
-		self.header = ">> dc V%s - repo list - jk(move), e(modify),p(pull all),del" % g.version
+		self.header = ">> dc repo list - J/K(move) E(modify) P(pull all) del Q/esc(quit)"
 		self.headerText = urwid.Text(self.header)
 
 		#self.widgetFrame = urwid.Pile(
