@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TARGET=/usr/local/src
+TARGET=~/.devcmd
 mkdir -p $TARGET
 cd $TARGET
 
