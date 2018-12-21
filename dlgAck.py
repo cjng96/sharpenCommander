@@ -68,6 +68,10 @@ class DlgAck(ur.cDialog):
 		return False
 
 	def onFileSelected(self, btn):
+		if not hasattr(btn, "afile"):  # no result
+			self.close()
+			return
+
 		itemPath = os.path.join(os.getcwd(), btn.afile.fname)
 		pp = os.path.dirname(itemPath)
 		os.chdir(pp)
@@ -99,6 +103,12 @@ class DlgAck(ur.cDialog):
 		return keys
 
 	def recvData(self, data):
+		if data is None:
+			self.headerText.set_text(self.header + "!!!")
+			if len(self.widgetFileList.body) == 0:
+				self.widgetFileList.body += ur.btnListMakeTerminal(["< No result >"], None)
+			return
+
 		ss = data.decode("UTF-8", "ignore")
 		self.buf += ss
 		pt = self.buf.rfind("\n")

@@ -64,6 +64,10 @@ class DlgFind(ur.cDialog):
 		return True
 
 	def onFileSelected(self, btn):
+		if btn.original_widget.attr is None:
+			self.close()
+			return
+
 		self.selectFileName = myutil.gitFileBtnName(btn)
 		itemPath = os.path.join(os.getcwd(), self.selectFileName)
 		pp = os.path.dirname(itemPath)
@@ -86,6 +90,12 @@ class DlgFind(ur.cDialog):
 		return keys
 
 	def recvData(self, data):
+		if data is None:
+			self.headerText.set_text(self.header + "!!!")
+			if len(self.widgetFileList.body) == 0:
+				self.widgetFileList.body += ur.btnListMakeTerminal(["< No result >"], None)
+			return
+
 		ss = data.decode("UTF-8")
 		self.content += ss
 		pt = self.content.rfind("\n")

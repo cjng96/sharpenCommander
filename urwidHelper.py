@@ -7,6 +7,7 @@ import urwid.raw_display
 import urwid.web_display
 from urwid.signals import connect_signal
 
+import tool
 
 from globalBase import *
 
@@ -143,7 +144,7 @@ class mListBox(urwid.ListBox):
 
 		row,pos = self.body.get_next(pos)
 		if self.isViewContent:
-			pos = min(pos, len(self.body) - self.maxrow)    # prevent
+			pos = min(pos, max(0, len(self.body) - self.maxrow))    # prevent
 		#self.set_focus(pos) -- should use body.set_focus for scroll
 		self.body.set_focus(pos)
 
@@ -162,7 +163,7 @@ class mListBox(urwid.ListBox):
 
 	def set_focus(self, position, coming_from=None):
 		if self.isViewContent:
-			position = min(position, len(self.body) - self.maxrow)
+			position = min(position, max(0, len(self.body) - self.maxrow))
 
 		return super().set_focus(position, coming_from)
 
@@ -333,6 +334,7 @@ def btnListMakeTerminal(lstTerminal, onClick, isFirstFocus=True, doApply=None):
 		btn = btnGen(markup, markupF, attr, onClick, isFirstFocus, doApply)
 		isFirstFocus = False
 		outList.append(btn)
+
 	return outList
 
 

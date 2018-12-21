@@ -1040,7 +1040,7 @@ class mDlgMainDc(ur.cDialog):
 
 		elif key == "P":
 			g.loop.stop()
-			print("fetching first...")
+			print("Fetching first...")
 			try:
 				ss, code = git.fetch()
 				if code != 0:
@@ -1195,7 +1195,8 @@ def subMake(dlg, cmds):
 
 	def subCheck(_handle, _userData):
 		if g.subProc.poll() is not None:
-			dlg.headerText.set_text(dlg.header + "!!!")
+			#dlg.headerText.set_text(dlg.header + "!!!")
+			dlg.recvData(None)
 		# g.loop.remove_alarm(handle)
 		else:
 			g.subTimerHandler = g.loop.set_alarm_in(0.1, subCheck, None)
@@ -1223,7 +1224,8 @@ def uiMain(dlgClass, cmds=None):
 
 	g.dialog = dlg
 	g.loop = urwid.MainLoop(dlg.mainWidget, ur.palette, urwid.raw_display.Screen(),
-							unhandled_input=lambda key: g.dialog.unhandled(key), input_filter=urwidInputFilter)
+							unhandled_input=lambda key: g.dialog.unhandled(key),
+							input_filter=urwidInputFilter)
 
 	if cmds is not None:
 		subMake(dlg, cmds)
@@ -1558,7 +1560,7 @@ def main():
 		return
 
 	elif cmd == "push":
-		print("fetching first...")
+		print("Fetching first...")
 		git.fetch()
 		g.gitPush()
 		return
