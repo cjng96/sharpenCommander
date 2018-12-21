@@ -4,15 +4,15 @@ TARGET=~/.devcmd
 mkdir -p $TARGET
 cd $TARGET
 
-if [ ! -d devCmdTool ]; then
+if [[ ! -d devCmdTool ]]; then
     git clone -b stable https://github.com/cjng96/devCmdTool.git
 else
-    echo "There is already devCmdTool repo in /usr/local/src"
+    echo "There is already devCmdTool repo in $TARGET"
 fi
 
 COMMENT="## devCmdTool script ##"
 cnt=$(sh -c "grep '$COMMENT' ~/.bashrc | wc -l")
-if [ $cnt -eq  0 ]; then
+if [[ $cnt -eq  0 ]]; then
     echo "Setting up for devCmdTool to ~/.bashrc"
     echo $COMMENT >> ~/.bashrc
     echo ". $TARGET/bash-script.sh" >> ~/.bashrc
