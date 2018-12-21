@@ -123,33 +123,38 @@ class mListBox(urwid.ListBox):
 		return item, pos
 
 	def focusPrevious(self):
-		cur = self.body.get_focus()
-		if cur[1] == 0:
+		row,pos = self.body.get_focus()
+		if pos == 0:
 			return
 
 		if self.offset_rows > 0:
 			self.offset_rows -= 1
 
-		item, pos = self.body.get_prev(cur[1])
+		item, pos = self.body.get_prev(pos)
 		self.body.set_focus(pos)
 		return item, pos
 
 	# TODO: scroll
 	# working but a little bit...
 	def scrollDown(self):
-		focusPt = self.focus_position
-		if focusPt >= len(self.body) - 1:
+		pos = self.focus_position
+		if pos >= len(self.body) - 1:
 			return
 
-		nextRow = self.body.get_next(focusPt)
-		self.body.set_focus(nextRow[1])
+		row,pos = self.body.get_next(pos)
+		if self.isViewContent:
+			pos = min(pos, len(self.body) - self.maxrow)    # prevent
+		#self.set_focus(pos) -- should use body.set_focus for scroll
+		self.body.set_focus(pos)
 
 	def scrollUp(self):
-		cur = self.body.get_focus()
-		if cur[1] == 0:
+		row,pos = self.body.get_focus()
+		if pos == 0:
 			return
 
-		self.body.set_focus(self.body.get_prev(cur[1])[1])
+		row,pos = self.body.get_prev(pos)
+
+		self.body.set_focus(pos)
 
 	def render(self, size, focus=False):
 		(maxcol, self.maxrow) = size
@@ -157,8 +162,7 @@ class mListBox(urwid.ListBox):
 
 	def set_focus(self, position, coming_from=None):
 		if self.isViewContent:
-			if position >= len(self.body) - self.maxrow:
-				position = len(self.body) - self.maxrow
+			position = min(position, len(self.body) - self.maxrow)
 
 		return super().set_focus(position, coming_from)
 

@@ -92,6 +92,8 @@ class MyProgram(Program):
 		self.grepApp = "ag" # "ack"
 		self.editApp = "vi"
 
+		self.targetFile = None
+
 		self.dialog = None 		# main dialog
 		self.loop = None
 
@@ -610,15 +612,23 @@ class mDlgMainDc(ur.cDialog):
 
 		focusPos = 1
 		if filterStr == "":
-			if self.lastPath == curPath:
-				focusPos = self.widgetFileList.focus_position
-			elif self.lastPath is not None and os.path.dirname(self.lastPath) == curPath:
-				# set focus on the last path
-				targetName = os.path.basename(self.lastPath)
+			if g.targetFile is not None:
 				for idx, item in enumerate(itemList):
-					if item[1] == targetName:
+					if item[1] == g.targetFile:
 						focusPos = idx
-						break
+
+				g.targetFile = None
+
+			else:
+				if self.lastPath == curPath:
+					focusPos = self.widgetFileList.focus_position
+				elif self.lastPath is not None and os.path.dirname(self.lastPath) == curPath:
+					# set focus on the last path
+					targetName = os.path.basename(self.lastPath)
+					for idx, item in enumerate(itemList):
+						if item[1] == targetName:
+							focusPos = idx
+							break
 		else:
 			if filterPos != -1:
 				focusPos = filterPos

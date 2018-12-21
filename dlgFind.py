@@ -65,9 +65,13 @@ class DlgFind(ur.cDialog):
 
 	def onFileSelected(self, btn):
 		self.selectFileName = myutil.gitFileBtnName(btn)
-		pp = os.path.dirname(os.path.join(os.getcwd(), self.selectFileName))
+		itemPath = os.path.join(os.getcwd(), self.selectFileName)
+		pp = os.path.dirname(itemPath)
+		os.chdir(pp)
 		g.savePath(pp)
-		raise urwid.ExitMainLoop()
+		g.targetFile = os.path.basename(itemPath)
+		#raise urwid.ExitMainLoop()
+		self.close()
 
 	def inputFilter(self, keys, raw):
 		if ur.filterKey(keys, "down"):
@@ -118,23 +122,32 @@ class DlgFind(ur.cDialog):
 		elif key == 'right' or key == "]" or key == "l":
 			self.widgetFileList.focusNext()
 
+		elif key == "H":
+			for i in range(10):
+				self.widgetFileList.focusPrevious()
+		elif key == "L":
+			for i in range(10):
+				self.widgetFileList.focusNext()
+
 		elif key == "k":
 			self.widgetContent.scrollUp()
 		elif key == "j":
 			self.widgetContent.scrollDown()
 
 		elif key == "K":
-			pass
+			for i in range(15):
+				self.widgetContent.scrollUp()
 		elif key == "J":
-			pass
+			for i in range(15):
+				self.widgetContent.scrollDown()
 
 		elif key == "e" or key == "E":
 			btn = self.widgetFileList.focus
 			fname = myutil.gitFileBtnName(btn)
 
 			g.loop.stop()
-			tool.systemRet("vim %s" % fname)
+			tool.systemRet("%s %s" % (g.editApp, fname))
 			g.loop.start()
 
-		elif key == "h":
+		elif key == "H":
 			ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
