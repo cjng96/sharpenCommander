@@ -22,7 +22,7 @@ def system(args, stderr=subprocess.STDOUT):
 	return rr
 
 # result, exitcode
-def systemSafe(args, stderr=subprocess.STDOUT):
+def systemSafe(args):
 	if g.debugPrintSystem:
 		print("system command - %s" % args)
 	# stderr를 지원못한다. getstatusoutput은 쓰면안된다. stderr는 output에 같이 온다.
@@ -180,7 +180,7 @@ class git:
 		(terminal name, s or "")
 		:return:
 		"""
-		fileList,ret = systemSafe("git -c color.status=always status -s", stderr=subprocess.DEVNULL)
+		fileList,ret = systemSafe("git -c color.status=always status -s")   #, stderr=subprocess.DEVNULL)
 
 		# quoted octal notation to utf8
 		fileList = bytes(fileList, "utf-8").decode("unicode_escape")

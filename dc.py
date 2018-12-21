@@ -811,9 +811,18 @@ class mDlgMainDc(ur.cDialog):
 					ss = self.edInput.get_edit_text()
 					self.inputSet("")
 
+					arr = ss.split(" ")
+					for idx, i in enumerate(arr):
+						if i == "$":
+							arr[idx] = self.getFocusName()
+					ss = " ".join(arr)
+					tool.dlog(ss)
+
 					g.loop.stop()
-					tool.systemRet(ss)
-					input("Enter to return...") # TODO: support esc key?
+					print("cmd: %s..." % ss)
+					ss,code = tool.systemSafe(ss)
+					print(ss)
+					input("Enter to return...(exit code:%d)" % code) # TODO: support esc key?
 					g.loop.start()
 					self.fileRefresh()
 
