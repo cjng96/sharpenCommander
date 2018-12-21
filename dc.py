@@ -1594,8 +1594,7 @@ def main():
 	elif cmd == "grep":
 		# dc ack printf
 		cmds = sys.argv[1:]
-		app = g.grepApp
-		cmds[0] = find_executable(app)
+		cmds[0] = find_executable(g.grepApp)
 		cmds.insert(1, "--group")
 		cmds.insert(1, "--color")
 		doSubCmd(cmds, DlgAck)
