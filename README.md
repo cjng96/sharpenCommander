@@ -18,30 +18,32 @@
 # How to install
 
 ## Environment setup
-if you have installed pip3 and virtualenv already, skip it
+** if you have installed pip3 and virtualenv already, skip it.
 
-$ apt-get install python3-setuptools
+$ sudo apt-get install python3-setuptools
 
-$ easy_install3 pip
+$ sudo easy_install3 pip
 
-$ pip3 install virtualenv
+$ sudo pip3 install virtualenv
 
 
 ## Install 
+$ curl -L https://github.com/cjng96/devCmdTool/raw/stable/install.sh | bash - 
 
-$ ./install.sh
+or if you clone the repository already.
+$ echo ". $(pwd)/bash-script.sh" >> ~/.bashrc
 
 # How to use
 Type 'dc'
 
 ## main ui
-* `J/K` - move focus
-* `U` - move upper folder
-* `H/enter` - enter the folder
+* `j/k` - move focus
+* `u` - move upper folder
+* `h/enter` - enter the folder
 * `E` - edit the file
 
-* `N` - Mark current item as trivial
-* `M` - Mark current item as important
+* `n` - Mark current item as trivial
+* `m` - Mark current item as important
 
 * `f` - filtering current folder items 
 * `s` - running shell command with $ for current selected file name
