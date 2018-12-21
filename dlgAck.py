@@ -69,9 +69,13 @@ class DlgAck(ur.cDialog):
 		return False
 
 	def onFileSelected(self, btn):
-		pp = os.path.dirname(os.path.join(os.getcwd(), btn.afile.fname))
+		itemPath = os.path.join(os.getcwd(), btn.afile.fname)
+		pp = os.path.dirname(itemPath)
+		os.chdir(pp)
 		g.savePath(pp)
-		raise urwid.ExitMainLoop()
+		g.targetFile = os.path.basename(itemPath)
+		#raise urwid.ExitMainLoop()
+		self.close()
 
 	def onLineSelected(self, btn):
 		pp = os.path.dirname(os.path.join(os.getcwd(), btn.afile.fname))
@@ -153,11 +157,18 @@ class DlgAck(ur.cDialog):
 		if key == 'f4' or key == "q":
 			#raise urwid.ExitMainLoop()
 			self.close()
-		elif key == 'left' or key == "[":
+		elif key == 'left' or key == "[" or key == "h":
 			self.widgetFileList.focusPrevious()
-		elif key == 'right' or key == "]":
+		elif key == 'right' or key == "]" or key == "l":
 			self.widgetFileList.focusNext()
 
+		elif key == "H":
+			for i in range(10):
+				self.widgetFileList.focusPrevious()
+		elif key == "L":
+			for i in range(10):
+				self.widgetFileList.focusNext()
+				
 		elif key == "k":
 			#self.widgetContent.scrollUp()
 			item, pos = self.widgetContent.focusPrevious()
