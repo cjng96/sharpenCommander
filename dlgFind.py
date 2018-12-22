@@ -31,6 +31,8 @@ class DlgFind(ur.cDialog):
 		self.content = ""
 		self.selectFileName = ""
 
+		self.lstFile = []
+
 	def onFileFocusChanged(self, newFocus):
 		# old widget
 		# widget = self.widgetFileList.focus
@@ -110,6 +112,18 @@ class DlgFind(ur.cDialog):
 			if line == "":
 				continue
 
+			self.lstFile.append(line)
+
+		self.fileShow()
+
+		return True
+
+	def fileShow(self):
+		del self.widgetFileList.body[:]
+
+		for line in self.lstFile:
+			# TODO: filter
+
 			# markup = ur.terminal2markup(line, 0)
 			# markupF = ur.terminal2markup(line, 1)
 			markup = ("std", line)
@@ -119,8 +133,6 @@ class DlgFind(ur.cDialog):
 			self.widgetFileList.body.append(btn)
 			if len(self.widgetFileList.body) == 1:
 				self.onFileFocusChanged(0)
-
-		return True
 
 	def unhandled(self, key):
 		if key == 'f4' or key == "q":
