@@ -15,29 +15,29 @@ function goPath()
 	fi
 
 }
-function dc()
+function sc()
 {
 	$DEV_CMD_DIR/env/bin/python3 $DEV_CMD_DIR/dc.py "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9"
 	goPath
 		
 }
-function dcf()
+function scf()
 {
 	$DEV_CMD_DIR/env/bin/python3 $DEV_CMD_DIR/dc.py find "$1" "$2" "$3" "$4" "$5"
 	goPath
 }
-function dcg()
+function scg()
 {
 	$DEV_CMD_DIR/env/bin/python3 $DEV_CMD_DIR/dc.py grep "$1" "$2" "$3" "$4" "$5"
 	goPath
 }
-function dcw()
+function scw()
 {
 	$DEV_CMD_DIR/env/bin/python3 $DEV_CMD_DIR/dc.py which "$1" "$2" "$3" "$4" "$5"
 	goPath
 }
 
-function dcd()
+function scd()
 {
 	$DEV_CMD_DIR/env/bin/python3 -m pudb.run $DEV_CMD_DIR/dc.py "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9"
 	goPath

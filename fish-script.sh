@@ -13,27 +13,27 @@ function goPath
 	end
 end
 
-function dc
+function sc
 	eval $DEV_CMD_DIR/env/bin/python3 $DEV_CMD_DIR/dc.py $argv
 	goPath
 end
 		
-function dcf
+function scf
 	eval $DEV_CMD_DIR/env/bin/python3 $DEV_CMD_DIR/dc.py find $argv
 	goPath
 end
 
-function dcg
+function scg
 	eval $DEV_CMD_DIR/env/bin/python3 $DEV_CMD_DIR/dc.py grep $argv
 	goPath
 end
 
-function dcw
+function scw
 	eval $DEV_CMD_DIR/env/bin/python3 $DEV_CMD_DIR/dc.py which $argv
 	goPath
 end
 
-function dcd
+function scd
 	eval $DEV_CMD_DIR/env/bin/python3 -m pudb.run $DEV_CMD_DIR/dc.py $argv
 	goPath
 end
