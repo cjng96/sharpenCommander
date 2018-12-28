@@ -98,9 +98,9 @@ class MyProgram(Program):
 		self.loop = None
 
 	def init(self):
-		pp = os.path.expanduser("~/.devcmd")
+		pp = os.path.expanduser("~/.synapcmd")
 		if not os.path.isdir(pp):
-			print("No .devcmd folder. generate it...")
+			print("No .synapcmd folder. generate it...")
 			os.mkdir(pp)
 
 		self.configPath = os.path.join(pp, "cfg.json")
@@ -1574,7 +1574,7 @@ def main():
 		return
 		
 	elif cmd == "config":
-		g.savePath("~/.devcmd")
+		g.savePath("~/.synapcmd")
 		return
 		
 	elif cmd == "which":
