@@ -3,8 +3,9 @@
 TARGET=~/.synapcmd
 mkdir -p $TARGET
 cd $TARGET
+REPO=$TARGET/synapbookCommander
 
-if [[ ! -d devCmdTool ]]; then
+if [[ ! -d synapbookCommander ]]; then
     git clone -b stable https://github.com/inertry/synapbookCommander.git
 else
     echo "There is already SynapbookCommander repo in $TARGET"
@@ -15,8 +16,8 @@ cnt=$(sh -c "grep '$COMMENT' ~/.bashrc | wc -l")
 if [[ $cnt -eq  0 ]]; then
     echo "Setting up for SynapbookCommander to ~/.bashrc"
     echo $COMMENT >> ~/.bashrc
-    echo ". $TARGET/bash-script.sh" >> ~/.bashrc
-    echo "Please type 'dc' after restarting terminal or source ~/.bashrc"
+    echo ". $REPO/bash-script.sh" >> ~/.bashrc
+    echo "Please type 'sc' after restarting terminal or source ~/.bashrc"
 else
     echo "Setting is done already. Type 'sc' for starting"
 fi
