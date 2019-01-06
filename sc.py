@@ -1030,6 +1030,17 @@ class mDlgMainDc(ur.cDialog):
 			self.doCommit()
 			return
 
+		elif key == "T":
+			g.loop.stop()
+			tool.systemRet("tig")
+			g.loop.start()
+			self.fileRefresh()
+			return
+		elif key == "G":    # grep
+			return
+		elif key == "S":    # search(find)
+			return
+
 		elif key == "F": # git update
 			cur = os.getcwd()
 			g.loop.stop()
