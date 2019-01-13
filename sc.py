@@ -347,7 +347,8 @@ class mDlgMainDc(ur.cDialog):
 		self.widgetExtraList = urwid.Pile([("pack", self.widgetWorkLabel), self.widgetWorkList, ("pack", self.widgetTempLabel), self.widgetTempList])
 
 		# main frame + input
-		self.title = ">> dc V%s" % g.version
+		#- F(pull) P(push) L(list repo) g(goto) C(commit) h(enter) jk(up/down)
+		self.title = ">> sc V%s" % g.version
 		self.headerText = urwid.Text(self.title)
 		self.widgetFrame = urwid.Columns([(100, self.widgetContent), (20, self.widgetExtraList)])
 		self.edInput = ur.editGen("$ ", "", lambda edit, text: self.onInputChanged(edit, text))
