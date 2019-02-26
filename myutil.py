@@ -21,6 +21,11 @@ def refreshBtnListMarkupTuple(markupItemList, listBox, onClick):
 	listBox.body += ur.btnListMakeMarkup(markupItemList, onClick)
 
 
+def fileBtnName(btn):
+	label = btn.original_widget.get_label()
+	return label.strip()
+
+
 def gitFileBtnName(btn):
 	label = btn.original_widget.get_label()
 	return label[2:].strip()

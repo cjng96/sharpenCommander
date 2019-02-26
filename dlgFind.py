@@ -49,8 +49,7 @@ class DlgFind(ur.cDialog):
 		widget.base_widget.set_label(widget.base_widget.markup[1])
 
 		self.widgetFileList.set_focus_valign("middle")
-
-		self.selectFileName = myutil.gitFileBtnName(widget)
+		self.selectFileName = myutil.fileBtnName(widget)
 
 		try:
 			with open(self.selectFileName, "r", encoding="UTF-8") as fp:

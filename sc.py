@@ -10,6 +10,7 @@ import re
 import stat
 import json
 import traceback
+import shutil
 
 from enum import Enum
 
@@ -89,7 +90,7 @@ class MyProgram(Program):
 		self.isPullRebase = True
 		self.isPushRebase = True
 
-		self.grepApp = "ag" # "ack"
+		self.grepApp = "grep" # "ack"
 		self.editApp = "vi"
 
 		self.targetFile = None
@@ -133,9 +134,21 @@ class MyProgram(Program):
 
 			if "grepApp" in obj:
 				self.grepApp = obj["grepApp"]
+			else:
+				if shutil.which("ag") is not None:
+					self.grepApp = "ag"
+				elif shutil.which("ack") is not None:
+						self.grepApp = "ack"
+				else:
+					self.grepApp = "grep"
 
 			if "editApp" in obj:
 				self.editApp = obj["editApp"]
+			else:
+				if shutil.which("code") is not None:
+					self.editApp = "code"
+				else:
+					self.editApp = "vi"
 
 			if "debugPrintSystem" in obj:
 				tool.g.debugPrintSystem = obj["debugPrintSystem"]
