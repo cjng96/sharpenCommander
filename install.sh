@@ -15,8 +15,11 @@ COMMENT="## SynapbookCommander script ##"
 cnt=$(sh -c "grep '$COMMENT' ~/.bashrc | wc -l")
 if [[ $cnt -eq  0 ]]; then
     cd synapbookCommander
+    [ $? -ne 0 ] && echo "#### no repo folder" && exit
     virtualenv env
+    [ $? -ne 0 ] && echo "#### failed to run virtualenv" && exit
     ./env/bin/pip3 install -r requirements.txt
+    [ $? -ne 0 ] && echo "#### failed to install python components" && exit
 
     echo "Setting up for SynapbookCommander to ~/.bashrc"
     echo $COMMENT >> ~/.bashrc
