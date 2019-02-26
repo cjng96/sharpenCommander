@@ -21,18 +21,13 @@
 
 \*\* if you have installed pip3 and virtualenv already, skip it.
 
-\$ sudo apt-get install python3-setuptools
-
-\$ sudo easy_install3 pip
-
+\$ sudo apt install python3 python3-pip git
 \$ sudo pip3 install virtualenv
 
 ## Install
-\$ sudo apt install python3 python3-pip git
-\$ sudo pip3 install virtualenv
 \$ curl -L https://github.com/inertry/synapbookCommander/raw/stable/install.sh | bash -
 
-or if you clone the repository already.
+or if you clone the repository already,
 $ echo ". $(pwd)/bash-script.sh" >> ~/.bashrc
 
 # How to use
