@@ -28,8 +28,9 @@
 \$ sudo pip3 install virtualenv
 
 ## Install
-
-\$ curl -L https://github.com/cjng96/synapbookCommander/raw/stable/install.sh | bash -
+\$ sudo apt install python3 python3-pip git
+\$ sudo pip3 install virtualenv
+\$ curl -L https://github.com/inertry/synapbookCommander/raw/stable/install.sh | bash -
 
 or if you clone the repository already.
 $ echo ". $(pwd)/bash-script.sh" >> ~/.bashrc
