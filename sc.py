@@ -611,7 +611,7 @@ class mDlgMainDc(ur.cDialog):
 		ss = "%s%s - %s%s - %d%s %s" % (self.title, featureStr, curPath, status, len(itemList)-1, gitSt, featureExtra)
 		self.headerText.set_text(ss)
 
-		focusPos = 1
+		focusPos = 0
 		if filterStr == "":
 			if g.targetFile is not None:
 				for idx, item in enumerate(itemList):
@@ -1067,7 +1067,12 @@ class mDlgMainDc(ur.cDialog):
 			self.fileRefresh()
 
 		elif key == "E":
-			pp = self.getFocusPath()
+			name = self.getFocusName()
+			if name == "..":    # special case
+				pp = os.getcwd()
+			else:
+				pp = self.getFocusPath()
+
 			# /cygdrive/...을 제대로 인식못한다. 그냥 상대 경로로..
 			name = os.path.basename(pp)
 
