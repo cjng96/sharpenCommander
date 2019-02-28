@@ -363,7 +363,7 @@ class mDlgMainDc(ur.cDialog):
 		#- F(pull) P(push) L(list repo) g(goto) C(commit) h(enter) jk(up/down)
 		self.title = ">> sc V%s" % g.version
 		self.headerText = urwid.Text(self.title)
-		self.widgetFrame = urwid.Columns([(100, self.widgetContent), (20, self.widgetExtraList)])
+		self.widgetFrame = urwid.Columns([('weight', 1, self.widgetContent), (20, self.widgetExtraList)])
 		self.edInput = ur.editGen("$ ", "", lambda edit, text: self.onInputChanged(edit, text))
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText, footer=self.edInput)
 
