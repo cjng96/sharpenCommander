@@ -1087,10 +1087,10 @@ class mDlgMainDc(ur.cDialog):
 				pp = self.getFocusPath()
 
 			# /cygdrive/...을 제대로 인식못한다. 그냥 상대 경로로..
-			name = os.path.basename(pp)
+			#name = os.path.basename(pp)
 
 			g.loop.stop()
-			tool.systemRet("%s %s" % (g.editApp, name))
+			tool.systemRet("%s %s" % (g.editApp, pp))
 			g.loop.start()
 			self.fileRefresh()
 

@@ -79,7 +79,7 @@ Type 'dc'
 \*\* you can see all staged modification for input commit message
 
 - up/down - scroll current file's content
-- f11/f12 - prev/next file to see modification
+- f9/f10 - prev/next file to see modification
 
 \*\* then input commit message and then enter to do commit
 

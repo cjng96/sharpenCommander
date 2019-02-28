@@ -41,7 +41,7 @@ class DlgGitCommit(ur.cDialog):
 			(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([("< No files >", None)], None)))
 		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.textListMakeTerminal(["< Nothing to display >"])))
 
-		self.headerText = urwid.Text(">> Commit - f11/f12(Prev/Next file) f4(cancel operation)")
+		self.headerText = urwid.Text(">> Commit - f9/f10(Prev/Next file) f4(cancel operation)")
 		self.widgetFrame = urwid.Pile \
 			([("pack", self.edInput), (8, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
@@ -120,18 +120,18 @@ class DlgGitCommit(ur.cDialog):
 			self.widgetContent.scrollUp()
 		elif key == 'j':
 			self.widgetContent.scrollDown()
-		elif key == "left" or key == "[" or key == "f11" or key == "h":
+		elif key == "left" or key == "[" or key == "f9" or key == "h":
 			self.widgetFileList.focusPrevious()
 			self.refreshFileContentCur()
 
-			if key == "f11":
+			if key == "f9":
 				self.widgetFrame.set_focus(self.edInput)
 
-		elif key == "right" or key == "]" or key == "f12" or key == "l":
+		elif key == "right" or key == "]" or key == "f10" or key == "l":
 			self.widgetFileList.focusNext()
 			self.refreshFileContentCur()
 
-			if key == "f12":
+			if key == "f10":
 				self.widgetFrame.set_focus(self.edInput)
 
 		elif key == "A":
@@ -325,10 +325,10 @@ class DlgGitStatus(ur.cDialog):
 			self.widgetContent.scrollUp()
 		elif key == 'j':
 			self.widgetContent.scrollDown()
-		elif key == "left" or key == "[" or key == "f11" or key == "h":
+		elif key == "left" or key == "[" or key == "f9" or key == "h":
 			self.widgetFileList.focusPrevious()
 			self.refreshFileContentCur()
-		elif key == "right" or key == "]" or key == "f12" or key == "l":
+		elif key == "right" or key == "]" or key == "f10" or key == "l":
 			self.widgetFileList.focusNext()
 			self.refreshFileContentCur()
 
