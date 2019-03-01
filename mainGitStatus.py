@@ -222,7 +222,7 @@ class DlgGitStatus(ur.cDialog):
 		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.textListMakeTerminal(["< Nothing to display >"])))
 
 		self.headerText = urwid.Text(
-			">> dc stage - q/F4(Quit) h/l(Prev/Next file) j/k(scroll) A(Add) P(Prompt) R(Reset) D(drop) C(Commit) I(Ignore)")
+			">> sc stage - q/F4(Quit) J/K,h/l(Prev/Next file) j/k(scroll) A(Add) P(Prompt) R(Reset) D(drop) C(Commit) I(Ignore)")
 		self.widgetFrame = urwid.Pile(
 			[(8, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
@@ -325,10 +325,10 @@ class DlgGitStatus(ur.cDialog):
 			self.widgetContent.scrollUp()
 		elif key == 'j':
 			self.widgetContent.scrollDown()
-		elif key == "left" or key == "[" or key == "f9" or key == "h":
+		elif key == "left" or key == "[" or key == "f9" or key == "h" or key == "K":
 			self.widgetFileList.focusPrevious()
 			self.refreshFileContentCur()
-		elif key == "right" or key == "]" or key == "f10" or key == "l":
+		elif key == "right" or key == "]" or key == "f10" or key == "l" or key == "J":
 			self.widgetFileList.focusNext()
 			self.refreshFileContentCur()
 
