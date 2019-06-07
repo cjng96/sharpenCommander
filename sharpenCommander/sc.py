@@ -1251,8 +1251,6 @@ def uiMain(dlgClass, cmds=None):
 
 		return g.dialog.inputFilter(keys, raw)
 
-	print("g is - ", g.__dict__)
-
 	g.dialog = dlg
 	g.loop = urwid.MainLoop(dlg.mainWidget, palette, urwid.raw_display.Screen(),
 							unhandled_input=lambda key: g.dialog.unhandled(key),
