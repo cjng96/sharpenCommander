@@ -1,7 +1,7 @@
 # coding: utf-8
 #!/usr/bin/env python3
 import sys, os
-sys.path.append(os.path.abspath(__file__+'/..'))
+sys.path.insert(0, os.path.abspath(__file__+'/..'))
 
 from sharpenCommander.sc import main
 
