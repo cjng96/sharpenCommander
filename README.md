@@ -1,4 +1,4 @@
-# Feature
+# Features
 
 - Can move to the project folder
 - git command helper

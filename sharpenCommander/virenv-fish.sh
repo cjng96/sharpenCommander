@@ -1,5 +1,4 @@
 
-# DEV_CMD_PATH=~/devCmdTool
 # . $DEV_CMD_PATH/bash-script.sh
 
 set DEV_CMD_DIR (realpath (dirname (status -f)))

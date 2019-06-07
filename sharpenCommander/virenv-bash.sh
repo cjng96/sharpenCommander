@@ -1,5 +1,4 @@
 
-# DEV_CMD_PATH=~/devCmdTool
 # . $DEV_CMD_PATH/bash-script.sh
 
 DEV_CMD_DIR=$(realpath $(dirname "${BASH_SOURCE[0]:-${(%):-%x}}"))
@@ -42,5 +41,3 @@ function scd()
 	goPath
 }
 
-
-#alias dc="$DEV_CMD_PATH/dc.py"

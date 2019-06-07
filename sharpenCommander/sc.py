@@ -13,6 +13,7 @@ import traceback
 import shutil
 
 from enum import Enum
+from os.path import expanduser
 
 
 import urwid
@@ -1514,7 +1515,35 @@ def removeEmptyArgv():
 			sys.argv = sys.argv[:idx+1]
 			break
 
+l1 = "### sharpen-commander script ###"
+def setupSc():
+	if os.getenv('SC_OK', 0) != 0:
+		return
+
+	ok = False
+	pp = os.path.join(expanduser("~"), ".bashrc")
+	if os.path.exists(pp):
+		with open(pp, "r") as fp:
+			for line in fp:
+				m = re.search(l1, line)
+				if m is not None:
+					ok = True
+					break
+
+		if not ok:
+			with open(pp, "a") as fp:
+				print("Appending script-bash.sh into bashrc")
+				dir = os.path.dirname(__file__)
+				fp.write("\n%s\n. %s/script-bash.sh\n\n" % (l1, dir))
+				print("Please 'source ~/.bashrc' then 'sc' application.")
+				sys.exit(1)
+
+	print("SC_OK is not set.")
+	sys.exit(1)
+
+
 def main():
+	setupSc()
 	#winTest()
 	try:
 		os.remove("/tmp/cmdDevTool.path")
@@ -1672,7 +1701,8 @@ def main():
 	#print("target - %s" % target)
 	g.cd(cmd)
 	return 1
-	
+
+
 
 if __name__ == "__main__":
 	try:
