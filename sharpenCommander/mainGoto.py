@@ -6,13 +6,12 @@ import time
 
 from multiprocessing import Pool
 
-import urwidHelper as ur
-from tool import git, system, systemSafe, systemRet, programPath
-import tool
-import  myutil
+from .urwidHelper import *
+from .tool import *
+from .myutil import *
 
-from globalBase import *
-from mainRegList import DlgRegFolderSetting
+from .globalBase import *
+from .mainRegList import DlgRegFolderSetting
 
 
 def repoGetStatus(item):
@@ -29,12 +28,12 @@ def repoGetStatus(item):
 
 	return status
 
-class mDlgGoto(ur.cDialog):
+class mDlgGoto(cDialog):
 	def __init__(self, onExit):
 		super().__init__()
 
 		self.onExit = onExit
-		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([], None)))
+		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([], None)))
 		#self.widgetFileList.setFocusCb(lambda newFocus: self.onFileFocusChanged(newFocus))
 		#self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
 		#self.widgetContent.isViewContent = True
@@ -45,7 +44,7 @@ class mDlgGoto(ur.cDialog):
 		#self.widgetFrame = urwid.Pile(
 		#	[(15, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
 		self.widgetFrame = urwid.AttrMap(self.widgetFileList, 'std')
-		self.edInput = ur.editGen("$ ", "", lambda edit, text: self.onInputChanged(edit, text))
+		self.edInput = editGen("$ ", "", lambda edit, text: self.onInputChanged(edit, text))
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText, footer=self.edInput)
 
 		self.itemList = None
@@ -96,7 +95,7 @@ class mDlgGoto(ur.cDialog):
 		idx = 0
 		if self.widgetFileList.body.focus is not None:
 			idx = self.widgetFileList.body.focus
-		myutil.refreshBtnListMarkupTuple(lst, self.widgetFileList, lambda btn: self.onFileSelected(btn))
+		refreshBtnListMarkupTuple(lst, self.widgetFileList, lambda btn: self.onFileSelected(btn))
 		if idx >= len(self.widgetFileList.body):
 			idx = len(self.widgetFileList.body)-1
 		self.widgetFileList.set_focus(idx)

@@ -6,8 +6,8 @@ import subprocess
 class Config:
 	def __init__(self):
 		self.debugPrintSystem = False
-	
-g = Config()
+
+gCfg = Config()
 
 def dlog(ss):
 	with open("/tmp/debug.log", "a") as fp:
@@ -15,7 +15,7 @@ def dlog(ss):
 
 
 def system(args, stderr=subprocess.STDOUT):
-	if g.debugPrintSystem:
+	if gCfg.debugPrintSystem:
 		print("system command - %s" % args)
 	rr = subprocess.check_output(args, stderr=stderr, shell=True).decode("UTF-8")
 	rr = rr.rstrip(' \r\n')
@@ -23,7 +23,7 @@ def system(args, stderr=subprocess.STDOUT):
 
 # result, exitcode
 def systemSafe(args):
-	if g.debugPrintSystem:
+	if gCfg.debugPrintSystem:
 		print("system command - %s" % args)
 	# stderr를 지원못한다. getstatusoutput은 쓰면안된다. stderr는 output에 같이 온다.
 	status,output = subprocess.getstatusoutput(args)
@@ -33,7 +33,7 @@ def systemSafe(args):
 	return rr,status
 
 def systemRet(args):
-	if g.debugPrintSystem:
+	if gCfg.debugPrintSystem:
 		print("system command - %s" % args)
 		
 	ret = subprocess.call(args, shell=True)
@@ -205,3 +205,4 @@ class git:
 
 		itemList = [(x, getStatus(x)) for x in fileList2 if len(x) > 0]
 		return itemList
+

@@ -7,9 +7,9 @@ import urwid.raw_display
 import urwid.web_display
 from urwid.signals import connect_signal
 
-import tool
+from .tool import *
+from .globalBase import *
 
-from globalBase import *
 
 #g.dialog = None
 #g.loop = None       # urwid

@@ -2,23 +2,23 @@
 import os
 import urwid
 
-from globalBase import *
+from .globalBase import *
 
-import urwidHelper as ur
-import tool
+from .urwidHelper import *
+from .tool import *
 
 #import dc
-import myutil
+from .myutil import *
 
 
-class DlgFind(ur.cDialog):
+class DlgFind(cDialog):
 	def __init__(self, onExit=None):
 		super().__init__()
 
 		self.onExit = onExit
-		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([], None)))
+		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(btnListMakeTerminal([], None)))
 		self.widgetFileList.setFocusCb(lambda newFocus: self.onFileFocusChanged(newFocus))
-		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.textListMakeTerminal(["< Nothing to display >"])))
+		self.widgetContent = mListBox(urwid.SimpleListWalker(textListMakeTerminal(["< Nothing to display >"])))
 		self.widgetContent.isViewContent = True
 
 		self.header = ">> dc find - q/F4(Quit) </>,h/l(Prev/Next file) Enter(goto) E(edit)..."
@@ -49,7 +49,7 @@ class DlgFind(ur.cDialog):
 		widget.base_widget.set_label(widget.base_widget.markup[1])
 
 		self.widgetFileList.set_focus_valign("middle")
-		self.selectFileName = myutil.fileBtnName(widget)
+		self.selectFileName = fileBtnName(widget)
 
 		try:
 			with open(self.selectFileName, "r", encoding="UTF-8") as fp:
@@ -60,7 +60,7 @@ class DlgFind(ur.cDialog):
 		ss = ss.replace("\t", "    ")
 
 		del self.widgetContent.body[:]
-		self.widgetContent.body += ur.textListMakeTerminal(ss.splitlines())
+		self.widgetContent.body += textListMakeTerminal(ss.splitlines())
 		self.widgetFrame.set_focus(self.widgetContent)
 		return True
 
@@ -69,7 +69,7 @@ class DlgFind(ur.cDialog):
 			self.close()
 			return
 
-		self.selectFileName = myutil.gitFileBtnName(btn)
+		self.selectFileName = gitFileBtnName(btn)
 		itemPath = os.path.join(os.getcwd(), self.selectFileName)
 		pp = os.path.dirname(itemPath)
 		os.chdir(pp)
@@ -79,13 +79,13 @@ class DlgFind(ur.cDialog):
 		self.close()
 
 	def inputFilter(self, keys, raw):
-		if ur.filterKey(keys, "down"):
+		if filterKey(keys, "down"):
 			self.widgetContent.scrollDown()
 
-		if ur.filterKey(keys, "up"):
+		if filterKey(keys, "up"):
 			self.widgetContent.scrollUp()
 
-		if ur.filterKey(keys, "enter"):
+		if filterKey(keys, "enter"):
 			self.onFileSelected(self.widgetFileList.focus)
 
 		return keys
@@ -94,7 +94,7 @@ class DlgFind(ur.cDialog):
 		if data is None:
 			self.headerText.set_text(self.header + "!!!")
 			if len(self.widgetFileList.body) == 0:
-				self.widgetFileList.body += ur.btnListMakeTerminal(["< No result >"], None)
+				self.widgetFileList.body += btnListMakeTerminal(["< No result >"], None)
 			return
 
 		ss = data.decode("UTF-8")
@@ -128,7 +128,7 @@ class DlgFind(ur.cDialog):
 			markup = ("std", line)
 			markupF = ('std_f', line)
 
-			btn = ur.btnGen(markup, markupF, self.cbFileSelect, len(self.widgetFileList.body) == 0)
+			btn = btnGen(markup, markupF, self.cbFileSelect, len(self.widgetFileList.body) == 0)
 			self.widgetFileList.body.append(btn)
 			if len(self.widgetFileList.body) == 1:
 				self.onFileFocusChanged(0)
@@ -164,10 +164,10 @@ class DlgFind(ur.cDialog):
 
 		elif key == "e" or key == "E":
 			btn = self.widgetFileList.focus
-			fname = myutil.gitFileBtnName(btn)
+			fname = gitFileBtnName(btn)
 
 			g.loop.stop()
-			tool.systemRet("%s %s" % (g.editApp, fname))
+			systemRet("%s %s" % (g.editApp, fname))
 			g.loop.start()
 
 		elif key == "H":

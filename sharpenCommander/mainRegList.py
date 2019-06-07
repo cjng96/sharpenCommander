@@ -5,12 +5,11 @@ import subprocess
 
 from multiprocessing import Pool
 
-import urwidHelper as ur
-from tool import git, system, systemSafe, systemRet, programPath
-import tool
-import  myutil
+from .urwidHelper import *
+from .tool import *
+from .myutil import *
 
-from globalBase import *
+from .globalBase import *
 
 
 def _repoGetStatus(item):
@@ -89,7 +88,7 @@ def getTitle(item):
 	return ss
 
 # 두칸씩 작은 오버레이로 띄우자
-class DlgRegFolderSetting(ur.cDialog):
+class DlgRegFolderSetting(cDialog):
 	def __init__(self, onExit, item):
 		super().__init__()
 		self.onExit = onExit
@@ -103,8 +102,8 @@ class DlgRegFolderSetting(ur.cDialog):
 
 		self.lbNames = urwid.Text("Names -----------")
 		self.lbGroups = urwid.Text("Groups -----------")
-		self.widgetListName = ur.mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([], None)))
-		self.widgetListGroup = ur.mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal(["< No group >"], None)))
+		self.widgetListName = mListBox(urwid.SimpleFocusListWalker(btnListMakeTerminal([], None)))
+		self.widgetListGroup = mListBox(urwid.SimpleFocusListWalker(btnListMakeTerminal(["< No group >"], None)))
 
 		#urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
 		self.lbHelp = urwid.Text("Insert: new name/group, Delete: remove name/group, R: toggle repo status")
@@ -129,12 +128,12 @@ class DlgRegFolderSetting(ur.cDialog):
 
 		names = self.item["names"]
 		del self.widgetListName.body[:]
-		self.widgetListName.body += ur.btnListMakeTerminal(names, None)
+		self.widgetListName.body += btnListMakeTerminal(names, None)
 
 		groups = self.item["groups"]
 		if len(groups) > 0:
 			del self.widgetListGroup.body[:]
-			self.widgetListGroup.body += ur.btnListMakeTerminal(groups, None)
+			self.widgetListGroup.body += btnListMakeTerminal(groups, None)
 
 		#self.widgetFrame.set_focus(self.widgetContent)
 
@@ -158,7 +157,7 @@ class DlgRegFolderSetting(ur.cDialog):
 					g.configSave()
 					self.showInfo()
 
-				ur.popupInput("Input new name", "", onOk, width=60)
+				popupInput("Input new name", "", onOk, width=60)
 
 			elif focusWidget == self.widgetListGroup:
 				def onOk(ss):
@@ -166,7 +165,7 @@ class DlgRegFolderSetting(ur.cDialog):
 					g.configSave()
 					self.showInfo()
 
-				ur.popupInput("Input new group", "", onOk, width=60)
+				popupInput("Input new group", "", onOk, width=60)
 
 		elif key == "delete":
 			focusWidget = self.widgetFrame.original_widget.get_focus()
@@ -177,7 +176,7 @@ class DlgRegFolderSetting(ur.cDialog):
 					g.configSave()
 					self.showInfo()
 
-				ur.popupAsk("Remove Name", "[%s] will be deleted. Are you sure?" % ss, onOk)
+				popupAsk("Remove Name", "[%s] will be deleted. Are you sure?" % ss, onOk)
 
 			elif focusWidget == self.widgetListGroup:
 				ss = self.widgetListGroup.focus.original_widget.get_label()
@@ -186,17 +185,17 @@ class DlgRegFolderSetting(ur.cDialog):
 					g.configSave()
 					self.showInfo()
 
-				ur.popupAsk("Remove Group", "[%s] will be deleted. Are you sure?" % ss, onOk)
+				popupAsk("Remove Group", "[%s] will be deleted. Are you sure?" % ss, onOk)
 
 
-class DlgRegList(ur.cDialog):
+class DlgRegList(cDialog):
 	def __init__(self, onExit):
 		super().__init__()
 
 		self.onExit = onExit
-		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([], None)))
+		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(btnListMakeTerminal([], None)))
 		#self.widgetFileList.setFocusCb(lambda newFocus: self.onFileFocusChanged(newFocus))
-		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.textListMakeTerminal(["< Nothing to display >"])))
+		self.widgetContent = mListBox(urwid.SimpleListWalker(textListMakeTerminal(["< Nothing to display >"])))
 		#self.widgetContent.isViewContent = True
 
 		self.header = ">> dc repo list - J/K(move) E(modify) P(pull all) del Q/esc(quit)"
@@ -205,7 +204,7 @@ class DlgRegList(ur.cDialog):
 		#self.widgetFrame = urwid.Pile(
 		#	[(15, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
 		self.widgetFrame = urwid.AttrMap(self.widgetFileList, 'std')
-		self.edInput = ur.editGen("$ ", "", lambda edit, text: self.onInputChanged(edit, text))
+		self.edInput = editGen("$ ", "", lambda edit, text: self.onInputChanged(edit, text))
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText, footer=self.edInput)
 
 		self.itemList = None
@@ -291,7 +290,7 @@ class DlgRegList(ur.cDialog):
 		idx = 0
 		if self.widgetFileList.body.focus is not None:
 			idx = self.widgetFileList.body.focus
-		myutil.refreshBtnListMarkupTuple(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
+		refreshBtnListMarkupTuple(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
 		if idx >= len(self.widgetFileList.body):
 			idx = len(self.widgetFileList.body)-1
 		self.widgetFileList.set_focus(idx)

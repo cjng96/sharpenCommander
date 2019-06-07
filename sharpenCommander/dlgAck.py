@@ -2,10 +2,10 @@
 import os
 import urwid
 
-from globalBase import *
-import urwidHelper as ur
+from .globalBase import *
+from .urwidHelper import *
 
-import tool
+from .tool import *
 
 
 class AckFile:
@@ -23,16 +23,16 @@ class AckFile:
 		return [(themeTitle, self.fname), (themeCount, "(%d)" % len(self.lstLine))]
 
 
-class DlgAck(ur.cDialog):
+class DlgAck(cDialog):
 	def __init__(self, onExit=None):
 		super().__init__()
 
 		self.onExit = onExit
-		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([], None)))
+		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(btnListMakeTerminal([], None)))
 		self.widgetFileList.setFocusCb(lambda newFocus: self.onFileFocusChanged(newFocus))
 
 		#self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.textListMakeTerminal([])))
-		self.widgetContent = ur.mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([], None)))
+		self.widgetContent = mListBox(urwid.SimpleFocusListWalker(btnListMakeTerminal([], None)))
 		self.widgetContent.setFocusCb(lambda newFocus: self.onLineFocusChanged(newFocus))
 
 		self.header = ">> dc V%s - ack-grep - q/F4(Quit),<-,->/[,](Prev/Next file),Enter(goto),E(edit)..." % g.version

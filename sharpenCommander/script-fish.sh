@@ -14,24 +14,24 @@ function goPath
 end
 
 function sc
-	eval /usr/bin/env python3 $SC_DIR/sc.py $argv
+	python3 $SC_DIR/run.py $argv
 	goPath
 end
 function scf
-	eval /usr/bin/env python3 $SC_DIR/sc.py find $argv
+	python3 $SC_DIR/run.py find $argv
 	goPath
 end
 function scg
-	eval /usr/bin/env python3 $SC_DIR/sc.py grep $argv
+	python3 $SC_DIR/run.py grep $argv
 	goPath
 end
 function scw
-	eval /usr/bin/env python3 $SC_DIR/sc.py which $argv
+	python3 $SC_DIR/run.py which $argv
 	goPath
 end
 
 function scd
-	eval /usr/bin/env python3 -m pudb.run $SC_DIR/sc.py $argv
+	python3 -m pudb.run $SC_DIR/run.py $argv
 	goPath
 end
 

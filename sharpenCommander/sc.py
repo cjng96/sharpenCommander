@@ -23,19 +23,17 @@ from urwid.signals import connect_signal
 
 from distutils.spawn import find_executable
 
-import tool
-from tool import git #, system, systemSafe, systemRet, programPath
+from .globalBase import *
+from .tool import * #git, system, systemSafe, systemRet, programPath
+from .urwidHelper import *
+from .myutil import *
 
-from globalBase import *
+from .dlgAck import DlgAck
+from .dlgFind import DlgFind
+from .mainGitStatus import DlgGitStatus
+from .mainRegList import DlgRegList
+from .mainGoto import mDlgGoto
 
-import urwidHelper as ur
-import myutil
-
-from dlgAck import DlgAck
-from dlgFind import DlgFind
-from mainGitStatus import DlgGitStatus
-from mainRegList import DlgRegList
-from mainGoto import mDlgGoto
 
 
 '''
@@ -84,7 +82,7 @@ class Ansi:
 
 class MyProgram(Program):
 	def __init__(self):
-		super().__init__("1.1.0", tool.programPath("dc.log"))
+		super().__init__("1.1.0", programPath("dc.log"))
 		self.regList = []
 		self.configPath = ""    # ~/.devcmd/path.py
 
@@ -152,7 +150,7 @@ class MyProgram(Program):
 					self.editApp = "vi"
 
 			if "debugPrintSystem" in obj:
-				tool.g.debugPrintSystem = obj["debugPrintSystem"]
+				gCfg.debugPrintSystem = obj["debugPrintSystem"]
 
 		for item in self.regList:
 			item["path"] = os.path.expanduser(item["path"])
@@ -175,13 +173,13 @@ class MyProgram(Program):
 			json.dump(obj, fp, indent=4)  #, separators=(',',':'))
 
 	def savePath(self, pp):
-		with open("/tmp/cmdDevTool.path", "wb") as f:
+		with open("/tmp/cmdDevpath", "wb") as f:
 			f.write(os.path.expanduser(pp).encode())
 
 	def regAdd(self, pp):
 		oldPath = os.getcwd()
 		os.chdir(pp)
-		ss, code = tool.systemSafe("git rev-parse --is-inside-work-tree")
+		ss, code = systemSafe("git rev-parse --is-inside-work-tree")
 		isGitRepo = False
 		if code == 0:
 			isGitRepo = True if ss == "true" else False
@@ -191,21 +189,21 @@ class MyProgram(Program):
 		name = os.path.basename(pp)
 		g.regList.append(dict(names=[name], path=pp, groups=[], repo=isGitRepo))
 		g.configSave()
-		ur.popupMsg("Regiter", "The path is registerted successfully\n%s" % pp, 60)
+		popupMsg("Regiter", "The path is registerted successfully\n%s" % pp, 60)
 
 	def regRemove(self, pp):
 		item = g.regFindByPath(pp)
 		if item is None:
-			ur.popupMsg("Unregister", "The path is not registered\n%s" % pp, 60)
+			popupMsg("Unregister", "The path is not registered\n%s" % pp, 60)
 			return
 
 		def onOk():
 			g.regList.remove(item)
 			g.configSave()
 			#self.fileRefresh()
-			ur.popupMsg("Unregister", "The path is unregisterted successfully\n%s" % pp, 60)
+			popupMsg("Unregister", "The path is unregisterted successfully\n%s" % pp, 60)
 
-		ur.popupAsk("Unregister", "Do you want to unregister the folder?\n%s" % pp, onOk)
+		popupAsk("Unregister", "Do you want to unregister the folder?\n%s" % pp, onOk)
 
 	def regFindByName(self, target):
 		for pp in self.regList:
@@ -320,14 +318,14 @@ class MyProgram(Program):
 		ss2 = remoteBranch.split("/")		
 
 		# push it	
-		ss, status = tool.systemSafe("git push %s %s:%s" % (ss2[0], currentBranch, target))
+		ss, status = systemSafe("git push %s %s:%s" % (ss2[0], currentBranch, target))
 		print(ss)
 		
 		if status != 0:
 			while True:
 				hr = input("\n\nPush failed. Do you want to push with force option?[y/N]: ").lower()
 				if hr == 'y':
-					ss = tool.system("git push origin %s:%s -f" % (currentBranch, target))
+					ss = system("git push origin %s:%s -f" % (currentBranch, target))
 					print(ss)				
 					break
 				elif hr == 'n' or hr == '':
@@ -343,21 +341,21 @@ class MyProgram(Program):
 		return True
 
 
-class mDlgMainDc(ur.cDialog):
+class mDlgMainDc(cDialog):
 	def __init__(self):
 		super().__init__()
 
 		# content
-		self.widgetFileList = ur.mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([], None)))
-		self.widgetCmdList = ur.mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([], None))) # 이거 파일목록 아래에뭔가 보여주는건데..
+		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(btnListMakeTerminal([], None)))
+		self.widgetCmdList = mListBox(urwid.SimpleFocusListWalker(btnListMakeTerminal([], None))) # 이거 파일목록 아래에뭔가 보여주는건데..
 		self.widgetContent = urwid.Pile([self.widgetFileList, ('pack', urwid.Divider('-')), (8, self.widgetCmdList)])
 		self.widgetContent.isShow = True
 
 		# extra
 		self.widgetWorkLabel = urwid.Text("< Workspace >")
-		self.widgetWorkList = ur.mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([], None)))
+		self.widgetWorkList = mListBox(urwid.SimpleFocusListWalker(btnListMakeTerminal([], None)))
 		self.widgetTempLabel = urwid.Text("< Attr >")
-		self.widgetTempList = ur.mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([], None)))
+		self.widgetTempList = mListBox(urwid.SimpleFocusListWalker(btnListMakeTerminal([], None)))
 		self.widgetExtraList = urwid.Pile([("pack", self.widgetWorkLabel), self.widgetWorkList, ("pack", self.widgetTempLabel), self.widgetTempList])
 
 		# main frame + input
@@ -365,7 +363,7 @@ class mDlgMainDc(ur.cDialog):
 		self.title = ">> sc V%s" % g.version
 		self.headerText = urwid.Text(self.title)
 		self.widgetFrame = urwid.Columns([('weight', 1, self.widgetContent), (20, self.widgetExtraList)])
-		self.edInput = ur.editGen("$ ", "", lambda edit, text: self.onInputChanged(edit, text))
+		self.edInput = editGen("$ ", "", lambda edit, text: self.onInputChanged(edit, text))
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText, footer=self.edInput)
 
 		self.cmd = ""
@@ -404,7 +402,7 @@ class mDlgMainDc(ur.cDialog):
 
 		# list
 		lstItem = [ ("std", x, None) for x in lstItem ]
-		myutil.refreshBtnListMarkupTuple(lstItem, self.widgetCmdList, lambda btn: self.onFileSelected(btn))
+		refreshBtnListMarkupTuple(lstItem, self.widgetCmdList, lambda btn: self.onFileSelected(btn))
 
 	def onInputChanged(self, edit, text):
 		if self.cmd == "find" or self.cmd == "goto":
@@ -432,7 +430,7 @@ class mDlgMainDc(ur.cDialog):
 		lst = [("greenfg", x["path"], x) for x in lstPath]
 
 		self.headerText.set_text("%s - %d" % (self.title, len(lst)))
-		myutil.refreshBtnListMarkupTuple(lst, self.widgetFileList, lambda btn: self.onFileSelected(btn))
+		refreshBtnListMarkupTuple(lst, self.widgetFileList, lambda btn: self.onFileSelected(btn))
 
 	def fileRefresh(self, newText = None):
 		if self.cmd == "goto":  # deprecated code
@@ -588,7 +586,7 @@ class mDlgMainDc(ur.cDialog):
 				else:
 					cntModified += 1
 
-				name = ur.termianl2plainText(gitItem[0])[3:]
+				name = termianl2plainText(gitItem[0])[3:]
 				def gen2(x):
 					#print("target - [%s] - %s" % (x[2], name))
 					if x[1] == name:
@@ -652,7 +650,7 @@ class mDlgMainDc(ur.cDialog):
 			focusPos = 0
 
 		del self.widgetFileList.body[:]
-		self.widgetFileList.body += ur.btnListMakeMarkup(itemList, lambda btn: self.onFileSelected(btn))
+		self.widgetFileList.body += btnListMakeMarkup(itemList, lambda btn: self.onFileSelected(btn))
 		self.widgetFileList.focus_position = focusPos
 
 		self.lastPath = curPath
@@ -778,22 +776,22 @@ class mDlgMainDc(ur.cDialog):
 
 		if self.cmd == "find":
 			# ctrl+j는 enter, alt+시리즈는 안오고.. 그냥 shift+JKH를 쓴다
-			if ur.filterKey(keys, "up"):
+			if filterKey(keys, "up"):
 				self.widgetFileList.focusPrevious()
-			elif ur.filterKey(keys, "down"):
+			elif filterKey(keys, "down"):
 				self.widgetFileList.focusNext()
-			elif ur.filterKey(keys, "J"):
+			elif filterKey(keys, "J"):
 				self.widgetFileList.focusNext()
-			elif ur.filterKey(keys, "K"):
+			elif filterKey(keys, "K"):
 				self.widgetFileList.focusPrevious()
-			elif ur.filterKey(keys, "U"):
+			elif filterKey(keys, "U"):
 				self.changePath("..", "find")
-			elif ur.filterKey(keys, "H"):
+			elif filterKey(keys, "H"):
 				self.changePath(self.getFocusPath(), "find")
-			elif ur.filterKey(keys, "esc"):
+			elif filterKey(keys, "esc"):
 				self.fileRefreshKeepFocus()
 
-			elif ur.filterKey(keys, "enter"):
+			elif filterKey(keys, "enter"):
 				# self.mainWidget.set_focus("body")
 				pp = self.getFocusPath()
 				if os.path.isdir(pp):
@@ -801,10 +799,10 @@ class mDlgMainDc(ur.cDialog):
 				else:
 					self.fileRefreshKeepFocus()
 
-			elif ur.filterKey(keys, "C"):
+			elif filterKey(keys, "C"):
 				self.doCommit()
 
-			elif ur.filterKey(keys, "ctrl ^"):
+			elif filterKey(keys, "ctrl ^"):
 				if self.mainWidget.get_focus() == "body":
 					pass
 				elif self.mainWidget.get_focus() == "footer":
@@ -814,7 +812,7 @@ class mDlgMainDc(ur.cDialog):
 					self.doFind(ss)
 					return
 
-		elif ur.filterKey(keys, "enter"):
+		elif filterKey(keys, "enter"):
 			if self.mainWidget.get_focus() == "body":
 				self.changePath(self.getFocusPath())
 				return
@@ -831,11 +829,11 @@ class mDlgMainDc(ur.cDialog):
 						if i == "$":
 							arr[idx] = self.getFocusName()
 					ss = " ".join(arr)
-					tool.dlog(ss)
+					dlog(ss)
 
 					g.loop.stop()
 					print("cmd: %s..." % ss)
-					ss,code = tool.systemSafe(ss)
+					ss,code = systemSafe(ss)
 					print(ss)
 					input("Enter to return...(exit code:%d)" % code) # TODO: support esc key?
 					g.loop.start()
@@ -852,7 +850,7 @@ class mDlgMainDc(ur.cDialog):
 						item = g.regFindByPath(pp)
 						if item is not None:
 							# already registered
-							ur.popupMsg("Regiter the folder", "The path is already registerted\n%s" % pp, 60)
+							popupMsg("Regiter the folder", "The path is already registerted\n%s" % pp, 60)
 							return
 
 						# add
@@ -872,7 +870,7 @@ class mDlgMainDc(ur.cDialog):
 						item = g.regFindByPath(pp)
 						if item is None:
 							# no item
-							ur.popupMsg("Set repo status", "The path is no registered\n%s" % pp, 60)
+							popupMsg("Set repo status", "The path is no registered\n%s" % pp, 60)
 							return
 
 						# set repo
@@ -880,7 +878,7 @@ class mDlgMainDc(ur.cDialog):
 
 						g.configSave()
 						self.fileRefresh()
-						ur.popupMsg("Set repo status", "The path is set as %s\n%s" % ("Repo" if item["repo"] else "Not Repo", pp), 60)
+						popupMsg("Set repo status", "The path is set as %s\n%s" % ("Repo" if item["repo"] else "Not Repo", pp), 60)
 						return
 					else:
 						if ss.startswith("find ") or ss.startswith("ff "):
@@ -893,7 +891,7 @@ class mDlgMainDc(ur.cDialog):
 							self.doGrep(target)
 							return
 
-						ur.popupMsg("Command", "No valid cmd\n -- %s" % ss)
+						popupMsg("Command", "No valid cmd\n -- %s" % ss)
 
 			# 이거 뭐하는 코드지?
 			#item = self.widgetCmdList.focus
@@ -901,7 +899,7 @@ class mDlgMainDc(ur.cDialog):
 			#self.changePath(pp)
 
 		"""
-		if ur.filterKey(keys, "left"):
+		if filterKey(keys, "left"):
 			pp = os.getcwd()
 			pp = os.path.dirname(pp)
 			os.chdir(pp)
@@ -972,7 +970,7 @@ class mDlgMainDc(ur.cDialog):
 
 		# std, focus, text, attr
 		itemList =  [ ("std", os.path.basename(x), x) for x in self.workList ]
-		self.widgetWorkList.body += ur.btnListMakeMarkup(itemList, lambda btn: self.onFileSelected(btn))
+		self.widgetWorkList.body += btnListMakeMarkup(itemList, lambda btn: self.onFileSelected(btn))
 		self.widgetWorkList.focus_position = self.workPt
 
 	def doCommit(self):
@@ -980,7 +978,7 @@ class mDlgMainDc(ur.cDialog):
 			g.doSetMain(self)
 
 		if self.gitBranch is None:
-			ur.popupMsg("Error", "Not git repository")
+			popupMsg("Error", "Not git repository")
 			return
 
 		dlg = DlgGitStatus(onExit)
@@ -1047,7 +1045,7 @@ class mDlgMainDc(ur.cDialog):
 
 		elif key == "T":
 			g.loop.stop()
-			tool.systemRet("tig")
+			systemRet("tig")
 			g.loop.start()
 			self.fileRefresh()
 			return
@@ -1091,7 +1089,7 @@ class mDlgMainDc(ur.cDialog):
 			#name = os.path.basename(pp)
 
 			g.loop.stop()
-			tool.systemRet("%s %s" % (g.editApp, pp))
+			systemRet("%s %s" % (g.editApp, pp))
 			g.loop.start()
 			self.fileRefresh()
 
@@ -1112,7 +1110,7 @@ class mDlgMainDc(ur.cDialog):
 			self.fileRefresh()
 
 		#elif key == "ctrl h":
-		#	ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
+		#	popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 
 		elif key == "meta right" or key == "meta l":
 			self.workNew()
@@ -1253,8 +1251,10 @@ def uiMain(dlgClass, cmds=None):
 
 		return g.dialog.inputFilter(keys, raw)
 
+	print("g is - ", g.__dict__)
+
 	g.dialog = dlg
-	g.loop = urwid.MainLoop(dlg.mainWidget, ur.palette, urwid.raw_display.Screen(),
+	g.loop = urwid.MainLoop(dlg.mainWidget, palette, urwid.raw_display.Screen(),
 							unhandled_input=lambda key: g.dialog.unhandled(key),
 							input_filter=urwidInputFilter)
 
@@ -1390,7 +1390,7 @@ class GitActor(object):
 		isSame = self.checkSameWith(name, branchName, remoteBranch)
 		if isSame:
 			# check staged file and untracked file
-			ss = tool.system("git status -s")
+			ss = system("git status -s")
 			if ss != "":
 				print(ss)
 		else:
@@ -1444,12 +1444,12 @@ class GitActor(object):
 				self.log2(Color.blue, name, "merge with %s - %s - bin type" % (remoteBranch, path))
 
 				uname = "###groupRepo###"
-				ss = tool.system("git stash save -u \"%s\"" % uname)
+				ss = system("git stash save -u \"%s\"" % uname)
 				print(ss)
-				ss = tool.system("git merge %s" % remoteBranch)
+				ss = system("git merge %s" % remoteBranch)
 				print(ss)
 				stashName = git.stashGetNameSafe(uname)
-				ss = tool.system("git stash pop %s" % stashName)
+				ss = system("git stash pop %s" % stashName)
 				print(ss)
 	
 		diffList = git.checkRebaseable(branchName, remoteBranch)
@@ -1457,7 +1457,7 @@ class GitActor(object):
 			self.log2(Color.red, name, "NOT be able to fast forward - %s" % path)
 		else:			
 			self.log2(Color.blue, name, "merge with %s - %s" % (remoteBranch, path))
-			ss = tool.system("git rebase %s" % remoteBranch)
+			ss = system("git rebase %s" % remoteBranch)
 			print(ss)
 
 		return True
@@ -1470,7 +1470,7 @@ class GitActor(object):
 			return False
 
 		self.log2(Color.blue, name, "fetch --prune - %s" % path)
-		tool.system("git fetch --prune")
+		system("git fetch --prune")
 
 		return True
 
@@ -1485,7 +1485,7 @@ class GitActor(object):
 		if g.isPullRebase:
 			cmd += " -r"
 		self.log2(Color.blue, name, "%s - %s" % (cmd, path))
-		ss, code = tool.systemSafe("git %s" % cmd)
+		ss, code = systemSafe("git %s" % cmd)
 		if code != 0:
 			self.log2(Color.red, name, "pull is failed\n%s" % ss)
 			return False
@@ -1496,9 +1496,9 @@ gr = GitActor()
 
 
 def winTest():
-	ss = tool.system("c:\\cygwin64\\bin\\git.exe diff --color dc.py")
+	ss = system("c:\\cygwin64\\bin\\git.exe diff --color dc.py")
 
-	kk = ur.terminal2markup(ss)
+	kk = terminal2markup(ss)
 	st = ss.find("\x1b")
 	print("%d %x %x %x %x" % (st, ss[0], ss[1], ss[2], ss[3]))
 	sys.exit(0)
@@ -1535,7 +1535,7 @@ def setupSc():
 				print("Appending script-bash.sh into bashrc")
 				dir = os.path.dirname(__file__)
 				fp.write("\n%s\n. %s/script-bash.sh\n\n" % (l1, dir))
-				print("Please 'source ~/.bashrc' then 'sc' application.")
+				print("Please 'source ~/.bashrc' then type 'sc' to run.")
 				sys.exit(1)
 
 	print("SC_OK is not set.")
@@ -1546,7 +1546,7 @@ def main():
 	setupSc()
 	#winTest()
 	try:
-		os.remove("/tmp/cmdDevTool.path")
+		os.remove("/tmp/cmdDevpath")
 	except OSError:
 		pass
 
@@ -1606,7 +1606,7 @@ def main():
 			'''
 			for repo in gr.repoList:
 				repoPath = os.path.realpath(repo["path"])
-				if cur.startswith(repoPath+"/"):
+				if cstartswith(repoPath+"/"):
 					second = repo["names"][0]
 					break
 			if second == ".":
@@ -1637,7 +1637,7 @@ def main():
 		return
 		
 	elif cmd == "which":
-		ss, status = tool.systemSafe(" ".join(['"' + c + '"' for c in sys.argv[1:]]))
+		ss, status = systemSafe(" ".join(['"' + c + '"' for c in sys.argv[1:]]))
 		print(ss)
 		print("goto which path...")
 		g.savePath(os.path.dirname(ss))
@@ -1702,13 +1702,12 @@ def main():
 	g.cd(cmd)
 	return 1
 
-
-
+"""
 if __name__ == "__main__":
 	try:
 		ret = main()
 	except ErrFailure as e:
 		print(e)
 		sys.exit(1)
-	
+"""	
 

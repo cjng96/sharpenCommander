@@ -30,7 +30,7 @@ setup(
 	python_requires  = '>=3',
 	platforms        = "Posix; MacOS X; Windows",
 	zip_safe         = False,
-	entry_points     = {"console_scripts": ["sc=sharpenCommander:sc.main"]},
+	entry_points     = {"console_scripts": ["sc=sharpenCommander:run.run"]},
 	classifiers      = [
 		"Operating System :: OS Independent",		
 		'Programming Language :: Python',

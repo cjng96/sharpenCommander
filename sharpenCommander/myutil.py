@@ -1,5 +1,5 @@
 
-import urwidHelper as ur
+from .urwidHelper import *
 
 def unwrapQutesFilename(ss):
 	if ss.startswith('"'):
@@ -18,7 +18,7 @@ def refreshBtnListMarkupTuple(markupItemList, listBox, onClick):
 	if listBox.itemCount == 0:
 		markupItemList = [("std", "< Nothing > ", None)]
 
-	listBox.body += ur.btnListMakeMarkup(markupItemList, onClick)
+	listBox.body += btnListMakeMarkup(markupItemList, onClick)
 
 
 def fileBtnName(btn):

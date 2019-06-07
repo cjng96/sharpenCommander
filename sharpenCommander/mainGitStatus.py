@@ -6,13 +6,12 @@ import subprocess
 from multiprocessing import Pool
 
 
-from globalBase import *
+from .globalBase import *
 
-import urwidHelper as ur
-import myutil
+from .urwidHelper import *
+from .myutil import *
 
-import tool
-from tool import git, system, systemSafe, systemRet, programPath
+from .tool import *
 
 
 """
@@ -24,10 +23,10 @@ def refreshBtnListTerminal(terimalItemList, listBox, onClick):
 	if listBox.itemCount == 0:
 		terimalItemList = [("< Nothing > ", None)]
 
-	listBox.body += ur.btnListMakeTerminal(terimalItemList, onClick)
+	listBox.body += btnListMakeTerminal(terimalItemList, onClick)
 
 
-class DlgGitCommit(ur.cDialog):
+class DlgGitCommit(cDialog):
 	themes = [("greenfg", "greenfg_f"), ("std", "std_f")]
 
 	def __init__(self, onExit):
@@ -36,10 +35,10 @@ class DlgGitCommit(ur.cDialog):
 		self.selectFileName = ""
 
 		self.onExit = onExit
-		self.edInput = ur.editGen("Input commit message => ", "", lambda edit, text: self.onMsgChanged(edit, text))
-		self.widgetFileList = ur.mListBox \
-			(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([("< No files >", None)], None)))
-		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.textListMakeTerminal(["< Nothing to display >"])))
+		self.edInput = editGen("Input commit message => ", "", lambda edit, text: self.onMsgChanged(edit, text))
+		self.widgetFileList = mListBox \
+			(urwid.SimpleFocusListWalker(btnListMakeTerminal([("< No files >", None)], None)))
+		self.widgetContent = mListBox(urwid.SimpleListWalker(textListMakeTerminal(["< Nothing to display >"])))
 
 		self.headerText = urwid.Text(">> Commit - f9/f10(Prev/Next file) f4(cancel operation)")
 		self.widgetFrame = urwid.Pile \
@@ -73,7 +72,7 @@ class DlgGitCommit(ur.cDialog):
 		ss = ss.replace("\t", "    ")
 
 		del self.widgetContent.body[:]
-		self.widgetContent.body += ur.textListMakeTerminal(ss.split("\n"))
+		self.widgetContent.body += textListMakeTerminal(ss.split("\n"))
 		self.widgetFrame.set_focus(self.widgetContent)
 
 	def refreshFileContentCur(self):
@@ -85,18 +84,18 @@ class DlgGitCommit(ur.cDialog):
 		# staged file list
 		fileList = system("git diff --name-only --cached")
 		itemList = [ (self.themes[0][0], x, "s") for x in fileList.split("\n") if x.strip() != "" ]
-		self.widgetFileList.body += ur.btnListMakeMarkup(itemList, lambda btn: self.onFileSelected(btn))
+		self.widgetFileList.body += btnListMakeMarkup(itemList, lambda btn: self.onFileSelected(btn))
 
 		# general file list
 		fileList = system("git diff --name-only")
 		itemList = [ (self.themes[1][0], x, "c") for x in fileList.split("\n") if x.strip() != ""  ]
-		self.widgetFileList.body += ur.btnListMakeMarkup(itemList, lambda btn: self.onFileSelected(btn), False)
+		self.widgetFileList.body += btnListMakeMarkup(itemList, lambda btn: self.onFileSelected(btn), False)
 
 		# for widget in self.widgetFileList.body:
 		#	self._applyFileColorTheme(widget, 0)
 
 		if len(self.widgetFileList.body) == 0:
-			self.widgetFileList.body += ur.btnListMakeTerminal([("< Nothing >", None)], None, False)
+			self.widgetFileList.body += btnListMakeTerminal([("< Nothing >", None)], None, False)
 
 		# self.onFileFocusChanged(self.widgetFileList.focus_position)
 		self.onFileSelected(self.widgetFileList.focus)	# auto display
@@ -105,10 +104,10 @@ class DlgGitCommit(ur.cDialog):
 		if g.loop.widget != g.dialog.mainWidget:
 			return keys
 
-		if ur.filterKey(keys, "down"):
+		if filterKey(keys, "down"):
 			self.widgetContent.scrollDown()
 
-		if ur.filterKey(keys, "up"):
+		if filterKey(keys, "up"):
 			self.widgetContent.scrollUp()
 
 		return keys
@@ -146,8 +145,8 @@ class DlgGitCommit(ur.cDialog):
 				self.refreshFileList()
 
 			btn = self.widgetFileList.focus
-			fname = myutil.gitFileBtnName(btn)
-			ur.popupAsk3("Git add", "Do you want to add a file[%s]?" % fname, "Add", "Prompt", "Cancel", onAdd, onPrompt)
+			fname = gitFileBtnName(btn)
+			popupAsk3("Git add", "Do you want to add a file[%s]?" % fname, "Add", "Prompt", "Cancel", onAdd, onPrompt)
 
 		elif key == "R":
 			def onReset():
@@ -155,8 +154,8 @@ class DlgGitCommit(ur.cDialog):
 				self.refreshFileList()
 
 			btn = self.widgetFileList.focus
-			fname = myutil.gitFileBtnName(btn)
-			ur.popupAsk("Git reset", "Do you want to reset a file[%s]?" % fname, onReset)
+			fname = gitFileBtnName(btn)
+			popupAsk("Git reset", "Do you want to reset a file[%s]?" % fname, onReset)
 
 		elif key == "D":
 			def onDrop():
@@ -164,12 +163,12 @@ class DlgGitCommit(ur.cDialog):
 				self.refreshFileList()
 
 			btn = self.widgetFileList.focus
-			fname = myutil.gitFileBtnName(btn)
-			ur.popupAsk("Git reset(f)", "Do you want to drop file[%s]s modification?" % fname, onDrop)
+			fname = gitFileBtnName(btn)
+			popupAsk("Git reset(f)", "Do you want to drop file[%s]s modification?" % fname, onDrop)
 
 		elif key == "E":
 			btn = self.widgetFileList.focus
-			fname = myutil.gitFileBtnName(btn)
+			fname = gitFileBtnName(btn)
 
 			g.loop.stop()
 			systemRet("vim %s" % fname)
@@ -187,7 +186,7 @@ class DlgGitCommit(ur.cDialog):
 				ss = system("git commit -a -m \"%s\"" % tt[:-1])
 				self.close()
 
-			ur.popupAsk("Git Commit", "Do you want to commit all modification?", onCommit)
+			popupAsk("Git Commit", "Do you want to commit all modification?", onCommit)
 
 		elif key == "enter":
 			# commit
@@ -203,23 +202,23 @@ class DlgGitCommit(ur.cDialog):
 				g.loop.start()
 				self.refreshFileList()
 
-			ur.popupAsk("Git commit(all)", "Do you want to commit all content?", onCommit)
+			popupAsk("Git commit(all)", "Do you want to commit all content?", onCommit)
 
 		#elif key == "h":
 		#	ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 
 
 
-class DlgGitStatus(ur.cDialog):
+class DlgGitStatus(cDialog):
 	def __init__(self, onExit=None):
 		super().__init__()
 
 		self.onExit = onExit
 		self.selectFileName = ""
 
-		self.widgetFileList = ur.mListBox(
-			urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([("< No files >", None)], None)))
-		self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.textListMakeTerminal(["< Nothing to display >"])))
+		self.widgetFileList = mListBox(
+			urwid.SimpleFocusListWalker(btnListMakeTerminal([("< No files >", None)], None)))
+		self.widgetContent = mListBox(urwid.SimpleListWalker(textListMakeTerminal(["< Nothing to display >"])))
 
 		self.headerText = urwid.Text(
 			">> sc stage - q/F4(Quit) J/K,h/l(Prev/Next file) j/k(scroll) A(Add) P(Prompt) R(Reset) D(drop) C(Commit) I(Ignore)")
@@ -249,7 +248,7 @@ class DlgGitStatus(ur.cDialog):
 		# why btn.get_label() is impossible?
 		label = btn.original_widget.get_label()
 		# self.selectFileName = gitFileBtnName(btn)
-		self.selectFileName = myutil.gitFileLastName(btn)
+		self.selectFileName = gitFileLastName(btn)
 		# g.headerText.set_text("file - " + label)
 
 		# display
@@ -275,7 +274,7 @@ class DlgGitStatus(ur.cDialog):
 		ss = ss.replace("\t", "    ")
 
 		del self.widgetContent.body[:]
-		self.widgetContent.body += ur.textListMakeTerminal(ss.splitlines())
+		self.widgetContent.body += textListMakeTerminal(ss.splitlines())
 		self.widgetFrame.set_focus(self.widgetContent)
 
 	def refreshFileContentCur(self):
@@ -310,10 +309,10 @@ class DlgGitStatus(ur.cDialog):
 		if g.loop.widget != g.dialog.mainWidget:
 			return keys
 
-		if ur.filterKey(keys, "down"):
+		if filterKey(keys, "down"):
 			self.widgetContent.scrollDown()
 
-		if ur.filterKey(keys, "up"):
+		if filterKey(keys, "up"):
 			self.widgetContent.scrollUp()
 
 		return keys
@@ -335,7 +334,7 @@ class DlgGitStatus(ur.cDialog):
 		elif key == "A":
 			btn = self.widgetFileList.focus
 			# fname = gitFileBtnName(btn)
-			fname = myutil.gitFileLastName(btn)
+			fname = gitFileLastName(btn)
 			system("git add \"%s\"" % fname)
 			self.refreshFileList(1)
 
@@ -347,12 +346,12 @@ class DlgGitStatus(ur.cDialog):
 				self.refreshFileList()
 
 			btn = self.widgetFileList.focus
-			fname = myutil.gitFileBtnName(btn)
-			ur.popupAsk("Git add", "Do you want to add a file via prompt[%s]?" % fname, onPrompt)
+			fname = gitFileBtnName(btn)
+			popupAsk("Git add", "Do you want to add a file via prompt[%s]?" % fname, onPrompt)
 
 		elif key == "R":
 			btn = self.widgetFileList.focus
-			fname = myutil.gitFileBtnName(btn)
+			fname = gitFileBtnName(btn)
 			system("git reset \"%s\"" % fname)
 			self.refreshFileList()
 
@@ -366,15 +365,15 @@ class DlgGitStatus(ur.cDialog):
 				self.refreshFileList()
 
 			btn = self.widgetFileList.focus
-			fname = myutil.gitFileBtnName(btn)
-			if myutil.gitFileBtnType(btn) == "??":
-				ur.popupAsk("Git reset(f)", "Do you want to delete file[%s]?" % fname, onDelete)
+			fname = gitFileBtnName(btn)
+			if gitFileBtnType(btn) == "??":
+				popupAsk("Git reset(f)", "Do you want to delete file[%s]?" % fname, onDelete)
 			else:
-				ur.popupAsk("Git reset(f)", "Do you want to drop file[%s]s modification?" % fname, onDrop)
+				popupAsk("Git reset(f)", "Do you want to drop file[%s]s modification?" % fname, onDrop)
 
 		elif key == "E":
 			btn = self.widgetFileList.focus
-			fname = myutil.gitFileBtnName(btn)
+			fname = gitFileBtnName(btn)
 
 			g.loop.stop()
 			systemRet("vim %s" % fname)
@@ -389,7 +388,7 @@ class DlgGitStatus(ur.cDialog):
 				g.loop.start()
 				self.refreshFileList()
 
-			ur.popupAsk("Git commit", "Do you want to commit?", onCommit)
+			popupAsk("Git commit", "Do you want to commit?", onCommit)
 
 		elif key == "C":
 			def onExit():
@@ -407,11 +406,11 @@ class DlgGitStatus(ur.cDialog):
 			# check staged data
 			n = self.gitGetStagedCount()
 			if n == 0:
-				ur.popupMsg("Alert", "There is no staged file to commit")
+				popupMsg("Alert", "There is no staged file to commit")
 				return
 
 			dlg = DlgGitCommit(onExit)
 			g.doSetMain(dlg)
 
 		elif key == "h":
-			ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
+			popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
