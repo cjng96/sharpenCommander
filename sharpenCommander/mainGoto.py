@@ -33,9 +33,9 @@ class mDlgGoto(cDialog):
 		super().__init__()
 
 		self.onExit = onExit
-		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(ur.btnListMakeTerminal([], None)))
+		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(btnListMakeTerminal([], None)))
 		#self.widgetFileList.setFocusCb(lambda newFocus: self.onFileFocusChanged(newFocus))
-		#self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.makeTextList(["< Nothing to display >"])))
+		#self.widgetContent = mListBox(urwid.SimpleListWalker(makeTextList(["< Nothing to display >"])))
 		#self.widgetContent.isViewContent = True
 
 		self.header = ">> dc V%s - folder list - JK(move), E(modify), del" % g.version

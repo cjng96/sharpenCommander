@@ -44,5 +44,3 @@ setup(
 		"Programming Language :: Python :: 3.8",
 	]
 )
-
-print("script run - %s" % sys.argv)

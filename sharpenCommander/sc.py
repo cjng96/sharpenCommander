@@ -173,7 +173,7 @@ class MyProgram(Program):
 			json.dump(obj, fp, indent=4)  #, separators=(',',':'))
 
 	def savePath(self, pp):
-		with open("/tmp/cmdDevpath", "wb") as f:
+		with open("/tmp/cmdDevTool.path", "wb") as f:
 			f.write(os.path.expanduser(pp).encode())
 
 	def regAdd(self, pp):
@@ -1544,7 +1544,7 @@ def main():
 	setupSc()
 	#winTest()
 	try:
-		os.remove("/tmp/cmdDevpath")
+		os.remove("/tmp/cmdDevTool.path")
 	except OSError:
 		pass
 
