@@ -205,7 +205,7 @@ class DlgGitCommit(cDialog):
 			popupAsk("Git commit(all)", "Do you want to commit all content?", onCommit)
 
 		#elif key == "h":
-		#	ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
+		#	popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 
 
 
@@ -262,7 +262,7 @@ class DlgGitStatus(cDialog):
 					with open(self.selectFileName, "r", encoding="UTF-8") as fp:
 						ss = fp.read()
 				except UnicodeDecodeError:
-					# ur.popupMsg("Encoding", "Encoding error[%s]" % self.selectFileName);
+					# popupMsg("Encoding", "Encoding error[%s]" % self.selectFileName);
 					ss = "No utf8 file[size:%d]" % os.path.getsize(self.selectFileName)
 
 		else:

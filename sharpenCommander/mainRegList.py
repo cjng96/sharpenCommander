@@ -66,7 +66,7 @@ def getTitle(item):
 					isSame = False
 
 				try:
-					out = tool.git.getBranchStatus()
+					out = git.getBranchStatus()
 					if out is None:
 						ss += "no branch"
 					else:
@@ -105,7 +105,7 @@ class DlgRegFolderSetting(cDialog):
 		self.widgetListName = mListBox(urwid.SimpleFocusListWalker(btnListMakeTerminal([], None)))
 		self.widgetListGroup = mListBox(urwid.SimpleFocusListWalker(btnListMakeTerminal(["< No group >"], None)))
 
-		#urwid.SimpleFocusListWalker(ur.makeBtnListTerminal([], None)))
+		#urwid.SimpleFocusListWalker(makeBtnListTerminal([], None)))
 		self.lbHelp = urwid.Text("Insert: new name/group, Delete: remove name/group, R: toggle repo status")
 
 		self.widgetFrame = urwid.LineBox(urwid.Pile(
@@ -296,7 +296,7 @@ class DlgRegList(cDialog):
 		self.widgetFileList.set_focus(idx)
 		#del self.widgetFileList.body[:]
 		#self.widgetFileList.itemCount = len(lst2)
-		#self.widgetFileList.body += ur.makeBtnListTerminal( , None)
+		#self.widgetFileList.body += makeBtnListTerminal( , None)
 
 	def unhandled(self, key):
 		if key == 'f4' or key == "Q" or key == "esc":

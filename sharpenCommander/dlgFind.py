@@ -123,8 +123,8 @@ class DlgFind(cDialog):
 		for line in self.lstFile:
 			# TODO: filter
 
-			# markup = ur.terminal2markup(line, 0)
-			# markupF = ur.terminal2markup(line, 1)
+			# markup = erminal2markup(line, 0)
+			# markupF = terminal2markup(line, 1)
 			markup = ("std", line)
 			markupF = ('std_f', line)
 
@@ -171,4 +171,4 @@ class DlgFind(cDialog):
 			g.loop.start()
 
 		elif key == "H":
-			ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
+			popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")

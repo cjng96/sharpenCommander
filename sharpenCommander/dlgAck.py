@@ -10,7 +10,7 @@ from .tool import *
 
 class AckFile:
 	def __init__(self, fnameTerminal):
-		self.fname = ur.termianl2plainText(fnameTerminal)
+		self.fname = termianl2plainText(fnameTerminal)
 		# self.fnameMarkup = Urwid.terminal2markup(fnameTerminal, 0)
 		# self.fnameOrig = fnameTerminal
 
@@ -31,7 +31,7 @@ class DlgAck(cDialog):
 		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(btnListMakeTerminal([], None)))
 		self.widgetFileList.setFocusCb(lambda newFocus: self.onFileFocusChanged(newFocus))
 
-		#self.widgetContent = ur.mListBox(urwid.SimpleListWalker(ur.textListMakeTerminal([])))
+		#self.widgetContent = mListBox(urwid.SimpleListWalker(textListMakeTerminal([])))
 		self.widgetContent = mListBox(urwid.SimpleFocusListWalker(btnListMakeTerminal([], None)))
 		self.widgetContent.setFocusCb(lambda newFocus: self.onLineFocusChanged(newFocus))
 
@@ -89,15 +89,15 @@ class DlgAck(cDialog):
 		if g.loop.widget != g.dialog.mainWidget:
 			return keys
 
-		if ur.filterKey(keys, "down"):
+		if filterKey(keys, "down"):
 			#self.widgetContent.scrollDown()
 			self.widgetContent.focusNext()
 
-		if ur.filterKey(keys, "up"):
+		if filterKey(keys, "up"):
 			#self.widgetContent.scrollUp()
 			self.widgetContent.focusPrevious()
 
-		if ur.filterKey(keys, "enter"):
+		if filterKey(keys, "enter"):
 			self.onFileSelected(self.widgetFileList.focus)
 
 		return keys
@@ -106,7 +106,7 @@ class DlgAck(cDialog):
 		if data is None:
 			self.headerText.set_text(self.header + "!!!")
 			if len(self.widgetFileList.body) == 0:
-				self.widgetFileList.body += ur.btnListMakeTerminal(["< No result >"], None)
+				self.widgetFileList.body += btnListMakeTerminal(["< No result >"], None)
 			return
 
 		ss = data.decode("UTF-8", "ignore")
@@ -129,7 +129,7 @@ class DlgAck(cDialog):
 				self.lstContent.append(afile)
 
 				isFirst = len(self.widgetFileList.body) == 0
-				btn = ur.btnGenMarkup(afile.getTitleMarkup(isFirst), lambda bb: self.onFileSelected(bb))
+				btn = btnGenMarkup(afile.getTitleMarkup(isFirst), lambda bb: self.onFileSelected(bb))
 				btn.afile = afile
 				afile.btn = btn
 				afile.position = len(self.widgetContent.body)
@@ -137,7 +137,7 @@ class DlgAck(cDialog):
 
 				#txt = urwid.Text(afile.getTitleMarkup(isFirst))
 				markup = (afile.getTitleMarkup(False), afile.getTitleMarkup(True))
-				btn2 = ur.btnGenMarkup(markup[1] if isFirst else markup[0], lambda bb: self.onLineSelected(bb))
+				btn2 = btnGenMarkup(markup[1] if isFirst else markup[0], lambda bb: self.onLineSelected(bb))
 				btn2.isFile = True
 				btn2.afile = afile
 				btn2.markup = markup
@@ -149,9 +149,9 @@ class DlgAck(cDialog):
 				afile.lstLine.append(line)
 
 				# update content
-				#txt = ur.textGenTerminal(line)
-				markup = (ur.terminal2markup(line, 0), ("std_f", ur.termianl2plainText(line)))
-				btn2 = ur.btnGenMarkup(markup[0], lambda bb: self.onLineSelected(bb))
+				#txt = textGenTerminal(line)
+				markup = (terminal2markup(line, 0), ("std_f", termianl2plainText(line)))
+				btn2 = btnGenMarkup(markup[0], lambda bb: self.onLineSelected(bb))
 				btn2.isFile = False
 				btn2.afile = afile
 				btn2.markup = markup
@@ -193,9 +193,9 @@ class DlgAck(cDialog):
 		elif key == "e" or key == "E":
 			btn = self.widgetFileList.focus
 			g.loop.stop()
-			tool.systemRet("%s %s" % (g.editApp, btn.afile.fname))
+			systemRet("%s %s" % (g.editApp, btn.afile.fname))
 			g.loop.start()
 
 		elif key == "h":
-			ur.popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
+			popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 
