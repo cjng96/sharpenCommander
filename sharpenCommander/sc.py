@@ -34,7 +34,7 @@ from .mainGitStatus import DlgGitStatus
 from .mainRegList import DlgRegList
 from .mainGoto import mDlgGoto
 
-
+from .__init__ import __version__
 
 '''
 dc - devCmd
@@ -82,7 +82,7 @@ class Ansi:
 
 class MyProgram(Program):
 	def __init__(self):
-		super().__init__("1.1.0", programPath("dc.log"))
+		super().__init__(__version__, programPath("dc.log"))
 		self.regList = []
 		self.configPath = ""    # ~/.devcmd/path.py
 
