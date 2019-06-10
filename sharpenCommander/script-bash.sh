@@ -15,28 +15,28 @@ function goPath()
 }
 function sc()
 {
-	/usr/bin/env python3 $SC_DIR/sc.py $@
+	python3 $SC_DIR/run.py $@
 	goPath
 }
 function scf()
 {
-	/usr/bin/env python33 $SC_DIR/sc.py find $@
+	python3 $SC_DIR/run.py find $@
 	goPath
 }
 function scg()
 {
-	/usr/bin/env python3 $SC_DIR/sc.py grep $@
+	python3 $SC_DIR/run.py grep $@
 	goPath
 }
 function scw()
 {
-	/usr/bin/env python3 $SC_DIR/sc.py which $@
+	python3 $SC_DIR/run.py which $@
 	goPath
 }
 
 function scd()
 {
-	/usr/bin/env python3 -m pudb.run $SC_DIR/sc.py $@
+	python3 -m pudb.run $SC_DIR/run.py $@
 	goPath
 }
 
