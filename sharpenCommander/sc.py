@@ -1,4 +1,3 @@
-# coding: utf-8
 #!/usr/bin/env python3
 
 import subprocess
@@ -37,7 +36,7 @@ from .mainGoto import mDlgGoto
 from .__init__ import __version__
 
 '''
-dc - devCmd
+sc - sharpenCommander
 
 # install setting
 
