@@ -221,7 +221,7 @@ class DlgGitStatus(cDialog):
 		self.widgetContent = mListBox(urwid.SimpleListWalker(textListMakeTerminal(["< Nothing to display >"])))
 
 		self.headerText = urwid.Text(
-			">> sc stage - q/F4(Quit) J/K,h/l(Prev/Next file) j/k(scroll) A(Add) P(Prompt) R(Reset) D(drop) C(Commit) I(Ignore)")
+			">> git stage - q/F4(Quit) J/K,h/l(Prev/Next file) j/k(scroll) A(Add) P(Prompt) R(Reset) D(drop) C(Commit) I(Ignore)")
 		self.widgetFrame = urwid.Pile(
 			[(8, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
@@ -413,4 +413,4 @@ class DlgGitStatus(cDialog):
 			g.doSetMain(dlg)
 
 		elif key == "h":
-			popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
+			popupMsg("SC help", "Felix Felix Felix Felix\nFelix Felix")

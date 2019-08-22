@@ -29,7 +29,7 @@ from .myutil import *
 
 from .dlgAck import DlgAck
 from .dlgFind import DlgFind
-from .mainGitStatus import DlgGitStatus
+from .mainGit import DlgGitStatus
 from .mainRegList import DlgRegList
 from .mainGoto import mDlgGoto
 
