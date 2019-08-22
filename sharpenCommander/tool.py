@@ -174,6 +174,13 @@ class git:
 		print
 		
 	@staticmethod
+	def commitList():
+		# color is not working
+		ss, ret = systemSafe('git -c color.status=always log --pretty=format:"%h %Cblue%an%Creset(%ar): %Cgreen%s" --graph -4')
+		lines = ss.splitlines()
+		return lines
+
+	@staticmethod
 	def statusFileList():
 		"""
 		file list(staged, modified) in current folder by terminal character

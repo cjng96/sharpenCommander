@@ -81,7 +81,7 @@ class mListBox(urwid.ListBox):
 		self.isViewContent = False
 		self.maxrow = 0  # for view content
 
-		self.itemCount = 0
+		#self.itemCount = 0	# why need it?
 		self.focusCb = None
 
 		self.maxcol = 0

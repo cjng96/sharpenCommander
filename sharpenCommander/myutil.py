@@ -13,12 +13,25 @@ def unwrapQutesFilename(ss):
 itemList = list of (markup,  attr)
 """
 def refreshBtnListMarkupTuple(markupItemList, listBox, onClick):
-	del listBox.body[:]
-	listBox.itemCount = len(markupItemList)
-	if listBox.itemCount == 0:
+	#listBox.itemCount = len(markupItemList)
+	#if listBox.itemCount == 0:
+	if len(markupItemList) == 0:
 		markupItemList = [("std", "< Nothing > ", None)]
 
+	del listBox.body[:]
 	listBox.body += btnListMakeMarkup(markupItemList, onClick)
+
+"""
+itemList = list of (terminal, attr)
+"""
+def refreshBtnListTerminal(terimalItemList, listBox, onClick):
+	#listBox.itemCount = 
+	#if listBox.itemCount == 0:
+	if len(terimalItemList) == 0:
+		terimalItemList = [("< Nothing > ", None)]
+
+	del listBox.body[:]
+	listBox.body += btnListMakeTerminal(terimalItemList, onClick)
 
 
 def fileBtnName(btn):

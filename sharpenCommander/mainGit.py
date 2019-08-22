@@ -14,17 +14,6 @@ from .myutil import *
 from .tool import *
 
 
-"""
-itemList = list of (terminal, attr)
-"""
-def refreshBtnListTerminal(terimalItemList, listBox, onClick):
-	del listBox.body[:]
-	listBox.itemCount = len(terimalItemList)
-	if listBox.itemCount == 0:
-		terimalItemList = [("< Nothing > ", None)]
-
-	listBox.body += btnListMakeTerminal(terimalItemList, onClick)
-
 
 class DlgGitCommit(cDialog):
 	themes = [("greenfg", "greenfg_f"), ("std", "std_f")]
@@ -38,13 +27,15 @@ class DlgGitCommit(cDialog):
 		self.edInput = editGen("Input commit message => ", "", lambda edit, text: self.onMsgChanged(edit, text))
 		self.widgetFileList = mListBox \
 			(urwid.SimpleFocusListWalker(btnListMakeTerminal([("< No files >", None)], None)))
+		self.widgetCommitList = mListBox(urwid.SimpleListWalker(textListMakeTerminal(["< There is no commit >"])))
 		self.widgetContent = mListBox(urwid.SimpleListWalker(textListMakeTerminal(["< Nothing to display >"])))
 
 		self.headerText = urwid.Text(">> Commit - f9/f10(Prev/Next file) f4(cancel operation)")
 		self.widgetFrame = urwid.Pile \
-			([("pack", self.edInput), (8, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
+			([("pack", self.edInput), (8, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), (4, self.widgetCommitList), ('pack', urwid.Divider('-')), self.widgetContent])
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
 
+		self.refreshCommitList()
 		self.refreshFileList()
 		self.widgetFrame.set_focus(self.edInput)
 
@@ -77,6 +68,14 @@ class DlgGitCommit(cDialog):
 
 	def refreshFileContentCur(self):
 		self.onFileSelected(self.widgetFileList.focus)
+
+	def refreshCommitList(self):
+		lst = git.commitList()
+		if len(lst) <= 0:
+			return False
+
+		refreshBtnListTerminal(lst, self.widgetCommitList, lambda btn: self.onFileSelected(btn))
+		return True
 
 	def refreshFileList(self):
 		del self.widgetFileList.body[:]
@@ -208,10 +207,10 @@ class DlgGitCommit(cDialog):
 		#	popupMsg("Dc help", "Felix Felix Felix Felix\nFelix Felix")
 
 
-
 class DlgGitStatus(cDialog):
 	def __init__(self, onExit=None):
 		super().__init__()
+
 
 		self.onExit = onExit
 		self.selectFileName = ""
@@ -221,7 +220,7 @@ class DlgGitStatus(cDialog):
 		self.widgetContent = mListBox(urwid.SimpleListWalker(textListMakeTerminal(["< Nothing to display >"])))
 
 		self.headerText = urwid.Text(
-			">> git stage - q/F4(Quit) J/K,h/l(Prev/Next file) j/k(scroll) A(Add) P(Prompt) R(Reset) D(drop) C(Commit) I(Ignore)")
+			">> Git stage - q/F4(Quit) J/K,h/l(Prev/Next file) j/k(scroll) A(Add) P(Prompt) R(Reset) D(drop) C(Commit) I(Ignore)")
 		self.widgetFrame = urwid.Pile(
 			[(8, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText)
