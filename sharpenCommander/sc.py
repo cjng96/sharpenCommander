@@ -326,7 +326,7 @@ class MyProgram(Program):
 		ss2 = remoteBranch.split("/")
 
 		# push it
-		print("** Current branch is pushing to the remote branch[%s/%s]..." % (ss2[0], target))
+		print("\n** Current branch is pushing to the remote branch[%s/%s]..." % (ss2[0], target))
 		ss, status = systemSafe("git push %s %s:%s" % (ss2[0], currentBranch, target))
 		print(ss)
 		
