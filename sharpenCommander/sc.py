@@ -282,7 +282,7 @@ class MyProgram(Program):
 				rev2 = git.rev("remotes/"+remoteBranch)
 				revCommon = git.commonParentRev(currentBranch, remoteBranch)
 				if revCommon.startswith(rev2):
-					print("local branch is good status")
+					print("Local branch is good status")
 				else:
 					diffList = git.checkRebaseable(currentBranch, remoteBranch)
 					if len(diffList) == 0:

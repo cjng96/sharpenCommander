@@ -41,6 +41,10 @@ class Getch():
 			termios.tcsetattr(self.fd, termios.TCSADRAIN, self.old_settings)
 			self.old_settings = None
 
+			# turn to blocking mode
+			fl = fcntl.fcntl(self.fd, fcntl.F_GETFL)
+			fcntl.fcntl(self.fd, fcntl.F_SETFL, fl & ~os.O_NONBLOCK)
+
 		#if self.thread is not None:
 		#	self.thread.stop
 
