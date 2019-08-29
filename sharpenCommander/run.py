@@ -9,7 +9,7 @@ def run():
 
 if __name__ == "__main__":
 	try:
-		ret = run()
+		run()
 	except Exception as e:
 		#print(e)
 		#sys.exit(1)
