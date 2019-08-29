@@ -65,6 +65,7 @@ class Getch():
 		self.thread = threading.Thread(target=self._thread, args=(self.queue,))
 		self.thread.daemon = True
 		self.thread.start()
+		
 	@staticmethod
 	def _thread(queue):
 		while True:

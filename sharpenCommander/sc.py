@@ -316,7 +316,7 @@ class MyProgram(Program):
 
 		print("\nUP/DOWN: select the name of local branchor remote branch as target name. ESC: clear input.")
 		lst = list(dict.fromkeys(lst))
-		lst.append("")
+		#lst.append("")
 		#target = input("\nInput remote branch name you push to: ")
 		at = AnsiTerm()
 		target = at.inputLine("Input remote branch name you push to: ", 2, lst)
