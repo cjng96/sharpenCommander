@@ -26,6 +26,7 @@ from .globalBase import *
 from .tool import * #git, system, systemSafe, systemRet, programPath
 from .urwidHelper import *
 from .myutil import *
+from .ansiTerm import Getch, pr, AnsiTerm
 
 from .dlgAck import DlgAck
 from .dlgFind import DlgFind
@@ -263,12 +264,15 @@ class MyProgram(Program):
 
 		currentBranch = git.getCurrentBranch()
 		remoteBranch = git.getTrackingBranch()
+		lst = []
+		lst.append(currentBranch)
 		if remoteBranch is None:
-			print("currentBranch:%s DONT have tracking branch")
+			print("CurrentBranch:%s DOESN'T have a tracking branch")
 			# todo: print latest 10 commits
 
 		else:
-			print("currentBranch:%s, remote:%s" % (currentBranch, remoteBranch))
+			print("CurrentBranch:%s, remote:%s" % (currentBranch, remoteBranch))
+			lst.append(remoteBranch[remoteBranch.index('/')+1:])
 
 			self.printCommitLogForPush(currentBranch, remoteBranch)
 
@@ -278,7 +282,7 @@ class MyProgram(Program):
 				rev2 = git.rev("remotes/"+remoteBranch)
 				revCommon = git.commonParentRev(currentBranch, remoteBranch)
 				if revCommon.startswith(rev2):
-					print("local branch is good situation")
+					print("local branch is good status")
 				else:
 					diffList = git.checkRebaseable(currentBranch, remoteBranch)
 					if len(diffList) == 0:
@@ -310,11 +314,16 @@ class MyProgram(Program):
 					# print commit log again
 					self.printCommitLogForPush(currentBranch, remoteBranch)
 
-		target = input("\nInput remote branch name you push to: ")
+		print("\nUP/DOWN: select the name of local branchor remote branch as target name. ESC: clear input.")
+		lst = list(dict.fromkeys(lst))
+		lst.append("")
+		#target = input("\nInput remote branch name you push to: ")
+		at = AnsiTerm()
+		target = at.inputLine("Input remote branch name you push to: ", 2, lst)
 		if target == "":
 			raise ErrFailure("Push is canceled")
 
-		ss2 = remoteBranch.split("/")		
+		ss2 = remoteBranch.split("/")
 
 		# push it	
 		ss, status = systemSafe("git push %s %s:%s" % (ss2[0], currentBranch, target))
