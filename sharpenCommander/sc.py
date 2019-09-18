@@ -82,7 +82,7 @@ class Ansi:
 
 class MyProgram(Program):
 	def __init__(self):
-		super().__init__(__version__, programPath("dc.log"))
+		super().__init__(__version__, programPath("sc.log"))
 		self.regList = []
 		self.configPath = ""    # ~/.devcmd/path.py
 
@@ -218,6 +218,7 @@ class MyProgram(Program):
 		return next((x for x in g.regList if x["path"] == pp), None)
 
 	# path list that includes sub string
+	# return: [ { names:[], path:"" } ]
 	def regFindItems(self, sub):
 		sub = sub.lower()
 		#lst = []

@@ -13,6 +13,51 @@ def dlog(ss):
 	with open("/tmp/debug.log", "a") as fp:
 		fp.write(ss+"\n")
 
+# support to stop
+# it = myWalk(pp)
+# for pp, dirs, files in it:
+#   ...
+#   it.send(1) # to stop
+def myWalk(top, ignoreList, followlinks=False):
+		dirs = []
+		nondirs = []
+
+		try:
+			scandir_it = os.scandir(top)
+		except OSError:
+			return
+
+		with scandir_it:
+			while True:
+				try:
+					entry = next(scandir_it)
+				except StopIteration:
+					break
+					
+				try:
+					is_dir = entry.is_dir()
+				except OSError:
+					is_dir = False
+
+				if is_dir:
+					dirs.append(entry.name)
+				else:
+					nondirs.append(entry.name)
+
+		if (yield top, dirs, nondirs):
+			yield None
+			return
+
+		islink, join = os.path.islink, os.path.join
+		for dirname in dirs:
+			if dirname in ignoreList: continue
+
+			new_path = join(top, dirname)
+			if followlinks or not islink(new_path):
+				if(yield from myWalk(new_path, ignoreList, followlinks)):
+					yield None
+					return
+
 
 def system(args, stderr=subprocess.STDOUT):
 	if gCfg.debugPrintSystem:
