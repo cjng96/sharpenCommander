@@ -59,7 +59,7 @@ class mDlgGoto(cDialog):
 		content = urwid.Pile([("pack", self.curPathText),self.widgetFrame])
 		self.mainWidget = urwid.Frame(content, header=self.headerText, footer=self.edInput)
 
-		self.itemList = None
+		#self.itemList = None
 		#self.cbFileSelect = lambda btn: self.onFileSelected(btn)
 
 		self.mainWidget.set_focus("footer")

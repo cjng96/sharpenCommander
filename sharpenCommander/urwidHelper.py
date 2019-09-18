@@ -21,7 +21,7 @@ palette = [
 	('reset', 'std'),
 	("reset_f", "std_f"),
 	('bold', 'light gray,bold', 'black'),
-	('bold_f', 'light gray,bold', 'dark cyan'),
+	('bold_f', 'black', 'dark cyan'),
 	('underline', 'light gray,underline', 'black'),
 	('underline_f', 'light gray,underline', 'dark cyan'),
 
@@ -31,7 +31,7 @@ palette = [
 	('redfgb_f', 'bold,light red', 'dark cyan'),
 	('greenfg', 'dark green', 'black'),
 	('greenfgb', 'bold,dark green', 'black'),
-	('greenfg_f', 'black', 'dark cyan'),
+	('greenfg_f', 'black', 'dark green'),
 	('greenfgb_f', 'bold,light green', 'dark cyan'),
 	('yellowfg', 'yellow', 'black'),
 	('yellowfgb', 'bold,yellow', 'black'),
@@ -43,10 +43,10 @@ palette = [
 	('bluefgb_f', 'bold,light blue', 'dark cyan'),
 	('cyanfg', 'dark cyan', 'black'),
 	('cyanfgb', 'bold,dark cyan', 'black'),
-	('cyanfg_f', 'light gray', 'dark cyan'),
+	('cyanfg_f', 'black', 'dark cyan'),
 	('cyanfgb_f', 'bold,light gray', 'dark cyan'),
 	('grayfg', 'dark gray', 'black'),
-	('grayfg_f', 'white', 'dark cyan'),
+	('grayfg_f', 'black', 'dark cyan'),
 
 	('redbg', 'black', 'dark red'),
 	('yellowbgb', 'black,bold', 'yellow'),
@@ -190,6 +190,9 @@ class cDialog(object):
 	def init(self):
 		# something to do
 		return True
+
+	def onExit():
+		pass
 
 	def unhandled(self, key):
 		pass
