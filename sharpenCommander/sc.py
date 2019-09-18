@@ -357,6 +357,7 @@ class mDlgMainDc(cDialog):
 
 		# content
 		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(btnListMakeTerminal([], None)))
+		#attrFileList = urwid.AttrMap(self.widgetFileList, "std")
 		self.widgetCmdList = mListBox(urwid.SimpleFocusListWalker(btnListMakeTerminal([], None))) # 이거 파일목록 아래에뭔가 보여주는건데..
 		self.widgetContent = urwid.Pile([self.widgetFileList, ('pack', urwid.Divider('-')), (8, self.widgetCmdList)])
 		self.widgetContent.isShow = True

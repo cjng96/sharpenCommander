@@ -80,13 +80,12 @@ class mListBox(urwid.ListBox):
 		super().__init__(body)
 		self.isViewContent = False
 		self.maxrow = 0  # for view content
+		self.maxcol = 0
 
 		#self.itemCount = 0	# why need it?
 		self.focusCb = None
 
-		self.maxcol = 0
-
-		# SimpleListWalker don't have focus cb
+		# SimpleListWalker doesn't have focus cb
 		if getattr(self.body, 'set_focus_changed_callback', None):
 			self.body.set_focus_changed_callback(lambda newFocus: self.onFocusChanged(newFocus))
 
@@ -104,11 +103,15 @@ class mListBox(urwid.ListBox):
 		widget.base_widget.set_label(widget.base_widget.markup[1])
 
 
+	#def render(self, size, focus=False):
+	#	super().render(size, focus)
+	#	(maxcol, maxrow) = size
+	#	self.maxcol = maxcol
+	#	self.maxrow = maxrow
+
 	def render(self, size, focus=False):
-		super.render(size, focus)
-		(maxcol, maxrow) = size
-		self.maxcol = maxcol
-		self.maxrow = maxrow
+		(maxcol, self.maxrow) = size
+		return super().render(size, focus)
 
 	def focusNext(self):
 		cur = self.body.get_focus()
@@ -157,10 +160,6 @@ class mListBox(urwid.ListBox):
 
 		self.body.set_focus(pos)
 
-	def render(self, size, focus=False):
-		(maxcol, self.maxrow) = size
-		return super().render(size, focus)
-
 	def set_focus(self, position, coming_from=None):
 		if self.isViewContent:
 			position = min(position, max(0, len(self.body) - self.maxrow))
@@ -190,9 +189,6 @@ class cDialog(object):
 	def init(self):
 		# something to do
 		return True
-
-	def onExit():
-		pass
 
 	def unhandled(self, key):
 		pass
@@ -347,7 +343,8 @@ def btnListMakeMarkup(lstMarkup, onClick, isFirstFocus=True, doApply=None):
 	"""
 	outList = []
 	for markup, text, attr in lstMarkup:
-		btn = btnGen((markup, text), (markup + "_f", text), attr, onClick, isFirstFocus, doApply)
+		#btn = btnGen((markup, text), (markup + "_f", text), attr, onClick, isFirstFocus, doApply)
+		btn = btnGen((markup, text), ("std_f", text), attr, onClick, isFirstFocus, doApply)
 		isFirstFocus = False
 		outList.append(btn)
 
