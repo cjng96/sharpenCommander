@@ -102,3 +102,16 @@ def matchDisorder(ss, filterList):
 
 	return True
 
+def matchDisorderCount(ss, filterList):
+	# unordered search
+	cnt = 0
+	for ff in filterList:
+		pt = ss.find(ff)
+		if pt == -1:
+			continue
+
+		ss = ss[:pt] + ss[pt+len(ff):]
+		cnt += 1
+
+	return cnt
+

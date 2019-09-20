@@ -105,13 +105,12 @@ class mDlgGoto(cDialog):
 		if filterStr is None:
 			filterStr = self.edInput.get_edit_text()
 
-		if filterStr.find("/") == -1:
-			if filterStr != "":
-				lst = g.regFindItems(filterStr)
-			else:
-				lst = g.regList[:]
-		else:
-			lst = []
+		lst = g.regList[:]
+		if filterStr != "":
+			#lst = g.regFindItems(filterStr)
+			filterList = filterStr.lower().split(" ")
+			lst = list(filter(lambda x: matchDisorder(x["path"].lower(), filterList), lst))
+			lst.sort(key=lambda x: matchDisorderCount(os.path.basename(x["path"]), filterList), reverse=True)
 
 		resultList = []
 		for x in lst:
@@ -139,9 +138,10 @@ class mDlgGoto(cDialog):
 
 		lst = []
 		filterList = filterStr.lower().split(" ")
-		for dir in self.allDirs:
-			if matchDisorder(dir.lower(), filterList):
-				lst.append(dict(names=[dir], path=dir))
+		for dd in self.allDirs:
+			if matchDisorder(dd.lower(), filterList):
+				lst.append(dict(names=[dd], path=dd))
+		lst.sort(key=lambda x: matchDisorderCount(os.path.basename(x["path"]), filterList), reverse=True)
 
 		#dlog("lst cnt : %d" % len(lst))
 		for x in lst:
