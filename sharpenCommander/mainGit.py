@@ -1,5 +1,6 @@
 import os
 import sys
+import shutil
 
 import urwid
 import subprocess
@@ -360,13 +361,16 @@ class DlgGitStatus(cDialog):
 				self.refreshFileList()
 
 			def onDelete():
-				os.remove(fname)
+				if os.path.isdir(fname):
+					shutil.rmtree(fname)
+				else:
+					os.remove(fname)
 				self.refreshFileList()
 
 			btn = self.widgetFileList.focus
 			fname = gitFileBtnName(btn)
 			if gitFileBtnType(btn) == "??":
-				popupAsk("Git reset(f)", "Do you want to delete file[%s]?" % fname, onDelete)
+				popupAsk("Delete", "Do you want to delete [%s]?" % fname, onDelete)
 			else:
 				popupAsk("Git reset(f)", "Do you want to drop file[%s]s modification?" % fname, onDrop)
 
