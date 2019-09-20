@@ -110,7 +110,7 @@ class mDlgGoto(cDialog):
 			#lst = g.regFindItems(filterStr)
 			filterList = filterStr.lower().split(" ")
 			lst = list(filter(lambda x: matchDisorder(x["path"].lower(), filterList), lst))
-			lst.sort(key=lambda x: matchDisorderCount(os.path.basename(x["path"]), filterList), reverse=True)
+			lst.sort(key=lambda x: matchDisorderCount(os.path.basename(x["path"]).lower(), filterList), reverse=True)
 
 		resultList = []
 		for x in lst:
