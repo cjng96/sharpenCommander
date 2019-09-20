@@ -140,7 +140,7 @@ class mDlgGoto(cDialog):
 		lst = []
 		filterList = filterStr.lower().split(" ")
 		for dir in self.allDirs:
-			if matchDisorder(dir, filterList):
+			if matchDisorder(dir.lower(), filterList):
 				lst.append(dict(names=[dir], path=dir))
 
 		#dlog("lst cnt : %d" % len(lst))

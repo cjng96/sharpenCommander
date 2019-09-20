@@ -83,7 +83,6 @@ def matchDisorder(ss, filterList):
 	'''
 	filterList: filterStr.lower().split(" ")
 	'''
-	ss = ss.lower()
 	'''
 	pt = 0
 	for ff in filterList:

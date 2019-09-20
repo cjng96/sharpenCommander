@@ -377,7 +377,7 @@ class mDlgMainDc(cDialog):
 		self.edInput = editGen("$ ", "", lambda edit, text: self.onInputChanged(edit, text))
 		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText, footer=self.edInput)
 
-		self.cmd = ""
+		self.cmd = ""	# find, cmd, shell
 		self.mode = ""  # d면 등록된 폴더만 표시
 		self.gitBranch = None
 		self.dcdata = None
@@ -468,8 +468,10 @@ class mDlgMainDc(cDialog):
 
 		lst2 = []
 		if filterStr != "":
+			filterList = filterStr.lower().split(" ")
 			for x in lst:
 				ss = x[0].lower()
+				'''
 				fil = filterStr.lower()
 				if ss.startswith(fil):
 					lst2.append((x[0], 2))
@@ -477,6 +479,15 @@ class mDlgMainDc(cDialog):
 					lst2.append((x[0], 1))
 				else:
 					lst2.append((x[0], 0))
+				'''
+				if matchDisorder(ss, filterList):
+					if ss.startswith(filterList[0]):
+						lst2.append((x[0], 2))
+					else:
+						lst2.append((x[0], 1))
+				else:
+					lst2.append((x[0], 0))
+
 		else:
 			# 등록된 폴더 우선
 			regPathList = [ii['path'] for ii in g.regList]
@@ -743,19 +754,24 @@ class mDlgMainDc(cDialog):
 		self.edInput.set_edit_text("")
 		self.fileRefresh()
 
-	def inputSet(self, status):
+	def inputSet(self, cmd):
 		"""
-		:param status: filter,
+		:param cmd: filter,
 		:return:
 		"""
-		self.cmd = status
-		if status == "":
+		self.cmd = cmd
+		if cmd == "":
 			self.mainWidget.set_focus("body")
 		else:
 			self.mainWidget.set_focus("footer")
 
 		self.edInput.set_edit_text("")
-		self.edInput.set_caption("%s%s$ " % ("" if self.gitBranch is None else "[%s] " % self.gitBranch, self.cmd))
+
+		branchName = ""
+		if self.gitBranch is None:
+			branchName = "[%s] " % self.gitBranch
+
+		self.edInput.set_caption("%s%s$ " % (branchName, self.cmd))
 
 	def regToggle(self, pp):
 		item = g.regFindByPath(pp)
