@@ -140,18 +140,10 @@ class mDlgGoto(cDialog):
 		lst = []
 		filterList = filterStr.lower().split(" ")
 		for dir in self.allDirs:
-			pt = 0
-			d2 = dir.lower()
-			for ff in filterList:
-				pt2 = d2.find(ff, pt)
-				if pt2 == -1:
-					pt = -1
-					break
-				pt = pt2+len(ff)
-
-			if pt != -1:
+			if matchDisorder(dir, filterList):
 				lst.append(dict(names=[dir], path=dir))
-		dlog("lst cnt : %d" % len(lst))
+
+		#dlog("lst cnt : %d" % len(lst))
 		for x in lst:
 			resultList.append(("cyanfg", x["path"], x))
 
@@ -234,10 +226,10 @@ class mDlgGoto(cDialog):
 								system("cd '%s'; git fetch" % pp)
 								# 수정내역이 있으면 어차피 최신으로 못만든다.
 							else:
-								print("  git pull -r")
+								print("  git pull -r --recurse-submodules")
 
 								# TODO: no has tracking branch
-								system("cd '%s'; git pull -r" % pp)
+								system("cd '%s'; git pull -r --recurse-submodules" % pp)
 						except subprocess.CalledProcessError as e:
 							repoStatus["E"] = e
 

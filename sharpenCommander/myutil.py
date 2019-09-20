@@ -79,3 +79,27 @@ def gitFileLastName(btn):
 					# TODO:
 					raise Exception("Not supported file format[%s]" % fname)
 
+def matchDisorder(ss, filterList):
+	'''
+	filterList: filterStr.lower().split(" ")
+	'''
+	ss = ss.lower()
+	'''
+	pt = 0
+	for ff in filterList:
+		pt2 = d2.find(ff, pt)
+		if pt2 == -1:
+			pt = -1
+			break
+		pt = pt2+len(ff)
+	'''
+	# unordered search
+	for ff in filterList:
+		pt = ss.find(ff)
+		if pt == -1:
+			return False
+
+		ss = ss[:pt] + ss[pt+len(ff):]
+
+	return True
+
