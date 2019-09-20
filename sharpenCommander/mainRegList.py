@@ -94,15 +94,15 @@ class DlgRegFolderSetting(cDialog):
 		self.onExit = onExit
 		self.item = item
 
-		self.header = ">> dc V%s - folder setting" % g.version
+		self.header = ">> sc V%s - folder setting" % g.version
 		self.headerText = urwid.Text(self.header)
 
 		self.lbPath = urwid.Text("Path: %s" % item["path"])
 		self.lbRepo = urwid.Text("Repo: ..")
 
-		self.lbNames = urwid.Text("Names -----------")
+		#self.lbNames = urwid.Text("Names -----------")
 		self.lbGroups = urwid.Text("Groups -----------")
-		self.widgetListName = mListBox(urwid.SimpleFocusListWalker(btnListMakeTerminal([], None)))
+		#self.widgetListName = mListBox(urwid.SimpleFocusListWalker(btnListMakeTerminal([], None)))
 		self.widgetListGroup = mListBox(urwid.SimpleFocusListWalker(btnListMakeTerminal(["< No group >"], None)))
 
 		#urwid.SimpleFocusListWalker(makeBtnListTerminal([], None)))
@@ -112,12 +112,13 @@ class DlgRegFolderSetting(cDialog):
 			[("pack", self.headerText),
 			("pack", self.lbPath),
 			("pack", self.lbRepo),
-            ("pack", self.lbNames), (8, self.widgetListName),
+      #      ("pack", self.lbNames), (8, self.widgetListName),
 			('pack', urwid.Divider('-')),
             ("pack", self.lbGroups), (8, self.widgetListGroup),
 			("pack", self.lbHelp)]))
 
-		self.mainWidget = urwid.Overlay(urwid.Filler(self.widgetFrame), g.loop.widget, 'center', 80, 'middle', 30)
+		#urwid.Filler
+		self.mainWidget = urwid.Overlay(self.widgetFrame, g.loop.widget, 'center', 80, 'middle', 'pack')
 
 	def init(self):
 		self.showInfo()
@@ -126,9 +127,9 @@ class DlgRegFolderSetting(cDialog):
 	def showInfo(self):
 		self.lbRepo.set_text("Repo: %s" % ("O" if self.item["repo"] else "X"))
 
-		names = self.item["names"]
-		del self.widgetListName.body[:]
-		self.widgetListName.body += btnListMakeTerminal(names, None)
+		#names = self.item["names"]
+		#del self.widgetListName.body[:]
+		#self.widgetListName.body += btnListMakeTerminal(names, None)
 
 		groups = self.item["groups"]
 		if len(groups) > 0:
@@ -151,6 +152,7 @@ class DlgRegFolderSetting(cDialog):
 
 		elif key == "insert":
 			focusWidget = self.widgetFrame.original_widget.get_focus()
+			'''
 			if focusWidget == self.widgetListName:
 				def onOk(ss):
 					self.item["names"].append(ss)
@@ -159,7 +161,8 @@ class DlgRegFolderSetting(cDialog):
 
 				popupInput("Input new name", "", onOk, width=60)
 
-			elif focusWidget == self.widgetListGroup:
+			el'''
+			if focusWidget == self.widgetListGroup:
 				def onOk(ss):
 					self.item["groups"].append(ss)
 					g.configSave()
@@ -169,6 +172,7 @@ class DlgRegFolderSetting(cDialog):
 
 		elif key == "delete":
 			focusWidget = self.widgetFrame.original_widget.get_focus()
+			'''
 			if focusWidget == self.widgetListName:
 				ss = self.widgetListName.focus.original_widget.get_label()
 				def onOk():
@@ -178,7 +182,9 @@ class DlgRegFolderSetting(cDialog):
 
 				popupAsk("Remove Name", "[%s] will be deleted. Are you sure?" % ss, onOk)
 
-			elif focusWidget == self.widgetListGroup:
+			el
+			'''
+			if focusWidget == self.widgetListGroup:
 				ss = self.widgetListGroup.focus.original_widget.get_label()
 				def onOk():
 					self.item["groups"].remove(ss)
@@ -198,7 +204,7 @@ class DlgRegList(cDialog):
 		self.widgetContent = mListBox(urwid.SimpleListWalker(textListMakeTerminal(["< Nothing to display >"])))
 		#self.widgetContent.isViewContent = True
 
-		self.header = ">> dc repo list - J/K(move) E(modify) P(pull all) del Q/esc(quit)"
+		self.header = ">> sc repo list - J/K(move) E(modify) P(pull all) del Q/esc(quit)"
 		self.headerText = urwid.Text(self.header)
 
 		#self.widgetFrame = urwid.Pile(
