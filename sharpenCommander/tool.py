@@ -140,6 +140,7 @@ class git:
 		#* master                1fbf5de [origin/master: ahead 2] dc: rebase before push is option, print fetch err
 		#  remotes/origin/master 688d414 dc: cfg - isPullRebase flag
 		branchStatus = system("LANG=en_US git -c color.branch=false branch -avv")
+		# * develop  a4d2fab [origin/develop] test-1111 [tt] test
 		out = re.search(r"^\*\s(\w+)\s+(\w+)\s(.+)", branchStatus, re.MULTILINE)
 		if out is None:
 			return None
@@ -152,7 +153,7 @@ class git:
 		upstream = ""
 		ahead = 0
 		behind = 0
-		info = re.search(r"^\[(.+)\]", line)
+		info = re.search(r"^\[(.+?)\]", line)
 		if info is not None:
 			infos = info.group(1).split(":")
 			upstream = infos[0]

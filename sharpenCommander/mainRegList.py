@@ -256,9 +256,8 @@ class DlgRegList(cDialog):
 		# 	# todo: multi thread
 		# 	itemList.append(genRepoItem(x))
 
-
 		pool = Pool(10)
-		lst = filter(lambda x: x["repo"], g.regList)
+		lst = list(filter(lambda x: x["repo"], g.regList))
 		self.itemList = pool.map(_genRepoItem, lst)
 		#itemList = [ (item["title"], item) for item in itemList]
 
