@@ -192,14 +192,14 @@ class mDlgGoto(cDialog):
 		elif key == "E":
 			item = self.widgetFileList.focus
 			target = item.original_widget.attr
-			if not target.starswith("/"):
+			if not target['path'].startswith("/"):
 				return
 			self.doEdit(item.original_widget.attr)
 			self.refreshFile()
 
 		elif key == "D" or key == "delete":
 			target = self.widgetFileList.focus.original_widget.attr
-			if not target.starswith("/"):
+			if not target['path'].startswith("/"):  # target.startswith였는데 이거 뭐지
 				return
 			g.regRemove(target["path"])
 			self.refreshFile()
