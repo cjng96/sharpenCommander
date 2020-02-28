@@ -195,180 +195,181 @@ class DlgRegFolderSetting(cDialog):
 
 
 class DlgRegList(cDialog):
-	def __init__(self, onExit):
-		super().__init__()
+  def __init__(self, onExit):
+    super().__init__()
 
-		self.onExit = onExit
-		self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(btnListMakeTerminal([], None)))
-		#self.widgetFileList.setFocusCb(lambda newFocus: self.onFileFocusChanged(newFocus))
-		self.widgetContent = mListBox(urwid.SimpleListWalker(textListMakeTerminal(["< Nothing to display >"])))
-		#self.widgetContent.isViewContent = True
+    self.onExit = onExit
+    self.widgetFileList = mListBox(urwid.SimpleFocusListWalker(btnListMakeTerminal([], None)))
+    #self.widgetFileList.setFocusCb(lambda newFocus: self.onFileFocusChanged(newFocus))
+    self.widgetContent = mListBox(urwid.SimpleListWalker(textListMakeTerminal(["< Nothing to display >"])))
+    #self.widgetContent.isViewContent = True
 
-		self.header = ">> sc repo list - J/K(move) E(modify) P(pull all) del Q/esc(quit)"
-		self.headerText = urwid.Text(self.header)
+    self.header = ">> sc repo list - J/K(move) E(modify) P(pull all) del Q/esc(quit)"
+    self.headerText = urwid.Text(self.header)
 
-		#self.widgetFrame = urwid.Pile(
-		#	[(15, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
-		self.widgetFrame = urwid.AttrMap(self.widgetFileList, 'std')
-		self.edInput = editGen("$ ", "", lambda edit, text: self.onInputChanged(edit, text))
-		self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText, footer=self.edInput)
+    #self.widgetFrame = urwid.Pile(
+    #	[(15, urwid.AttrMap(self.widgetFileList, 'std')), ('pack', urwid.Divider('-')), self.widgetContent])
+    self.widgetFrame = urwid.AttrMap(self.widgetFileList, 'std')
+    self.edInput = editGen("$ ", "", lambda edit, text: self.onInputChanged(edit, text))
+    self.mainWidget = urwid.Frame(self.widgetFrame, header=self.headerText, footer=self.edInput)
 
-		self.itemList = None
-		#self.cbFileSelect = lambda btn: self.onFileSelected(btn)
+    self.itemList = None
+    #self.cbFileSelect = lambda btn: self.onFileSelected(btn)
 
-		self.mainWidget.set_focus("footer")
+    self.mainWidget.set_focus("footer")
 
-		#self.content = ""
-		#self.selectFileName = ""
+    #self.content = ""
+    #self.selectFileName = ""
 
-	def init(self):
-		self.refreshFile()
-		return True
+  def init(self):
+    self.refreshFile()
+    return True
 
-	def onInputChanged(self, edit, text):
-		last = ""
-		if len(text) > 0:
-			last = text[-1]
-		if last in ["E", 'J', 'K', "H", 'D', 'Q', "P"]:
-			def _cb(self, data):
-				data["dlg"].edInput.set_edit_text(data["text"][:-1])
+  def onInputChanged(self, edit, text):
+    last = ""
+    if len(text) > 0:
+      last = text[-1]
+    if last in ["E", 'J', 'K', "H", 'D', 'Q', "P"]:
+      def _cb(self, data):
+        data["dlg"].edInput.set_edit_text(data["text"][:-1])
 
-			g.loop.set_alarm_in(0.00001, _cb, dict(dlg=self, text=text))
-			self.unhandled(last)
+      g.loop.set_alarm_in(0.00001, _cb, dict(dlg=self, text=text))
+      self.unhandled(last)
 
-			#traceback.print_stack()
-			return #text
+      #traceback.print_stack()
+      return #text
 
-		self.refreshList(text)
+    self.refreshList(text)
 
-	def onFileSelected(self, btn):
-		widget = btn
-		pp = widget.attr["path"]
-		os.chdir(pp)
-		self.close()
+  def onFileSelected(self, btn):
+    widget = btn
+    pp = widget.attr["path"]
+    os.chdir(pp)
+    self.close()
 
-	def refreshFile(self):
-		oldPath = os.getcwd()
+  def refreshFile(self):
+    oldPath = os.getcwd()
 
-		# title, item
-		# itemList = []
-		# for x in g.regList:
-		# 	# todo: multi thread
-		# 	itemList.append(genRepoItem(x))
+    # title, item
+    # itemList = []
+    # for x in g.regList:
+    # 	# todo: multi thread
+    # 	itemList.append(genRepoItem(x))
 
-		pool = Pool(10)
-		lst = list(filter(lambda x: x["repo"], g.regList))
-		self.itemList = pool.map(_genRepoItem, lst)
-		#itemList = [ (item["title"], item) for item in itemList]
+    pool = Pool(10)
+    lst = list(filter(lambda x: x["repo"], g.regList))
+    self.itemList = pool.map(_genRepoItem, lst)
+    #itemList = [ (item["title"], item) for item in itemList]
 
-		#itemList = [ (getTitle(x), x) for x in g.regList ]
-		os.chdir(oldPath)
+    #itemList = [ (getTitle(x), x) for x in g.regList ]
+    os.chdir(oldPath)
 
-		# mstd, title, item
-		def _gen(item):
-			mstd = "std"
-			if "repo" in item and item["repo"]:
-				if item["repoStatus"]["same"]:
-					mstd = "grayfg"
-				else:
-					mstd = "greenfg"
+    # mstd, title, item
+    def _gen(item):
+      mstd = "std"
+      if "repo" in item and item["repo"]:
+        if item["repoStatus"]["same"]:
+          mstd = "grayfg"
+        else:
+          mstd = "greenfg"
 
-			return mstd, item["title"], item
+      return mstd, item["title"], item
 
-		# status
-		self.itemList = list(map(_gen, self.itemList))
-		self.refreshList("")
+    # status
+    self.itemList = list(map(_gen, self.itemList))
+    self.refreshList("")
 
-	def refreshList(self, filterStr):
+  def refreshList(self, filterStr):
 
-		# TODO: names?
-		def _filterList(item):
-			if filterStr == "":  return True
+    # TODO: names?
+    def _filterList(item):
+      if filterStr == "":  return True
 
-			for name in item[2]["names"]:
-				if filterStr.lower() in name.lower():
-					return True
+      for name in item[2]["names"]:
+        if filterStr.lower() in name.lower():
+          return True
 
-		itemList = list(filter(_filterList, self.itemList))
+    itemList = list(filter(_filterList, self.itemList))
 
-		#self.headerText.set_text("%s - %s%s - %d" % (self.title, pp, status, len(itemList)))
-		idx = 0
-		if self.widgetFileList.body.focus is not None:
-			idx = self.widgetFileList.body.focus
-		refreshBtnListMarkupTuple(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
-		if idx >= len(self.widgetFileList.body):
-			idx = len(self.widgetFileList.body)-1
-		self.widgetFileList.set_focus(idx)
-		#del self.widgetFileList.body[:]
-		#self.widgetFileList.itemCount = len(lst2)
-		#self.widgetFileList.body += makeBtnListTerminal( , None)
+    #self.headerText.set_text("%s - %s%s - %d" % (self.title, pp, status, len(itemList)))
+    idx = 0
+    if self.widgetFileList.body.focus is not None:
+      idx = self.widgetFileList.body.focus
+    refreshBtnListMarkupTuple(itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn))
+    if idx >= len(self.widgetFileList.body):
+      idx = len(self.widgetFileList.body)-1
+    self.widgetFileList.set_focus(idx)
+    #del self.widgetFileList.body[:]
+    #self.widgetFileList.itemCount = len(lst2)
+    #self.widgetFileList.body += makeBtnListTerminal( , None)
 
-	def unhandled(self, key):
-		if key == 'f4' or key == "Q" or key == "esc":
-			self.close()
-		elif key == "H" or key == "enter":
-			self.onFileSelected(self.widgetFileList.body.get_focus()[0].original_widget)
+  def unhandled(self, key):
+    if key == 'f4' or key == "Q" or key == "esc":
+      self.close()
+    elif key == "H" or key == "enter":
+      self.onFileSelected(self.widgetFileList.body.get_focus()[0].original_widget)
 
-		elif key == "J":  # we can't use ctrl+j since it's terminal key for enter replacement
-			self.widgetFileList.focusNext()
-		elif key == "K":
-			self.widgetFileList.focusPrevious()
+    elif key == "J":  # we can't use ctrl+j since it's terminal key for enter replacement
+      self.widgetFileList.focusNext()
+    elif key == "K":
+      self.widgetFileList.focusPrevious()
 
-		elif key == "up":
-			self.widgetFileList.focusPrevious()
-		elif key == "down":
-			self.widgetFileList.focusNext()
+    elif key == "up":
+      self.widgetFileList.focusPrevious()
+    elif key == "down":
+      self.widgetFileList.focusNext()
 
-		elif key == "esc":
-			self.edInput.set_edit_text("")
-			self.refreshFile()
+    elif key == "esc":
+      self.edInput.set_edit_text("")
+      self.refreshFile()
 
-		elif key == "E":
-			item = self.widgetFileList.focus
-			self.doEdit(item.original_widget.attr)
-			self.refreshFile()
-		elif key == "D" or key == "delete":
-			deleteItem = self.widgetFileList.focus.original_widget.attr
-			g.regRemove(deleteItem["path"])
-			self.refreshFile()
+    elif key == "E":
+      item = self.widgetFileList.focus
+      self.doEdit(item.original_widget.attr)
+      self.refreshFile()
+    elif key == "D" or key == "delete":
+      deleteItem = self.widgetFileList.focus.original_widget.attr
+      def _cb(ok):
+        if ok:
+          self.refreshFile()
+      g.regRemove(deleteItem["path"], _cb)
 
-		elif key == "P":
-			# 모든 repo udpate
-			g.loop.stop()
+    elif key == "P":
+      # 모든 repo udpate
+      g.loop.stop()
 
-			oldPath = os.getcwd()
-			cnt = len(self.widgetFileList.body)
-			for idx, item in enumerate(self.widgetFileList.body):
-				attr = item.original_widget.attr
-				pp = attr["path"]
-				#os.chdir(pp)
+      oldPath = os.getcwd()
+      cnt = len(self.widgetFileList.body)
+      for idx, item in enumerate(self.widgetFileList.body):
+        attr = item.original_widget.attr
+        pp = attr["path"]
+        #os.chdir(pp)
 
-				repoStatus = attr["repoStatus"]
-				if attr["repo"]:
-					if "M" in repoStatus:
-						isModified = repoStatus["M"]
-						try:
-							print("[%d/%d] - %s" % (idx + 1, cnt, pp))
-							if isModified:
-								print("  git fetch")
-								system("cd '%s'; git fetch" % pp)
-								# 수정내역이 있으면 어차피 최신으로 못만든다.
-							else:
-								print("  git pull -r")
+        repoStatus = attr["repoStatus"]
+        if attr["repo"]:
+          if "M" in repoStatus:
+            isModified = repoStatus["M"]
+            try:
+              print("[%d/%d] - %s" % (idx + 1, cnt, pp))
+              if isModified:
+                print("  git fetch")
+                system("cd '%s'; git fetch" % pp)
+                # 수정내역이 있으면 어차피 최신으로 못만든다.
+              else:
+                print("  git pull -r")
 
-								# TODO: no has tracking branch
-								system("cd '%s'; git pull -r" % pp)
-						except subprocess.CalledProcessError as e:
-							repoStatus["E"] = e
+                # TODO: no has tracking branch
+                system("cd '%s'; git pull -r" % pp)
+            except subprocess.CalledProcessError as e:
+              repoStatus["E"] = e
 
-			os.chdir(oldPath)
-			input("Enter to return...")
-			g.loop.start()
+      os.chdir(oldPath)
+      input("Enter to return...")
+      g.loop.start()
 
+  def doEdit(self, item):
+    def onExit():
+      g.doSetMain(self)
 
-	def doEdit(self, item):
-		def onExit():
-			g.doSetMain(self)
-
-		dlg = DlgRegFolderSetting(onExit, item)
-		g.doSetMain(dlg)
+    dlg = DlgRegFolderSetting(onExit, item)
+    g.doSetMain(dlg)
