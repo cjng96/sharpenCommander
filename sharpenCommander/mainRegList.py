@@ -260,6 +260,7 @@ class DlgRegList(cDialog):
     lst = list(filter(lambda x: x["repo"], g.regList))
     self.itemList = pool.map(_genRepoItem, lst)
     #itemList = [ (item["title"], item) for item in itemList]
+    self.itemList.sort(key=lambda x: x['title'])
 
     #itemList = [ (getTitle(x), x) for x in g.regList ]
     os.chdir(oldPath)
@@ -278,6 +279,12 @@ class DlgRegList(cDialog):
     # status
     self.itemList = list(map(_gen, self.itemList))
     self.refreshList("")
+
+  def _removeItem(self, pp):
+    for i, item in enumerate(self.itemList):
+      if item[2]['path'] == pp:
+        del self.itemList[i]
+        break
 
   def refreshList(self, filterStr):
 
@@ -331,7 +338,10 @@ class DlgRegList(cDialog):
       deleteItem = self.widgetFileList.focus.original_widget.attr
       def _cb(ok):
         if ok:
-          self.refreshFile()
+          #self.refreshFile()
+          self._removeItem(deleteItem['path'])
+          self.refreshList("")        
+
       g.regRemove(deleteItem["path"], _cb)
 
     elif key == "P":
