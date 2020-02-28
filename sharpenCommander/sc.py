@@ -521,18 +521,19 @@ class mDlgMainDc(cDialog):
         else:
           return dcItem["type"] == "S"
 
+      # name, osStat
       lst2 = [ (x[0], x[1]) for x in lst2 if _check(x[0]) ]
 
     # dir sort
-    def _sortStMode(stMode):
+    def _sortStMode(name, stMode):
       if stMode is None:
-        return 2
+        return '2'+name
       elif stat.S_ISDIR(stMode.st_mode):
-        return -1
+        return '0'+name
       else:
-        return 1
+        return '1'+name
         
-    lst2.sort(key=lambda x: _sortStMode(x[1]))
+    lst2.sort(key=lambda x: _sortStMode(x[0], x[1]))
     lst2.insert(0, ("..", None, 0))
 
     # set focus on first matched fitem
