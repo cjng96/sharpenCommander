@@ -275,7 +275,7 @@ class MyProgram(Program):
     lst = []
     lst.append(currentBranch)
     if remoteBranch is None:
-      print("CurrentBranch:%s DOESN'T have a tracking branch")
+      print("CurrentBranch[%s] DOESN'T have a tracking branch" % currentBranch)
       # todo: print latest 10 commits
 
     else:
@@ -331,11 +331,16 @@ class MyProgram(Program):
     if target == "":
       raise ErrFailure("Push is canceled")
 
-    ss2 = remoteBranch.split("/")
+    if remoteBranch is None:
+      arr = git.remoteList()
+      remote = at.inputLine("Input remote name to push to: ", 2, arr)
+    else:
+      ss2 = remoteBranch.split("/") # origin/master
+      remote = ss2[0]
 
     # push it
-    print("\n** Current branch is pushing to the remote branch[%s/%s]..." % (ss2[0], target))
-    ss, status = systemSafe("git push %s %s:%s" % (ss2[0], currentBranch, target))
+    print("\n** Current branch is pushing to the remote branch[%s/%s]..." % (remote, target))
+    ss, status = systemSafe("git push %s %s:%s" % (remote, currentBranch, target))
     print(ss)
     
     if status != 0:
@@ -743,10 +748,13 @@ class mDlgMainDc(cDialog):
     # check git repo
     try:
       ss = subprocess.check_output(["git", "branch", "--color=never"], stderr=subprocess.DEVNULL).decode()
+      if "not a git repo" in ss:
+        self.gitBranch = None # not git repo
+
       # TODO: "* develop", "* (HEAD detached at ae4c400d)"
       name = re.search(r"^\*\s(\w+)", ss, re.MULTILINE)
       if name is None:
-        self.gitBranch = None
+        self.gitBranch = "" # no branch
       else:
         self.gitBranch = name.group(1)
     except subprocess.CalledProcessError:
@@ -998,7 +1006,6 @@ class mDlgMainDc(cDialog):
     x = item.original_widget.attr
     os.chdir(x)
     self.fileRefresh()
-
 
   def workRefresh(self):
     del self.widgetWorkList.body[:]
