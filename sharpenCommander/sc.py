@@ -817,6 +817,8 @@ class mDlgMainDc(cDialog):
     if g.loop.widget != g.dialog.mainWidget:
       return keys
 
+    #dlog("%s" % keys)
+
     if self.cmd == "find":
       # ctrl+j는 enter, alt+시리즈는 안오고.. 그냥 shift+JKH를 쓴다
       if filterKey(keys, "up"):
@@ -854,6 +856,18 @@ class mDlgMainDc(cDialog):
           self.inputSet("")
           self.doFind(ss)
           return
+
+    elif filterKey(keys, 'delete'):
+      pp = self.getFocusPath()
+      def onOk():
+        if os.path.isdir(pp):
+          shutil.rmtree(pp)
+        else:
+          os.remove(pp)
+
+        self.fileRefresh()
+
+      popupAsk("Delete", "Do you want to delete [%s]?" % pp, onOk)
 
     elif filterKey(keys, "enter"):
       if self.mainWidget.get_focus() == "body":
