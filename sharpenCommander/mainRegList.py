@@ -311,6 +311,9 @@ class DlgRegList(cDialog):
     #self.widgetFileList.body += makeBtnListTerminal( , None)
 
   def unhandled(self, key):
+    if g.loop.widget != g.dialog.mainWidget:
+      return key
+
     if key == 'f4' or key == "Q" or key == "esc":
       self.close()
     elif key == "H" or key == "enter":
