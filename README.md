@@ -1,3 +1,6 @@
+
+pip3 install sharpen-commander
+
 # Features
 
 - Can move to the project folder

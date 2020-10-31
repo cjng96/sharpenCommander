@@ -651,7 +651,7 @@ class mDlgMainDc(cDialog):
 
       gitSt = " - git(%s)" % ss1
 
-    featureStr = "" if self.cmd is "" else "[%s]" % self.cmd
+    featureStr = "" if self.cmd == "" else "[%s]" % self.cmd
     featureExtra = ""
     if self.cmd == "find":
       featureExtra = ""
