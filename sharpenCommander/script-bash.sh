@@ -1,6 +1,11 @@
 
 # . $DEV_CMD_PATH/bash-script.sh
 
+realpath() {
+    [[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}"
+}
+
+
 SC_DIR=$(realpath $(dirname "${BASH_SOURCE[0]:-${(%):-%x}}"))
 export SC_OK=1
 function goPath()
