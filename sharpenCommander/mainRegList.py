@@ -259,6 +259,7 @@ class DlgRegList(cDialog):
     pool = Pool(10)
     lst = list(filter(lambda x: x["repo"], g.regList))
     self.itemList = pool.map(_genRepoItem, lst)
+    # self.itemList = list(map(_genRepoItem, lst))
     #itemList = [ (item["title"], item) for item in itemList]
     self.itemList.sort(key=lambda x: x['title'])
 
