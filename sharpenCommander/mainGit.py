@@ -169,7 +169,7 @@ class DlgGitCommit(cDialog):
             if key == "f10":
                 self.widgetFrame.set_focus(self.edInput)
 
-        elif key == "a" or key == "A":
+        elif key == "A":
 
             def onAdd():
                 system('git add "%s"' % fname)
@@ -395,7 +395,7 @@ class DlgGitStatus(cDialog):
             self.widgetFileList.focusNext()
             self.refreshFileContentCur()
 
-        elif key == "A":
+        elif key == "a" or key == "A":
             btn = self.widgetFileList.focus
             # fname = gitFileBtnName(btn)
             fname = gitFileLastName(btn)
