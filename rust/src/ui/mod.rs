@@ -13,7 +13,7 @@ use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout, Margin, Position, Rect};
 use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::Text;
+use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, List, ListItem, ListState, Paragraph};
 use ratatui::Terminal;
 
@@ -962,7 +962,8 @@ impl GitStatusState {
         f.render_stateful_widget(list, layout[0], &mut self.list_state);
         self.list_area = Some(layout[0]);
 
-        let text = Text::from(self.content.join("\n"));
+        let diff_lines = format_diff_lines(&self.content, layout[1].width);
+        let text = Text::from(diff_lines);
         let view = Paragraph::new(text)
             .block(Block::default().title("Diff"));
         f.render_widget(view.scroll((self.content_scroll, 0)), layout[1]);
@@ -1053,6 +1054,8 @@ impl GitStatusState {
             } else if status == "?" {
                 std::fs::read_to_string(&name)
                     .unwrap_or_else(|_| format!("No utf8 file[size:{}]", file_size(&name)))
+            } else if status == "s" {
+                system(&format!("git diff --color --staged \"{}\"", name))?
             } else {
                 system(&format!("git diff --color \"{}\"", name))?
             };
@@ -1151,43 +1154,65 @@ fn build_git_items() -> anyhow::Result<Vec<GitItem>> {
     let list = git::status_file_list()?;
     let mut modified = Vec::new();
     let mut untracked = Vec::new();
+    let mut staged = Vec::new();
     for (line, status) in list {
-        if status == "?" {
-            untracked.push((line, status));
+        let clean = strip_ansi(line);
+        if clean.starts_with("??") {
+            untracked.push((clean, "?".to_string()));
+        } else if status == "s" {
+            staged.push((clean, status));
         } else {
-            modified.push((line, status));
+            modified.push((clean, status));
         }
     }
     let mut items = Vec::new();
-    items.push(GitItem {
-        label: "< Modified >".to_string(),
-        status: None,
-        kind: GitItemKind::Header,
-        path: None,
-    });
-    for (line, status) in modified {
-        let clean = strip_ansi(line);
+    if !modified.is_empty() {
         items.push(GitItem {
-            label: clean.clone(),
-            status: Some(status),
-            kind: GitItemKind::Entry,
-            path: git_file_last_name(&clean),
+            label: "< Modified >".to_string(),
+            status: None,
+            kind: GitItemKind::Header,
+            path: None,
         });
+        for (clean, status) in modified {
+            items.push(GitItem {
+                label: clean.clone(),
+                status: Some(status),
+                kind: GitItemKind::Entry,
+                path: git_file_last_name(&clean),
+            });
+        }
     }
-    items.push(GitItem {
-        label: "< Untracked >".to_string(),
-        status: None,
-        kind: GitItemKind::Header,
-        path: None,
-    });
-    for (line, status) in untracked {
-        let clean = strip_ansi(line);
+    if !untracked.is_empty() {
         items.push(GitItem {
-            label: clean.clone(),
-            status: Some(status),
-            kind: GitItemKind::Entry,
-            path: git_file_last_name(&clean),
+            label: "< Untracked >".to_string(),
+            status: None,
+            kind: GitItemKind::Header,
+            path: None,
         });
+        for (clean, status) in untracked {
+            items.push(GitItem {
+                label: clean.clone(),
+                status: Some(status),
+                kind: GitItemKind::Entry,
+                path: git_file_last_name(&clean),
+            });
+        }
+    }
+    if !staged.is_empty() {
+        items.push(GitItem {
+            label: "< Staged >".to_string(),
+            status: None,
+            kind: GitItemKind::Header,
+            path: None,
+        });
+        for (clean, status) in staged {
+            items.push(GitItem {
+                label: clean.clone(),
+                status: Some(status),
+                kind: GitItemKind::Entry,
+                path: git_file_last_name(&clean),
+            });
+        }
     }
     Ok(items)
 }
@@ -1202,6 +1227,7 @@ struct GitCommitState {
     content_area: Option<Rect>,
     content_scroll: u16,
     last_click: Option<(Instant, usize)>,
+    input_mode: bool,
 }
 
 impl GitCommitState {
@@ -1233,6 +1259,7 @@ impl GitCommitState {
             content_area: None,
             content_scroll: 0,
             last_click: None,
+            input_mode: true,
         };
         state.list_state.select(Some(0));
         state.load_content()?;
@@ -1250,9 +1277,28 @@ impl GitCommitState {
             ])
             .split(f.size());
 
-        let input = Paragraph::new(format!("Input commit message => {}", self.message))
-            .block(Block::default());
+        let input_title = if self.input_mode {
+            "Commit message (input)"
+        } else {
+            "Commit message"
+        };
+        let prompt = "Input commit message => ";
+        let input = Paragraph::new(format!("{}{}", prompt, self.message))
+            .block(Block::default().title(input_title));
         f.render_widget(input, layout[0]);
+        if self.input_mode {
+            let inner = layout[0].inner(&Margin {
+                horizontal: 0,
+                vertical: 1,
+            });
+            let cursor_x = inner
+                .x
+                .saturating_add(prompt.len() as u16)
+                .saturating_add(self.message.len() as u16)
+                .min(inner.x + inner.width.saturating_sub(1));
+            let cursor_y = inner.y.min(inner.y + inner.height.saturating_sub(1));
+            f.set_cursor(cursor_x, cursor_y);
+        }
 
         let file_items: Vec<ListItem> = self.files.iter().map(|s| ListItem::new(s.as_str())).collect();
         let file_list = List::new(file_items)
@@ -1277,19 +1323,47 @@ impl GitCommitState {
     }
 
     fn on_key(&mut self, ctx: &mut AppContext, key: KeyEvent) -> anyhow::Result<Action> {
+        if self.input_mode {
+            match key.code {
+                KeyCode::Esc => {
+                    self.input_mode = false;
+                }
+                KeyCode::Enter => {
+                    if self.message.trim().is_empty() {
+                        return Ok(Action::None);
+                    }
+                    let status = std::process::Command::new("git")
+                        .arg("commit")
+                        .arg("-m")
+                        .arg(&self.message)
+                        .status()?;
+                    if !status.success() {
+                        return Err(anyhow::anyhow!("git commit failed"));
+                    }
+                    return Ok(Action::Switch(Screen::GitStatus(GitStatusState::new(ctx)?)));
+                }
+                KeyCode::Backspace => {
+                    self.message.pop();
+                }
+                KeyCode::Char(c) => {
+                    if c.is_ascii_graphic() || c == ' ' {
+                        self.message.push(c);
+                    }
+                }
+                _ => {}
+            }
+            return Ok(Action::None);
+        }
+
         match key.code {
             KeyCode::Esc | KeyCode::Char('q') => {
                 return Ok(Action::Switch(Screen::GitStatus(GitStatusState::new(ctx)?)));
             }
+            KeyCode::Char('i') => {
+                self.input_mode = true;
+            }
             KeyCode::Char('j') | KeyCode::Down => self.next()?,
             KeyCode::Char('k') | KeyCode::Up => self.prev()?,
-            KeyCode::Enter => {
-                if self.message.trim().is_empty() {
-                    return Ok(Action::None);
-                }
-                system(&format!("git commit -m \"{}\"", self.message))?;
-                return Ok(Action::Switch(Screen::GitStatus(GitStatusState::new(ctx)?)));
-            }
             KeyCode::Char('A') | KeyCode::Char('a') => {
                 let name = self.focus_file_name().unwrap_or_default();
                 if !name.is_empty() {
@@ -1303,14 +1377,6 @@ impl GitCommitState {
                     system(&format!("git reset \"{}\"", name))?;
                     *self = GitCommitState::new(ctx)?;
                 }
-            }
-            KeyCode::Char(c) => {
-                if c.is_ascii_graphic() || c == ' ' {
-                    self.message.push(c);
-                }
-            }
-            KeyCode::Backspace => {
-                self.message.pop();
             }
             _ => {}
         }
@@ -1331,13 +1397,29 @@ impl GitCommitState {
     fn load_content(&mut self) -> anyhow::Result<()> {
         if let Some(name) = self.focus_file_name() {
             let is_staged = self.files[self.list_state.selected().unwrap_or(0)].starts_with('s');
-            let cmd = if is_staged {
-                format!("git diff --color --staged \"{}\"", name)
+            let output = if is_staged {
+                std::process::Command::new("git")
+                    .arg("diff")
+                    .arg("--color")
+                    .arg("--staged")
+                    .arg(&name)
+                    .output()
             } else {
-                format!("git diff --color \"{}\"", name)
+                std::process::Command::new("git")
+                    .arg("diff")
+                    .arg("--color")
+                    .arg(&name)
+                    .output()
             };
-            let out = system(&cmd).unwrap_or_else(|_| "< no diff >".to_string());
-            self.content = strip_ansi(out).replace('\t', "    ").lines().map(|s| s.to_string()).collect();
+            let out = match output {
+                Ok(out) => String::from_utf8_lossy(&out.stdout).to_string(),
+                Err(_) => "< no diff >".to_string(),
+            };
+            self.content = strip_ansi(out)
+                .replace('\t', "    ")
+                .lines()
+                .map(|s| s.to_string())
+                .collect();
         }
         Ok(())
     }
@@ -1944,6 +2026,43 @@ fn run_git_pull(path: &str, is_rebase: bool, tx: &mpsc::Sender<PullEvent>) -> (i
     let code = child.wait().ok().and_then(|s| s.code()).unwrap_or(1);
     let message = if code == 0 { None } else { err_line.or(last_line) };
     (code, message)
+}
+
+fn format_diff_lines(lines: &[String], width: u16) -> Vec<Line<'static>> {
+    let mut out = Vec::new();
+    let mut first_hunk = true;
+    let rule_len = width.max(1) as usize;
+    for line in lines {
+        if line.starts_with("@@") {
+            if !first_hunk {
+                out.push(Line::from(Span::styled(
+                    "-".repeat(rule_len),
+                    Style::default().fg(Color::DarkGray),
+                )));
+            }
+            first_hunk = false;
+            out.push(Line::from(Span::styled(
+                line.clone(),
+                Style::default().fg(Color::Cyan),
+            )));
+            continue;
+        }
+        let style = if line.starts_with("diff --git")
+            || line.starts_with("index ")
+            || line.starts_with("--- ")
+            || line.starts_with("+++ ")
+        {
+            Style::default().fg(Color::Yellow)
+        } else if line.starts_with('+') {
+            Style::default().fg(Color::Green)
+        } else if line.starts_with('-') {
+            Style::default().fg(Color::Red)
+        } else {
+            Style::default()
+        };
+        out.push(Line::from(Span::styled(line.clone(), style)));
+    }
+    out
 }
 
 struct GotoState {
