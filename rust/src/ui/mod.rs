@@ -1455,10 +1455,10 @@ impl GitCommitState {
                     .arg(&self.message)
                     .status()?;
                 if !status.success() {
-                        return Err(anyhow::anyhow!("git commit failed"));
-                    }
-                    return Ok(Action::Switch(Screen::GitStatus(GitStatusState::new(ctx)?)));
+                    return Err(anyhow::anyhow!("git commit failed"));
                 }
+                return Ok(Action::Switch(Screen::Main(MainState::new(ctx)?)));
+            }
                 KeyCode::Backspace => {
                     self.message.pop();
                 }
