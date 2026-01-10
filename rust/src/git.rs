@@ -157,6 +157,7 @@ pub fn stash_get_name_safe(name: &str) -> anyhow::Result<Option<String>> {
     }
 }
 
+
 pub fn commit_list_at(root: &Path) -> anyhow::Result<Vec<String>> {
     let out = system(&format!(
         r#"git -C "{}" -c color.status=always log --pretty=format:"%h %Cblue%an%Creset(%ar): %Cgreen%s" --graph -4"#,
@@ -178,17 +179,8 @@ pub fn status_file_list() -> anyhow::Result<Vec<(String, String)>> {
         if line.len() < 3 {
             continue;
         }
-        let status_code = &line[0..2];
-        let status = if status_code == "??" {
-            "?"
-        } else if &line[0..1] != " " {
-            // Something is in the staged column
-            "s"
-        } else {
-            // Only unstaged changes
-            ""
-        };
-        list.push((line.to_string(), status.to_string()));
+        let status_code = line[0..2].to_string();
+        list.push((line.to_string(), status_code));
     }
     Ok(list)
 }

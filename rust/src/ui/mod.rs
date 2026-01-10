@@ -1264,13 +1264,19 @@ fn build_git_items() -> anyhow::Result<Vec<GitItem>> {
     let mut modified = Vec::new();
     let mut untracked = Vec::new();
     let mut staged = Vec::new();
-    for (line, status) in list {
-        if line.starts_with("??") {
+    for (line, status_code) in list {
+        if status_code == "??" {
             untracked.push((line, "?".to_string()));
-        } else if status == "s" {
-            staged.push((line, status));
-        } else {
-            modified.push((line, status));
+            continue;
+        }
+        let bytes = status_code.as_bytes();
+        let staged_flag = bytes.get(0).copied().unwrap_or(b' ') != b' ';
+        let modified_flag = bytes.get(1).copied().unwrap_or(b' ') != b' ';
+        if staged_flag {
+            staged.push((line.clone(), "s".to_string()));
+        }
+        if modified_flag {
+            modified.push((line, "".to_string()));
         }
     }
     let mut items = Vec::new();
@@ -1336,33 +1342,27 @@ struct GitCommitState {
     content_scroll: u16,
     last_click: Option<(Instant, usize)>,
     input_mode: bool,
-    workdir: PathBuf,
+    repo_root: PathBuf,
 }
 
 impl GitCommitState {
     fn new(_ctx: &mut AppContext) -> anyhow::Result<Self> {
-        let workdir = std::env::current_dir()?;
+        let repo_root = git::repo_root()?;
         let staged = system_logged(
             "GitCommit",
-            &git_cmd_at(&workdir, "diff --name-only --cached"),
+            &git_cmd_at(&repo_root, "diff --name-only --staged"),
         )?;
-        let modified = system_logged("GitCommit", &git_cmd_at(&workdir, "diff --name-only"))?;
         let mut files = Vec::new();
         for line in staged.lines() {
             if !line.trim().is_empty() {
                 files.push(format!("s {}", line));
             }
         }
-        for line in modified.lines() {
-            if !line.trim().is_empty() {
-                files.push(format!("c {}", line));
-            }
-        }
         if files.is_empty() {
             files.push("< Nothing >".to_string());
         }
         let commits =
-            git::commit_list_at(&workdir).unwrap_or_else(|_| vec!["< There is no commit >".to_string()]);
+            git::commit_list_at(&repo_root).unwrap_or_else(|_| vec!["< There is no commit >".to_string()]);
         let mut state = Self {
             message: String::new(),
             files,
@@ -1374,7 +1374,7 @@ impl GitCommitState {
             content_scroll: 0,
             last_click: None,
             input_mode: true,
-            workdir,
+            repo_root,
         };
         state.list_state.select(Some(0));
         state.load_content()?;
@@ -1388,6 +1388,7 @@ impl GitCommitState {
                 Constraint::Length(3),
                 Constraint::Length(8),
                 Constraint::Length(5),
+                Constraint::Length(1),
                 Constraint::Min(5),
             ])
             .split(f.size());
@@ -1431,10 +1432,14 @@ impl GitCommitState {
             .block(Block::default().title("Commits"));
         f.render_widget(commit_list, layout[2]);
 
-        let diff_lines = format_diff_lines(&self.content, layout[3].width);
+        let separator = "-".repeat(layout[3].width as usize);
+        let sep = Paragraph::new(separator).style(Style::default().fg(Color::DarkGray));
+        f.render_widget(sep, layout[3]);
+
+        let diff_lines = format_diff_lines(&self.content, layout[4].width);
         let view = Paragraph::new(Text::from(diff_lines)).block(Block::default().title("Diff"));
-        f.render_widget(view.scroll((self.content_scroll, 0)), layout[3]);
-        self.content_area = Some(layout[3]);
+        f.render_widget(view.scroll((self.content_scroll, 0)), layout[4]);
+        self.content_area = Some(layout[4]);
     }
 
     fn on_key(&mut self, ctx: &mut AppContext, key: KeyEvent) -> anyhow::Result<Action> {
@@ -1443,13 +1448,22 @@ impl GitCommitState {
                 KeyCode::Esc => {
                     self.input_mode = false;
                 }
-            KeyCode::Enter => {
-                if self.message.trim().is_empty() {
-                    return Ok(Action::None);
+                KeyCode::F(4) => {
+                    return Ok(Action::Switch(Screen::GitStatus(GitStatusState::new(ctx)?)));
                 }
+                KeyCode::Down => {
+                    self.next()?;
+                }
+                KeyCode::Up => {
+                    self.prev()?;
+                }
+                KeyCode::Enter => {
+                    if self.message.trim().is_empty() {
+                        return Ok(Action::None);
+                    }
                 let status = std::process::Command::new("git")
                     .arg("-C")
-                    .arg(&self.workdir)
+                    .arg(&self.repo_root)
                     .arg("commit")
                     .arg("-m")
                     .arg(&self.message)
@@ -1476,6 +1490,9 @@ impl GitCommitState {
             KeyCode::Esc | KeyCode::Char('q') => {
                 return Ok(Action::Switch(Screen::GitStatus(GitStatusState::new(ctx)?)));
             }
+            KeyCode::F(4) => {
+                return Ok(Action::Switch(Screen::GitStatus(GitStatusState::new(ctx)?)));
+            }
             KeyCode::Char('i') => {
                 self.input_mode = true;
             }
@@ -1484,14 +1501,14 @@ impl GitCommitState {
             KeyCode::Char('A') | KeyCode::Char('a') => {
                 let name = self.focus_file_name().unwrap_or_default();
                 if !name.is_empty() {
-                    system(&git_cmd_at(&self.workdir, &format!("add \"{}\"", name)))?;
+                    system(&git_cmd_at(&self.repo_root, &format!("add \"{}\"", name)))?;
                     *self = GitCommitState::new(ctx)?;
                 }
             }
             KeyCode::Char('R') => {
                 let name = self.focus_file_name().unwrap_or_default();
                 if !name.is_empty() {
-                    system(&git_cmd_at(&self.workdir, &format!("reset \"{}\"", name)))?;
+                    system(&git_cmd_at(&self.repo_root, &format!("reset \"{}\"", name)))?;
                     *self = GitCommitState::new(ctx)?;
                 }
             }
@@ -1513,30 +1530,30 @@ impl GitCommitState {
 
     fn load_content(&mut self) -> anyhow::Result<()> {
         if let Some(name) = self.focus_file_name() {
-            let is_staged = self.files[self.list_state.selected().unwrap_or(0)].starts_with('s');
-            let output = if is_staged {
-                std::process::Command::new("git")
-                    .arg("-C")
-                    .arg(&self.workdir)
-                    .arg("diff")
-                    .arg("--color")
-                    .arg("--staged")
-                    .arg(&name)
-                    .output()
+            let output = std::process::Command::new("git")
+                .arg("-C")
+                .arg(&self.repo_root)
+                .arg("diff")
+                .arg("--color")
+                .arg("--staged")
+                .arg("--")
+                .arg(&name)
+                .output();
+            let (stdout, stderr) = match output {
+                Ok(out) => (
+                    String::from_utf8_lossy(&out.stdout).to_string(),
+                    String::from_utf8_lossy(&out.stderr).to_string(),
+                ),
+                Err(_) => ("".to_string(), "< no diff >".to_string()),
+            };
+            let body = if stdout.trim().is_empty() && !stderr.trim().is_empty() {
+                stderr
+            } else if stdout.trim().is_empty() {
+                "< no diff >".to_string()
             } else {
-                std::process::Command::new("git")
-                    .arg("-C")
-                    .arg(&self.workdir)
-                    .arg("diff")
-                    .arg("--color")
-                    .arg(&name)
-                    .output()
+                stdout
             };
-            let out = match output {
-                Ok(out) => String::from_utf8_lossy(&out.stdout).to_string(),
-                Err(_) => "< no diff >".to_string(),
-            };
-            self.content = strip_ansi(out)
+            self.content = strip_ansi(body)
                 .replace('\t', "    ")
                 .lines()
                 .map(|s| s.to_string())
