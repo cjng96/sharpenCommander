@@ -7,20 +7,20 @@ use std::sync::{mpsc, Arc, Condvar, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crossterm::event::{self, Event, KeyCode, KeyEvent, MouseEvent, MouseEventKind};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout, Margin, Position, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span, Text};
-use ratatui::widgets::{Block, List, ListItem, ListState, Paragraph};
+use ratatui::widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph};
 use ratatui::Terminal;
 
 use crate::app::{open_in_editor, AppContext};
 use crate::config::RegItem;
 use crate::git;
-use crate::system::{system, system_safe, system_stream};
+use crate::system::{app_log, system, system_logged, system_safe, system_stream};
 use crate::util::{match_disorder, match_disorder_count, walk_dirs};
 
 const INPUT_PREFIX: &str = "$ ";
@@ -148,6 +148,7 @@ fn input_prompt_with_list(items: &[String]) -> anyhow::Result<String> {
 struct App<'a> {
     ctx: &'a mut AppContext,
     screen: Screen,
+    toast: Option<(String, Instant)>,
 }
 
 impl<'a> App<'a> {
@@ -156,11 +157,12 @@ impl<'a> App<'a> {
         Ok(Self {
             ctx,
             screen: Screen::Main(main),
+            toast: None,
         })
     }
 
     fn run(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> anyhow::Result<()> {
-        let tick_rate = Duration::from_millis(200);
+        let tick_rate = Duration::from_millis(100);
         let mut last_tick = Instant::now();
         loop {
             if REDRAW_REQUEST.swap(false, Ordering::SeqCst) {
@@ -184,6 +186,11 @@ impl<'a> App<'a> {
                 }
             }
             if last_tick.elapsed() >= tick_rate {
+                if let Some((_, expire)) = self.toast {
+                    if Instant::now() > expire {
+                        self.toast = None;
+                    }
+                }
                 last_tick = Instant::now();
             }
         }
@@ -199,9 +206,36 @@ impl<'a> App<'a> {
             Screen::RegList(state) => state.render(f),
             Screen::Goto(state) => state.render(f),
         }
+
+        if let Some((msg, _)) = &self.toast {
+            let area = f.size();
+            let toast_height = 3;
+            let toast_area = Rect {
+                x: area.x + area.width / 4,
+                y: area.y + area.height.saturating_sub(toast_height + 2),
+                width: area.width / 2,
+                height: toast_height,
+            };
+            let block = Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::DarkGray));
+            let p = Paragraph::new(format!("{}", msg))
+                .block(block)
+                .style(Style::default().fg(Color::Gray))
+                .alignment(ratatui::layout::Alignment::Center);
+            f.render_widget(Clear, toast_area);
+            f.render_widget(p, toast_area);
+        }
+    }
+
+    fn set_toast(&mut self, msg: &str, duration: Duration) {
+        self.toast = Some((msg.to_string(), Instant::now() + duration));
     }
 
     fn on_key(&mut self, key: KeyEvent) -> anyhow::Result<bool> {
+        if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
+            return Ok(true);
+        }
         let action = match &mut self.screen {
             Screen::Main(state) => state.on_key(self.ctx, key)?,
             Screen::Find(state) => state.on_key(self.ctx, key)?,
@@ -216,6 +250,10 @@ impl<'a> App<'a> {
             Action::Exit => Ok(true),
             Action::Switch(screen) => {
                 self.screen = screen;
+                Ok(false)
+            }
+            Action::Toast(msg) => {
+                self.set_toast(&msg, Duration::from_secs(2));
                 Ok(false)
             }
         }
@@ -238,6 +276,10 @@ impl<'a> App<'a> {
                 self.screen = screen;
                 Ok(false)
             }
+            Action::Toast(msg) => {
+                self.set_toast(&msg, Duration::from_secs(2));
+                Ok(false)
+            }
         }
     }
 }
@@ -256,6 +298,7 @@ enum Action {
     None,
     Exit,
     Switch(Screen),
+    Toast(String),
 }
 
 struct MainState {
@@ -445,8 +488,26 @@ impl MainState {
 
         match key.code {
             KeyCode::Char('q') => return Ok(Action::Exit),
-            KeyCode::Char('j') | KeyCode::Down => self.select_next(),
-            KeyCode::Char('k') | KeyCode::Up => self.select_prev(),
+            KeyCode::Down => self.select_next(),
+            KeyCode::Up => self.select_prev(),
+            KeyCode::Char('j') if key.modifiers.is_empty() => self.select_next(),
+            KeyCode::Char('k') if key.modifiers.is_empty() => self.select_prev(),
+            KeyCode::Char('h') if key.modifiers.contains(KeyModifiers::ALT) => {
+                if let Some(parent) = self.cwd.parent() {
+                    if std::env::set_current_dir(parent).is_ok() {
+                        self.cwd = parent.to_path_buf();
+                        self.refresh();
+                        self.list_state.select(Some(0));
+                    }
+                }
+            }
+            KeyCode::Char('l') if key.modifiers.contains(KeyModifiers::ALT) => {
+                if let Some(name) = self.focus_name() {
+                    self.enter_dir(&name);
+                }
+            }
+            KeyCode::Char('j') if key.modifiers.contains(KeyModifiers::ALT) => self.select_next(),
+            KeyCode::Char('k') if key.modifiers.contains(KeyModifiers::ALT) => self.select_prev(),
             KeyCode::Char('J') => self.select_step(10),
             KeyCode::Char('K') => self.select_step(-10),
             KeyCode::Char('u') | KeyCode::Char('.') | KeyCode::Char('U') => {
@@ -468,7 +529,7 @@ impl MainState {
                     if let Some(entry) = self.items.get(idx) {
                         let path = self.cwd.join(&entry.name);
                         if path.is_file() {
-                            open_in_editor(&ctx.config.editApp, path.to_string_lossy().as_ref());
+                            open_in_editor(&ctx.config.edit_app, path.to_string_lossy().as_ref());
                         }
                     }
                 }
@@ -480,7 +541,18 @@ impl MainState {
                 return Ok(Action::Switch(Screen::RegList(RegListState::new(ctx)?)));
             }
             KeyCode::Char('C') => {
-                return Ok(Action::Switch(Screen::GitStatus(GitStatusState::new(ctx)?)));
+                let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("<unknown>"));
+                app_log(&format!(
+                    "Key C (Main) cwd={}",
+                    cwd.to_string_lossy()
+                ));
+                match GitStatusState::new(ctx) {
+                    Ok(state) => return Ok(Action::Switch(Screen::GitStatus(state))),
+                    Err(err) => {
+                        app_log(&format!("Key C (Main) error: {}", err));
+                        return Ok(Action::Toast(err.to_string()));
+                    }
+                }
             }
             KeyCode::Char('g') => {
                 return Ok(Action::Switch(Screen::Goto(GotoState::new(ctx)?)));
@@ -511,6 +583,24 @@ impl MainState {
                             Ok(())
                         })?;
                     }
+                }
+            }
+            KeyCode::Char('T') => {
+                if let Some(name) = self.focus_name() {
+                    let path = self.cwd.join(&name);
+                    let target = if path.is_dir() {
+                        path
+                    } else {
+                        self.cwd.clone()
+                    };
+                    with_terminal_pause(|| {
+                        let old = std::env::current_dir()?;
+                        if std::env::set_current_dir(&target).is_ok() {
+                            let _ = system_stream("tig");
+                            let _ = std::env::set_current_dir(old);
+                        }
+                        Ok(())
+                    })?;
                 }
             }
             _ => {}
@@ -696,7 +786,7 @@ impl FindState {
             }
             KeyCode::Char('E') => {
                 if let Some(file) = self.focus_file() {
-                    open_in_editor(&ctx.config.editApp, &file);
+                    open_in_editor(&ctx.config.edit_app, &file);
                 }
             }
             _ => {}
@@ -792,9 +882,9 @@ impl GrepState {
     fn from_args(ctx: &mut AppContext, args: &[String]) -> anyhow::Result<Self> {
         let cmd = if args.len() > 1 {
             let rest = args[1..].join(" ");
-            format!("{} --group --color {}", ctx.config.grepApp, rest)
+            format!("{} --group --color {}", ctx.config.grep_app, rest)
         } else {
-            format!("{} --group --color", ctx.config.grepApp)
+            format!("{} --group --color", ctx.config.grep_app)
         };
         let (out, _code) = system_safe(&cmd);
         let clean = strip_ansi(out);
@@ -1002,11 +1092,22 @@ impl GitStatusState {
                 }
             }
             KeyCode::Char('C') => {
-                return Ok(Action::Switch(Screen::GitCommit(GitCommitState::new(ctx)?)));
+                let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("<unknown>"));
+                app_log(&format!(
+                    "Key C (GitStatus) cwd={}",
+                    cwd.to_string_lossy()
+                ));
+                match GitCommitState::new(ctx) {
+                    Ok(state) => return Ok(Action::Switch(Screen::GitCommit(state))),
+                    Err(err) => {
+                        app_log(&format!("Key C (GitStatus) error: {}", err));
+                        return Ok(Action::Toast(err.to_string()));
+                    }
+                }
             }
             KeyCode::Char('E') => {
                 if let Some(name) = self.focus_file_name() {
-                    open_in_editor(&ctx.config.editApp, &name);
+                    open_in_editor(&ctx.config.edit_app, &name);
                 }
             }
             _ => {}
@@ -1042,6 +1143,10 @@ impl GitStatusState {
     }
 
     fn load_content(&mut self) -> anyhow::Result<()> {
+        app_log(&format!(
+            "GitStatusState::load_content focus_file_name={:?}",
+            self.focus_file_name()
+        ));
         if let Some(name) = self.focus_file_name() {
             let status = self
                 .list_state
@@ -1152,17 +1257,20 @@ struct GitItem {
 
 fn build_git_items() -> anyhow::Result<Vec<GitItem>> {
     let list = git::status_file_list()?;
+    app_log(&format!(
+        "build_git_items list={:?}",
+        list
+    ));
     let mut modified = Vec::new();
     let mut untracked = Vec::new();
     let mut staged = Vec::new();
     for (line, status) in list {
-        let clean = strip_ansi(line);
-        if clean.starts_with("??") {
-            untracked.push((clean, "?".to_string()));
+        if line.starts_with("??") {
+            untracked.push((line, "?".to_string()));
         } else if status == "s" {
-            staged.push((clean, status));
+            staged.push((line, status));
         } else {
-            modified.push((clean, status));
+            modified.push((line, status));
         }
     }
     let mut items = Vec::new();
@@ -1228,12 +1336,17 @@ struct GitCommitState {
     content_scroll: u16,
     last_click: Option<(Instant, usize)>,
     input_mode: bool,
+    workdir: PathBuf,
 }
 
 impl GitCommitState {
     fn new(_ctx: &mut AppContext) -> anyhow::Result<Self> {
-        let staged = system("git diff --name-only --cached")?;
-        let modified = system("git diff --name-only")?;
+        let workdir = std::env::current_dir()?;
+        let staged = system_logged(
+            "GitCommit",
+            &git_cmd_at(&workdir, "diff --name-only --cached"),
+        )?;
+        let modified = system_logged("GitCommit", &git_cmd_at(&workdir, "diff --name-only"))?;
         let mut files = Vec::new();
         for line in staged.lines() {
             if !line.trim().is_empty() {
@@ -1248,7 +1361,8 @@ impl GitCommitState {
         if files.is_empty() {
             files.push("< Nothing >".to_string());
         }
-        let commits = git::commit_list().unwrap_or_else(|_| vec!["< There is no commit >".to_string()]);
+        let commits =
+            git::commit_list_at(&workdir).unwrap_or_else(|_| vec!["< There is no commit >".to_string()]);
         let mut state = Self {
             message: String::new(),
             files,
@@ -1260,6 +1374,7 @@ impl GitCommitState {
             content_scroll: 0,
             last_click: None,
             input_mode: true,
+            workdir,
         };
         state.list_state.select(Some(0));
         state.load_content()?;
@@ -1316,8 +1431,8 @@ impl GitCommitState {
             .block(Block::default().title("Commits"));
         f.render_widget(commit_list, layout[2]);
 
-        let view = Paragraph::new(Text::from(self.content.join("\n")))
-            .block(Block::default().title("Diff"));
+        let diff_lines = format_diff_lines(&self.content, layout[3].width);
+        let view = Paragraph::new(Text::from(diff_lines)).block(Block::default().title("Diff"));
         f.render_widget(view.scroll((self.content_scroll, 0)), layout[3]);
         self.content_area = Some(layout[3]);
     }
@@ -1328,16 +1443,18 @@ impl GitCommitState {
                 KeyCode::Esc => {
                     self.input_mode = false;
                 }
-                KeyCode::Enter => {
-                    if self.message.trim().is_empty() {
-                        return Ok(Action::None);
-                    }
-                    let status = std::process::Command::new("git")
-                        .arg("commit")
-                        .arg("-m")
-                        .arg(&self.message)
-                        .status()?;
-                    if !status.success() {
+            KeyCode::Enter => {
+                if self.message.trim().is_empty() {
+                    return Ok(Action::None);
+                }
+                let status = std::process::Command::new("git")
+                    .arg("-C")
+                    .arg(&self.workdir)
+                    .arg("commit")
+                    .arg("-m")
+                    .arg(&self.message)
+                    .status()?;
+                if !status.success() {
                         return Err(anyhow::anyhow!("git commit failed"));
                     }
                     return Ok(Action::Switch(Screen::GitStatus(GitStatusState::new(ctx)?)));
@@ -1346,7 +1463,7 @@ impl GitCommitState {
                     self.message.pop();
                 }
                 KeyCode::Char(c) => {
-                    if c.is_ascii_graphic() || c == ' ' {
+                    if !c.is_control() {
                         self.message.push(c);
                     }
                 }
@@ -1367,14 +1484,14 @@ impl GitCommitState {
             KeyCode::Char('A') | KeyCode::Char('a') => {
                 let name = self.focus_file_name().unwrap_or_default();
                 if !name.is_empty() {
-                    system(&format!("git add \"{}\"", name))?;
+                    system(&git_cmd_at(&self.workdir, &format!("add \"{}\"", name)))?;
                     *self = GitCommitState::new(ctx)?;
                 }
             }
             KeyCode::Char('R') => {
                 let name = self.focus_file_name().unwrap_or_default();
                 if !name.is_empty() {
-                    system(&format!("git reset \"{}\"", name))?;
+                    system(&git_cmd_at(&self.workdir, &format!("reset \"{}\"", name)))?;
                     *self = GitCommitState::new(ctx)?;
                 }
             }
@@ -1399,6 +1516,8 @@ impl GitCommitState {
             let is_staged = self.files[self.list_state.selected().unwrap_or(0)].starts_with('s');
             let output = if is_staged {
                 std::process::Command::new("git")
+                    .arg("-C")
+                    .arg(&self.workdir)
                     .arg("diff")
                     .arg("--color")
                     .arg("--staged")
@@ -1406,6 +1525,8 @@ impl GitCommitState {
                     .output()
             } else {
                 std::process::Command::new("git")
+                    .arg("-C")
+                    .arg(&self.workdir)
                     .arg("diff")
                     .arg("--color")
                     .arg(&name)
@@ -1485,7 +1606,6 @@ struct RegListState {
     items: Vec<RegItem>,
     list_state: ListState,
     filter: String,
-    input_mode: bool,
     list_area: Option<Rect>,
     log_area: Option<Rect>,
     pull_rx: Option<mpsc::Receiver<PullEvent>>,
@@ -1508,7 +1628,6 @@ impl RegListState {
             items,
             list_state: ListState::default(),
             filter: String::new(),
-            input_mode: false,
             list_area: None,
             log_area: None,
             pull_rx: None,
@@ -1533,48 +1652,45 @@ impl RegListState {
         } else {
             "Repo list".to_string()
         };
+
+        let layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(1), // Title
+                Constraint::Min(0),    // Body (List)
+                Constraint::Length(2), // Filter (Bottom)
+            ])
+            .split(f.size());
+
+        let title_widget = Paragraph::new(Line::from(Span::styled(
+            format!(" >> {}", header),
+            Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+        )));
+        f.render_widget(title_widget, layout[0]);
+
         if self.show_log {
-            let layout = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([Constraint::Min(5), Constraint::Length(3)])
-                .split(f.size());
             let body = Layout::default()
                 .direction(Direction::Horizontal)
                 .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
-                .split(layout[0]);
-            self.render_list(header, body[0], f);
+                .split(layout[1]);
+            self.render_list("".to_string(), body[0], f);
             self.render_log(body[1], f);
-            let input_title = if self.confirm_delete {
-                "Delete? (y/n)"
-            } else {
-                "Filter"
-            };
-            let input_text = if self.confirm_delete {
-                self.confirm_target.clone().unwrap_or_default()
-            } else {
-                format!("{}{}", INPUT_PREFIX, self.filter)
-            };
-            let input = Paragraph::new(input_text).block(Block::default().title(input_title));
-            f.render_widget(input, layout[1]);
         } else {
-            let layout = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([Constraint::Min(5), Constraint::Length(3)])
-                .split(f.size());
-            self.render_list(header, layout[0], f);
-            let input_title = if self.confirm_delete {
-                "Delete? (y/n)"
-            } else {
-                "Filter"
-            };
-            let input_text = if self.confirm_delete {
-                self.confirm_target.clone().unwrap_or_default()
-            } else {
-                format!("{}{}", INPUT_PREFIX, self.filter)
-            };
-            let input = Paragraph::new(input_text).block(Block::default().title(input_title));
-            f.render_widget(input, layout[1]);
+            self.render_list("".to_string(), layout[1], f);
         }
+
+        let input_title = if self.confirm_delete {
+            "Delete? (y/n)"
+        } else {
+            "Filter"
+        };
+        let input_text = if self.confirm_delete {
+            self.confirm_target.clone().unwrap_or_default()
+        } else {
+            format!("{}{}", INPUT_PREFIX, self.filter)
+        };
+        let input = Paragraph::new(input_text).block(Block::default().title(input_title));
+        f.render_widget(input, layout[2]);
     }
 
     fn on_key(&mut self, ctx: &mut AppContext, key: KeyEvent) -> anyhow::Result<Action> {
@@ -1596,36 +1712,46 @@ impl RegListState {
             }
             return Ok(Action::None);
         }
-        if self.input_mode {
-            match key.code {
-                KeyCode::Esc => self.input_mode = false,
-                KeyCode::Enter => self.input_mode = false,
-                KeyCode::Char(c) => self.filter.push(c),
-                KeyCode::Backspace => {
-                    self.filter.pop();
-                }
-                _ => {}
-            }
-            return Ok(Action::None);
-        }
 
         match key.code {
-            KeyCode::Char('q') | KeyCode::Esc => {
+            KeyCode::Esc => {
+                if !self.filter.is_empty() {
+                    self.filter.clear();
+                    self.list_state.select(Some(0));
+                    return Ok(Action::None);
+                }
                 if self.show_log {
                     self.show_log = false;
                     return Ok(Action::None);
                 }
                 return Ok(Action::Switch(Screen::Main(MainState::new(ctx)?)));
             }
-            KeyCode::Char('j') | KeyCode::Down => self.next(),
-            KeyCode::Char('k') | KeyCode::Up => self.prev(),
-            KeyCode::Char('/') => self.input_mode = true,
+            KeyCode::Char('Q') => {
+                return Ok(Action::Switch(Screen::Main(MainState::new(ctx)?)));
+            }
+            KeyCode::Down => self.next(),
+            KeyCode::Up => self.prev(),
+            KeyCode::Char('j') if key.modifiers.contains(KeyModifiers::ALT) => self.next(),
+            KeyCode::Char('k') if key.modifiers.contains(KeyModifiers::ALT) => self.prev(),
             KeyCode::Char('P') => {
                 if !self.pull_active() {
-                    self.start_pull(ctx.config.isPullRebase);
+                    self.start_pull(ctx.config.is_pull_rebase);
                 }
             }
-            KeyCode::Char('d') | KeyCode::Char('D') => {
+            KeyCode::Char('T') => {
+                if let Some(item) = self.focus_item() {
+                    let target = item.path.clone();
+                    with_terminal_pause(|| {
+                        let old = std::env::current_dir()?;
+                        if std::env::set_current_dir(&target).is_ok() {
+                            let _ = system_stream("tig");
+                            let _ = std::env::set_current_dir(old);
+                        }
+                        Ok(())
+                    })?;
+                }
+            }
+            KeyCode::Char('D') => {
                 if let Some(item) = self.focus_item() {
                     self.confirm_delete = true;
                     self.confirm_target = Some(item.path);
@@ -1653,6 +1779,14 @@ impl RegListState {
                     ctx.reg_remove(&item.path)?;
                     self.items.retain(|i| i.path != item.path);
                 }
+            }
+            KeyCode::Backspace => {
+                self.filter.pop();
+                self.list_state.select(Some(0));
+            }
+            KeyCode::Char(c) => {
+                self.filter.push(c);
+                self.list_state.select(Some(0));
             }
             _ => {}
         }
@@ -1797,9 +1931,24 @@ impl RegListState {
                 ListItem::new(text).style(style)
             })
             .collect();
-        let list = List::new(items)
-            .block(Block::default().title(header))
-            .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
+
+        let mut list = List::new(items)
+            .highlight_style(
+                Style::default()
+                    .add_modifier(Modifier::BOLD)
+                    .bg(Color::Rgb(64, 64, 64))
+                    .fg(Color::Cyan),
+            )
+            .highlight_symbol(">> ");
+
+        if !header.is_empty() {
+            list = list.block(
+                Block::default()
+                    .title(header)
+                    .title_style(Style::default().fg(Color::Green)),
+            );
+        }
+
         f.render_stateful_widget(list, area, &mut self.list_state);
         self.list_area = Some(area);
     }
@@ -2103,21 +2252,38 @@ impl GotoState {
     fn render(&mut self, f: &mut ratatui::Frame) {
         let layout = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Min(5), Constraint::Length(3)])
+            .constraints([
+                Constraint::Length(1), // Title
+                Constraint::Min(0),    // List
+                Constraint::Length(2), // Filter
+            ])
             .split(f.size());
+
+        let title_widget = Paragraph::new(Line::from(Span::styled(
+            " >> Goto",
+            Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+        )));
+        f.render_widget(title_widget, layout[0]);
+
         let filtered = self.filtered_items();
         let items: Vec<ListItem> = filtered
             .iter()
             .map(|i| ListItem::new(i.path.as_str()))
             .collect();
         let list = List::new(items)
-            .block(Block::default().title("Goto"))
-            .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
-        f.render_stateful_widget(list, layout[0], &mut self.list_state);
-        self.list_area = Some(layout[0]);
+            .highlight_style(
+                Style::default()
+                    .add_modifier(Modifier::BOLD)
+                    .bg(Color::Rgb(64, 64, 64))
+                    .fg(Color::Cyan),
+            )
+            .highlight_symbol(">> ");
+        f.render_stateful_widget(list, layout[1], &mut self.list_state);
+        self.list_area = Some(layout[1]);
+
         let input = Paragraph::new(format!("{}{}", INPUT_PREFIX, self.filter))
             .block(Block::default().title("Filter"));
-        f.render_widget(input, layout[1]);
+        f.render_widget(input, layout[2]);
     }
 
     fn on_key(&mut self, ctx: &mut AppContext, key: KeyEvent) -> anyhow::Result<Action> {
@@ -2263,15 +2429,17 @@ fn strip_ansi(input: String) -> String {
 
 fn git_file_last_name(line: &str) -> Option<String> {
     let text = line.trim();
-    if text.len() < 3 {
-        return None;
-    }
-    let rest = &text[3..].trim();
+    let first_space = text.find(' ')?;
+    let rest = text[first_space + 1..].trim();
     if let Some(pos) = rest.rfind(" -> ") {
         let target = &rest[pos + 4..];
         return Some(unquote_path(target));
     }
     Some(unquote_path(rest))
+}
+
+fn git_cmd_at(root: &Path, cmd: &str) -> String {
+    format!("git -C \"{}\" {}", root.to_string_lossy(), cmd)
 }
 
 fn unquote_path(input: &str) -> String {
@@ -2438,7 +2606,7 @@ impl<'a> GitActor<'a> {
     fn act_pull(&mut self, name: &str) -> anyhow::Result<bool> {
         let path = self.change_path(name)?;
         let mut cmd = "pull".to_string();
-        if self.ctx.config.isPullRebase {
+        if self.ctx.config.is_pull_rebase {
             cmd.push_str(" -r");
         }
         println!("{} - {}", cmd, path.to_string_lossy());

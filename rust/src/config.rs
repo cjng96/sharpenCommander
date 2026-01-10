@@ -37,35 +37,37 @@ impl RegItem {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Config {
     #[serde(default)]
     pub path: Vec<RegItem>,
     #[serde(default)]
-    pub isPullRebase: bool,
+    pub is_pull_rebase: bool,
     #[serde(default)]
-    pub isPushRebase: bool,
+    pub is_push_rebase: bool,
     #[serde(default)]
-    pub grepApp: String,
+    pub grep_app: String,
     #[serde(default)]
-    pub editApp: String,
+    pub edit_app: String,
     #[serde(default)]
-    pub debugPrintSystem: bool,
+    pub debug_print_system: bool,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct RawConfig {
     #[serde(default)]
     path: Vec<RawRegItem>,
     #[serde(default)]
-    isPullRebase: bool,
+    is_pull_rebase: bool,
     #[serde(default)]
-    isPushRebase: bool,
+    is_push_rebase: bool,
     #[serde(default)]
-    grepApp: Option<String>,
+    grep_app: Option<String>,
     #[serde(default)]
-    editApp: Option<String>,
+    edit_app: Option<String>,
     #[serde(default)]
-    debugPrintSystem: bool,
+    debug_print_system: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -118,11 +120,11 @@ impl Config {
         let raw: RawConfig = serde_json::from_str(&text)?;
         let mut cfg = Config {
             path: raw.path.into_iter().map(RegItem::from).collect(),
-            isPullRebase: raw.isPullRebase,
-            isPushRebase: raw.isPushRebase,
-            grepApp: raw.grepApp.unwrap_or_default(),
-            editApp: raw.editApp.unwrap_or_default(),
-            debugPrintSystem: raw.debugPrintSystem,
+            is_pull_rebase: raw.is_pull_rebase,
+            is_push_rebase: raw.is_push_rebase,
+            grep_app: raw.grep_app.unwrap_or_default(),
+            edit_app: raw.edit_app.unwrap_or_default(),
+            debug_print_system: raw.debug_print_system,
         };
         cfg.ensure_defaults();
         Ok((cfg, cfg_path))
@@ -135,20 +137,20 @@ impl Config {
     }
 
     fn ensure_defaults(&mut self) {
-        if self.grepApp.is_empty() {
+        if self.grep_app.is_empty() {
             if is_executable_in_path("ag") {
-                self.grepApp = "ag".to_string();
+                self.grep_app = "ag".to_string();
             } else if is_executable_in_path("ack") {
-                self.grepApp = "ack".to_string();
+                self.grep_app = "ack".to_string();
             } else {
-                self.grepApp = "grep".to_string();
+                self.grep_app = "grep".to_string();
             }
         }
-        if self.editApp.is_empty() {
+        if self.edit_app.is_empty() {
             if is_executable_in_path("code") {
-                self.editApp = "code".to_string();
+                self.edit_app = "code".to_string();
             } else {
-                self.editApp = "vi".to_string();
+                self.edit_app = "vi".to_string();
             }
         }
     }
@@ -158,11 +160,11 @@ impl Default for Config {
     fn default() -> Self {
         let mut cfg = Config {
             path: Vec::new(),
-            isPullRebase: true,
-            isPushRebase: true,
-            grepApp: String::new(),
-            editApp: String::new(),
-            debugPrintSystem: false,
+            is_pull_rebase: true,
+            is_push_rebase: true,
+            grep_app: String::new(),
+            edit_app: String::new(),
+            debug_print_system: false,
         };
         cfg.ensure_defaults();
         cfg

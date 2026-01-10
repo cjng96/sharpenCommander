@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use crate::config::{Config, RegItem};
 use crate::git;
-use crate::system::{system_safe, system_ret};
+use crate::system::{app_log, system_safe, system_ret};
 use crate::ui;
 
 pub struct AppContext {
@@ -98,6 +98,7 @@ fn setup_sc() -> anyhow::Result<()> {
 }
 
 pub fn run() -> anyhow::Result<()> {
+    app_log("App start");
     setup_sc()?;
     let _ = fs::remove_file("/tmp/cmdDevTool.path");
 

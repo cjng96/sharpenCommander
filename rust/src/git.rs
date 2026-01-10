@@ -1,6 +1,7 @@
 use regex::Regex;
+use std::path::{Path, PathBuf};
 
-use crate::system::{system, system_safe};
+use crate::system::{system, system_safe, system_logged};
 
 #[derive(Debug, Clone)]
 pub struct BranchStatus {
@@ -24,6 +25,11 @@ pub fn rev(branch: &str) -> anyhow::Result<String> {
 
 pub fn get_current_branch() -> anyhow::Result<String> {
     system("git rev-parse --abbrev-ref HEAD").map_err(Into::into)
+}
+
+pub fn repo_root() -> anyhow::Result<PathBuf> {
+    let out = system("git rev-parse --show-toplevel")?;
+    Ok(PathBuf::from(out.trim()))
 }
 
 pub fn remote_list() -> anyhow::Result<Vec<String>> {
@@ -151,26 +157,35 @@ pub fn stash_get_name_safe(name: &str) -> anyhow::Result<Option<String>> {
     }
 }
 
-pub fn commit_list() -> anyhow::Result<Vec<String>> {
-    let out = system(
-        r#"git -c color.status=always log --pretty=format:"%h %Cblue%an%Creset(%ar): %Cgreen%s" --graph -4"#,
-    )?;
+pub fn commit_list_at(root: &Path) -> anyhow::Result<Vec<String>> {
+    let out = system(&format!(
+        r#"git -C "{}" -c color.status=always log --pretty=format:"%h %Cblue%an%Creset(%ar): %Cgreen%s" --graph -4"#,
+        root.to_string_lossy()
+    ))?;
     Ok(out.lines().map(|l| l.to_string()).collect())
 }
 
+pub fn commit_list() -> anyhow::Result<Vec<String>> {
+    let root = repo_root()?;
+    commit_list_at(&root)
+}
+
 pub fn status_file_list() -> anyhow::Result<Vec<(String, String)>> {
-    let out = system("git -c color.status=always status -s")?;
+    // Get status without color for reliable parsing
+    let out = system_logged("GitStatus", "git status -s")?;
     let mut list = Vec::new();
     for line in out.lines() {
-        let line = line.trim();
-        if line.is_empty() {
+        if line.len() < 3 {
             continue;
         }
-        let status = if line.contains("[32m") {
-            "s"
-        } else if line.starts_with("??") {
+        let status_code = &line[0..2];
+        let status = if status_code == "??" {
             "?"
+        } else if &line[0..1] != " " {
+            // Something is in the staged column
+            "s"
         } else {
+            // Only unstaged changes
             ""
         };
         list.push((line.to_string(), status.to_string()));

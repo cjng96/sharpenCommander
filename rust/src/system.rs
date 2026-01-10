@@ -1,5 +1,9 @@
+use std::fs::OpenOptions;
+use std::io::Write;
+use std::panic::Location;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 fn run_shell(cmd: &str) -> std::io::Result<Output> {
     Command::new("sh").arg("-c").arg(cmd).output()
@@ -38,6 +42,65 @@ pub fn system_safe(cmd: &str) -> (String, i32) {
     }
 }
 
+fn app_log_raw(line: &str) {
+    let path = program_path(None).unwrap_or_else(|_| PathBuf::from(".")).join("app.log");
+    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
+        let ts = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let _ = writeln!(file, "[{}] {}", ts, line);
+    }
+}
+
+fn app_log_raw_with_loc(loc: &Location<'_>, line: &str) {
+    app_log_raw(&format!("{}:{} {}", loc.file(), loc.line(), line));
+}
+
+#[track_caller]
+pub fn app_log(line: &str) {
+    let loc = Location::caller();
+    app_log_raw_with_loc(loc, line);
+}
+
+fn app_log_block_with_loc(loc: &Location<'_>, prefix: &str, content: &str) {
+    if content.is_empty() {
+        app_log_raw_with_loc(loc, &format!("{} <empty>", prefix));
+        return;
+    }
+    app_log_raw_with_loc(loc, prefix);
+    for line in content.lines() {
+        app_log_raw_with_loc(loc, &format!("  {}", line));
+    }
+}
+
+fn log_command_result_at(
+    loc: &Location<'_>,
+    context: &str,
+    cmd: &str,
+    result: &std::io::Result<String>,
+) {
+    app_log_raw_with_loc(loc, &format!("[{}] CMD: {}", context, cmd));
+    match result {
+        Ok(out) => app_log_block_with_loc(loc, &format!("[{}] OUT", context), out),
+        Err(err) => app_log_block_with_loc(loc, &format!("[{}] ERR", context), &err.to_string()),
+    }
+}
+
+#[track_caller]
+pub fn log_command_result(context: &str, cmd: &str, result: &std::io::Result<String>) {
+    let loc = Location::caller();
+    log_command_result_at(loc, context, cmd, result);
+}
+
+#[track_caller]
+pub fn system_logged(context: &str, cmd: &str) -> std::io::Result<String> {
+    let loc = Location::caller();
+    let result = system(cmd);
+    log_command_result_at(loc, context, cmd, &result);
+    result
+}
+
 pub fn system_ret(cmd: &str) -> i32 {
     run_shell(cmd)
         .ok()
@@ -49,6 +112,7 @@ pub fn system_stream(cmd: &str) -> std::io::Result<i32> {
     let status = Command::new("sh")
         .arg("-c")
         .arg(cmd)
+        .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()?;
