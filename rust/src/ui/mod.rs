@@ -53,39 +53,142 @@ pub fn run_grep(ctx: &mut AppContext, args: &[String]) -> anyhow::Result<()> {
 }
 
 pub fn git_push(_ctx: &mut AppContext) -> anyhow::Result<()> {
-    let current = git::get_current_branch()?;
-    let tracking = git::get_tracking_branch();
-    let mut targets = vec![current.clone()];
-    if let Some(tracking) = tracking.clone() {
-        targets.push(tracking.split('/').last().unwrap_or("").to_string());
-        let gap = git::commit_gap(&current, &tracking)?;
-        if gap == 0 {
-            git::print_status()?;
-            return Err(anyhow::anyhow!("There is no commit to push"));
+    with_terminal_pause(|| {
+        println!("Fetching from remote...");
+        let _ = system("git fetch --prune");
+
+        println!("\n\x1b[1;32mCurrent file status...\x1b[0m");
+        let _ = system("git -c color.status=always status -s");
+
+        let current = git::get_current_branch()?;
+        let tracking = git::get_tracking_branch().unwrap_or_default();
+
+        println!("\n\x1b[1;36mLocal branch:\x1b[0m {}", current);
+        if !tracking.is_empty() {
+            println!("\x1b[1;35mRemote branch:\x1b[0m {}", tracking);
+            println!("\n\x1b[1;32mCommits to push:\x1b[0m");
+            let _ = system(&format!("git log --color --oneline --graph --decorate --abbrev-commit {}..{}", tracking, current));
+        } else {
+            println!("\x1b[1;33mNo tracking branch found.\x1b[0m");
         }
-        println!("There are {gap} commits to push");
-        println!("{}", git::commit_log_between(&current, &tracking)?);
+
+        // Collect suggested remote branches
+        let mut targets = vec![current.clone()];
+        if !tracking.is_empty() {
+            let remote_name = tracking.split('/').last().unwrap_or("").to_string();
+            if !targets.contains(&remote_name) {
+                targets.push(remote_name);
+            }
+        }
+        
+        // Add other common remotes
+        if let Ok(remotes) = git::remote_list() {
+            for r in remotes {
+                let r_branch = format!("{}/{}", r, current);
+                if !targets.contains(&r_branch) {
+                    targets.push(r_branch);
+                }
+            }
+        }
+
+        let target = interactive_push_selector(&targets)?;
+        if target.is_empty() {
+            println!("Push canceled.");
+            return Ok(());
+        }
+
+        let remote = if tracking.contains('/') {
+            tracking.split('/').next().unwrap_or("origin").to_string()
+        } else {
+            "origin".to_string()
+        };
+
+        println!("\nPushing to {}/{}...", remote, target);
+        let cmd = format!("git push {} {}:{}", remote, current, target);
+        let (out, code) = system_safe(&cmd);
+        println!("{}", out);
+        if code != 0 {
+            println!("\x1b[1;31mPush failed.\x1b[0m");
+        } else {
+            println!("\x1b[1;32mPush successful.\x1b[0m");
+        }
+        
+        println!("\nPress Enter to return...");
+        let mut tmp = String::new();
+        let _ = std::io::stdin().read_line(&mut tmp);
+        Ok(())
+    })
+}
+
+fn interactive_push_selector(items: &[String]) -> anyhow::Result<String> {
+    use crossterm::event::{read, Event, KeyCode};
+    use std::io::{Write, stdout};
+
+    if items.is_empty() {
+        print!("Input remote branch name: ");
+        stdout().flush()?;
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input)?;
+        return Ok(input.trim().to_string());
     }
 
-    println!("Input remote branch name you push to:");
-    let target = input_prompt_with_list(&targets)?;
-    if target.is_empty() {
-        return Err(anyhow::anyhow!("Push is canceled"));
-    }
-    let remote = if let Some(tracking) = tracking {
-        tracking.split('/').next().unwrap_or("origin").to_string()
-    } else {
-        let remotes = git::remote_list()?;
-        println!("Input remote name to push to:");
-        input_prompt_with_list(&remotes)?
+    let mut selected_idx = 0;
+    let mut input = items[0].clone();
+    
+    // We need raw mode for arrow keys
+    enable_raw_mode()?;
+    
+    let res = loop {
+        // Clear previous lines and redraw
+        print!("\r\x1b[KPush to remote branch: \x1b[1;36m{}\x1b[0m", input);
+        print!("\n\x1b[K(Suggestions: Use Up/Down arrows to select)");
+        for (i, item) in items.iter().enumerate() {
+            if i == selected_idx {
+                print!("\n\r\x1b[K > \x1b[1;32m{}\x1b[0m", item);
+            } else {
+                print!("\n\r\x1b[K   {}", item);
+            }
+        }
+        // Move cursor back to input line
+        print!("\x1b[{}A", items.len() + 1); 
+        print!("\r\x1b[{}C", 24 + input.len());
+        stdout().flush()?;
+
+        match read()? {
+            Event::Key(event) => {
+                match event.code {
+                    KeyCode::Enter => {
+                        break Ok(input.trim().to_string());
+                    }
+                    KeyCode::Esc => {
+                        break Ok(String::new());
+                    }
+                    KeyCode::Up => {
+                        selected_idx = if selected_idx == 0 { items.len() - 1 } else { selected_idx - 1 };
+                        input = items[selected_idx].clone();
+                    }
+                    KeyCode::Down => {
+                        selected_idx = (selected_idx + 1) % items.len();
+                        input = items[selected_idx].clone();
+                    }
+                    KeyCode::Backspace => {
+                        input.pop();
+                    }
+                    KeyCode::Char(c) => {
+                        input.push(c);
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
     };
-    let cmd = format!("git push {} {}:{}", remote, current, target);
-    let (out, code) = system_safe(&cmd);
-    println!("{out}");
-    if code != 0 {
-        println!("Push failed.");
-    }
-    Ok(())
+
+    // Clean up lines before leaving
+    print!("\r\x1b[K\x1b[{}B\n", items.len() + 1);
+    stdout().flush()?;
+    disable_raw_mode()?;
+    res
 }
 
 pub fn git_fetch(ctx: &mut AppContext, target: Option<&str>) -> anyhow::Result<()> {
@@ -131,18 +234,6 @@ fn run_app(app: &mut App<'_>) -> anyhow::Result<()> {
     )?;
     terminal.show_cursor()?;
     res
-}
-
-fn input_prompt_with_list(items: &[String]) -> anyhow::Result<String> {
-    use std::io::Write;
-    let mut input = String::new();
-    if !items.is_empty() {
-        println!("Choices: {}", items.join(", "));
-    }
-    print!("> ");
-    io::stdout().flush()?;
-    io::stdin().read_line(&mut input)?;
-    Ok(input.trim().to_string())
 }
 
 struct App<'a> {
@@ -602,6 +693,9 @@ impl MainState {
                         Ok(())
                     })?;
                 }
+            }
+            KeyCode::Char('P') => {
+                git_push(ctx)?;
             }
             _ => {}
         }
