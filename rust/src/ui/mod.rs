@@ -66,15 +66,17 @@ pub fn git_push(_ctx: &mut AppContext) -> anyhow::Result<()> {
         println!("\n\x1b[1;36mLocal branch:\x1b[0m {}", current);
         if !tracking.is_empty() {
             println!("\x1b[1;35mRemote branch:\x1b[0m {}", tracking);
-            println!("\n\x1b[1;32mCommits to push:\x1b[0m");
-            // Use ^ to include the commit where tracking branch is
-            let log_cmd = format!("git log --color --oneline --graph --decorate --abbrev-commit {}^..{}", tracking, current);
+            println!("\n\x1b[1;32mCommits (context):\x1b[0m");
+            // Show from 3 commits before tracking to current to give full context
+            let log_cmd = format!("git log --color --oneline --graph --decorate --abbrev-commit -n 15 {}~3..{}", tracking, current);
             if system(&log_cmd).is_err() {
-                // fallback if tracking branch has no parent or other error
-                let _ = system(&format!("git log --color --oneline --graph --decorate --abbrev-commit {}..{}", tracking, current));
+                // Fallback to simpler ranges if ~3 fails (e.g. shallow clone or few commits)
+                let _ = system(&format!("git log --color --oneline --graph --decorate --abbrev-commit -n 15 {}..{}", tracking, current));
             }
         } else {
             println!("\x1b[1;33mNo tracking branch found.\x1b[0m");
+            println!("\n\x1b[1;32mRecent commits:\x1b[0m");
+            let _ = system("git log --color --oneline --graph --decorate --abbrev-commit -n 10");
         }
 
         // Collect suggested remote branches (only remote branches, strip remote name)
@@ -174,6 +176,10 @@ fn interactive_push_selector(items: &[String]) -> anyhow::Result<String> {
         match read()? {
             Event::Key(event) => {
                 match event.code {
+                    KeyCode::Char('c') if event.modifiers.contains(KeyModifiers::CONTROL) => {
+                        disable_raw_mode()?;
+                        std::process::exit(0);
+                    }
                     KeyCode::Enter => {
                         break Ok(input.trim().to_string());
                     }
@@ -421,6 +427,9 @@ struct MainState {
     list_area: Option<Rect>,
     last_click: Option<(Instant, usize)>,
     registered_paths: Vec<String>,
+    confirm_delete: bool,
+    confirm_target: Option<String>,
+    filter: String,
 }
 
 struct DirEntry {
@@ -444,20 +453,24 @@ impl MainState {
             list_area: None,
             last_click: None,
             registered_paths,
+            confirm_delete: false,
+            confirm_target: None,
+            filter: String::new(),
         };
         state.refresh();
-        if !state.items.is_empty() {
-            state.list_state.select(Some(0));
-        }
         Ok(state)
     }
 
     fn refresh(&mut self) {
         let mut list = Vec::new();
+        let filter = self.filter.to_lowercase();
         if let Ok(rd) = std::fs::read_dir(&self.cwd) {
             for entry in rd.flatten() {
                 if let Some(name) = entry.file_name().to_str() {
                     if name == ".dcdata" {
+                        continue;
+                    }
+                    if !filter.is_empty() && !name.to_lowercase().contains(&filter) {
                         continue;
                     }
                     let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
@@ -469,6 +482,7 @@ impl MainState {
             }
         }
         list.sort_by_key(|e| e.name.clone());
+        let matches_found = !list.is_empty();
         self.items = list;
         self.items.insert(
             0,
@@ -477,9 +491,10 @@ impl MainState {
                 is_dir: true,
             },
         );
-        if self.items.is_empty() {
-            self.list_state.select(None);
-        } else if self.list_state.selected().unwrap_or(0) >= self.items.len() {
+
+        if !filter.is_empty() && matches_found {
+            self.list_state.select(Some(1));
+        } else {
             self.list_state.select(Some(0));
         }
     }
@@ -494,8 +509,8 @@ impl MainState {
             if let Some(parent) = self.cwd.parent() {
                 if std::env::set_current_dir(parent).is_ok() {
                     self.cwd = parent.to_path_buf();
+                    self.filter.clear();
                     self.refresh();
-                    self.list_state.select(Some(0));
                 }
             }
             return;
@@ -504,8 +519,8 @@ impl MainState {
         if target.is_dir() {
             if std::env::set_current_dir(&target).is_ok() {
                 self.cwd = target;
+                self.filter.clear();
                 self.refresh();
-                self.list_state.select(Some(0));
             }
         }
     }
@@ -519,7 +534,11 @@ impl MainState {
 
         let left = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Percentage(80), Constraint::Percentage(20)])
+            .constraints([
+                Constraint::Percentage(80), // List
+                Constraint::Percentage(15), // Cmd
+                Constraint::Length(1),      // Filter
+            ])
             .split(layout[0]);
 
         let header = format!(">> sc V{} - {}", env!("CARGO_PKG_VERSION"), cwd_str);
@@ -537,8 +556,13 @@ impl MainState {
                     } else {
                         style = style.fg(Color::Green);
                     }
+                    ListItem::new(i.name.as_str()).style(style)
+                } else if i.name.ends_with(".lua") {
+                    let text = format!("{:<20} [Play]", i.name);
+                    ListItem::new(text).style(style.fg(Color::Yellow))
+                } else {
+                    ListItem::new(i.name.as_str()).style(style)
                 }
-                ListItem::new(i.name.as_str()).style(style)
             })
             .collect();
         let list = List::new(items)
@@ -557,6 +581,10 @@ impl MainState {
         };
         let cmd_list = List::new(cmd_items).block(Block::default().title("Cmd"));
         f.render_widget(cmd_list, left[1]);
+
+        let filter_text = format!("Filter: {}", self.filter);
+        let filter_p = Paragraph::new(filter_text).style(Style::default().fg(Color::Cyan));
+        f.render_widget(filter_p, left[2]);
 
         let right = Layout::default()
             .direction(Direction::Vertical)
@@ -577,9 +605,49 @@ impl MainState {
         let input = Paragraph::new(format!("{}{}", INPUT_PREFIX, self.input))
             .block(Block::default().title(input_title));
         f.render_widget(input, right[1]);
+
+        if self.confirm_delete {
+            let area = centered_rect(40, 7, f.size());
+            f.render_widget(Clear, area);
+            let target = self.confirm_target.clone().unwrap_or_default();
+            let text = vec![
+                Line::from(vec![
+                    Span::raw("Delete from repo list? "),
+                    Span::styled(target, Style::default().add_modifier(Modifier::BOLD).fg(Color::White)),
+                ]),
+                Line::from(Span::styled("(y) Yes / (N) No", Style::default().fg(Color::DarkGray))),
+            ];
+            let block = Block::default()
+                .borders(Borders::ALL)
+                .title(" Confirmation ")
+                .border_style(Style::default().fg(Color::DarkGray));
+            let p = Paragraph::new(text)
+                .block(block)
+                .alignment(ratatui::layout::Alignment::Center);
+            f.render_widget(p, area);
+        }
     }
 
     fn on_key(&mut self, ctx: &mut AppContext, key: KeyEvent) -> anyhow::Result<Action> {
+        if self.confirm_delete {
+            match key.code {
+                KeyCode::Char('y') | KeyCode::Char('Y') => {
+                    if let Some(path) = self.confirm_target.clone() {
+                        ctx.reg_remove(&path)?;
+                        self.registered_paths.retain(|p| p != &path);
+                    }
+                    self.confirm_delete = false;
+                    self.confirm_target = None;
+                }
+                KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc | KeyCode::Enter => {
+                    self.confirm_delete = false;
+                    self.confirm_target = None;
+                }
+                _ => {}
+            }
+            return Ok(Action::None);
+        }
+
         if self.input_mode {
             match key.code {
                 KeyCode::Esc => {
@@ -602,39 +670,24 @@ impl MainState {
         }
 
         match key.code {
-            KeyCode::Char('q') => return Ok(Action::Exit),
-            KeyCode::Down => self.select_next(),
-            KeyCode::Up => self.select_prev(),
-            KeyCode::Char('j') if key.modifiers.is_empty() => self.select_next(),
-            KeyCode::Char('k') if key.modifiers.is_empty() => self.select_prev(),
-            KeyCode::Char('h') if key.modifiers.contains(KeyModifiers::ALT) => {
-                if let Some(parent) = self.cwd.parent() {
-                    if std::env::set_current_dir(parent).is_ok() {
-                        self.cwd = parent.to_path_buf();
-                        self.refresh();
-                        self.list_state.select(Some(0));
-                    }
-                }
+            KeyCode::Char('Q') => return Ok(Action::Exit),
+            KeyCode::Down | KeyCode::Char('J') => self.select_next(),
+            KeyCode::Up | KeyCode::Char('K') => self.select_prev(),
+            KeyCode::Right => {
+                return Ok(Action::Switch(Screen::Goto(GotoState::new(ctx)?)));
             }
-            KeyCode::Char('l') if key.modifiers.contains(KeyModifiers::ALT) => {
+            KeyCode::Char('H') if key.modifiers.contains(KeyModifiers::ALT) => {
+                self.enter_dir("..");
+            }
+            KeyCode::Char('L') if key.modifiers.contains(KeyModifiers::ALT) => {
                 if let Some(name) = self.focus_name() {
                     self.enter_dir(&name);
                 }
             }
-            KeyCode::Char('j') if key.modifiers.contains(KeyModifiers::ALT) => self.select_next(),
-            KeyCode::Char('k') if key.modifiers.contains(KeyModifiers::ALT) => self.select_prev(),
-            KeyCode::Char('J') => self.select_step(10),
-            KeyCode::Char('K') => self.select_step(-10),
-            KeyCode::Char('u') | KeyCode::Char('.') | KeyCode::Char('U') => {
-                if let Some(parent) = self.cwd.parent() {
-                    if std::env::set_current_dir(parent).is_ok() {
-                        self.cwd = parent.to_path_buf();
-                        self.refresh();
-                        self.list_state.select(Some(0));
-                    }
-                }
+            KeyCode::Char('U') | KeyCode::Char('.') | KeyCode::Left => {
+                self.enter_dir("..");
             }
-            KeyCode::Char('h') | KeyCode::Enter => {
+            KeyCode::Enter => {
                 if let Some(name) = self.focus_name() {
                     self.enter_dir(&name);
                 }
@@ -669,7 +722,7 @@ impl MainState {
                     }
                 }
             }
-            KeyCode::Char('g') => {
+            KeyCode::Char('G') => {
                 return Ok(Action::Switch(Screen::Goto(GotoState::new(ctx)?)));
             }
             KeyCode::Char('R') => {
@@ -679,7 +732,21 @@ impl MainState {
                         let path_str = path.to_string_lossy().to_string();
                         if ctx.reg_find_by_path(&path_str).is_none() {
                             ctx.reg_add(&path_str)?;
+                            self.registered_paths.push(path_str.clone());
+                            return Ok(Action::Toast(format!("Registered: {}", path_str)));
+                        } else {
+                            return Ok(Action::Toast(format!("Already registered: {}", path_str)));
                         }
+                    }
+                }
+            }
+            KeyCode::Char('D') => {
+                if let Some(name) = self.focus_name() {
+                    let path = self.cwd.join(&name);
+                    let path_str = path.to_string_lossy().to_string();
+                    if self.registered_paths.contains(&path_str) {
+                        self.confirm_delete = true;
+                        self.confirm_target = Some(path_str);
                     }
                 }
             }
@@ -719,7 +786,36 @@ impl MainState {
                 }
             }
             KeyCode::Char('P') => {
+                if let Some(name) = self.focus_name() {
+                    if name.ends_with(".lua") {
+                        let path = self.cwd.join(&name);
+                        with_terminal_pause(|| {
+                            println!("$ lua {}", name);
+                            let _ = system_stream(&format!("lua \"{}\"", path.to_string_lossy()));
+                            Ok(())
+                        })?;
+                        return Ok(Action::None);
+                    }
+                }
                 git_push(ctx)?;
+            }
+            KeyCode::Backspace => {
+                if !self.filter.is_empty() {
+                    self.filter.pop();
+                    self.refresh();
+                }
+            }
+            KeyCode::Esc => {
+                if !self.filter.is_empty() {
+                    self.filter.clear();
+                    self.refresh();
+                }
+            }
+            KeyCode::Char(c) => {
+                if c.is_ascii_lowercase() || c.is_numeric() || c == '_' || c == '-' {
+                    self.filter.push(c);
+                    self.refresh();
+                }
             }
             _ => {}
         }
@@ -746,7 +842,13 @@ impl MainState {
             }
             "reg" => {
                 let path = self.cwd.to_string_lossy().to_string();
-                ctx.reg_add(&path)?;
+                if ctx.reg_find_by_path(&path).is_none() {
+                    ctx.reg_add(&path)?;
+                    self.registered_paths.push(path.clone());
+                    return Ok(Action::Toast(format!("Registered: {}", path)));
+                } else {
+                    return Ok(Action::Toast(format!("Already registered: {}", path)));
+                }
             }
             "st" => {
                 let target = parts.get(1).map(|s| *s);
@@ -786,12 +888,6 @@ impl MainState {
         self.list_state.select(Some(i));
     }
 
-    fn select_step(&mut self, step: i32) {
-        let cur = self.list_state.selected().unwrap_or(0) as i32;
-        let next = (cur + step).clamp(0, self.items.len().saturating_sub(1) as i32);
-        self.list_state.select(Some(next as usize));
-    }
-
     fn on_mouse(&mut self, _ctx: &mut AppContext, me: MouseEvent) -> anyhow::Result<Action> {
         if let Some(area) = self.list_area {
             if area.contains(mouse_pos(&me)) {
@@ -803,10 +899,27 @@ impl MainState {
                             if idx < self.items.len() {
                                 self.list_state.select(Some(idx));
                                 if matches!(me.kind, MouseEventKind::Down(_)) {
-                                    if is_double_click(&mut self.last_click, idx) {
-                                        if let Some(name) = self.focus_name() {
-                                            self.enter_dir(&name);
+                                    let is_play_click = me.column >= inner.x + 20;
+                                    let mut run_lua = None;
+                                    let mut enter_target = None;
+
+                                    if let Some(entry) = self.items.get(idx) {
+                                        if is_play_click && entry.name.ends_with(".lua") {
+                                            run_lua = Some(entry.name.clone());
+                                        } else if is_double_click(&mut self.last_click, idx) {
+                                            enter_target = Some(entry.name.clone());
                                         }
+                                    }
+
+                                    if let Some(name) = run_lua {
+                                        let path = self.cwd.join(&name);
+                                        with_terminal_pause(|| {
+                                            println!("$ lua {}", name);
+                                            let _ = system_stream(&format!("lua \"{}\"", path.to_string_lossy()));
+                                            Ok(())
+                                        })?;
+                                    } else if let Some(name) = enter_target {
+                                        self.enter_dir(&name);
                                     }
                                 }
                             }
@@ -1975,7 +2088,7 @@ impl RegListState {
                 }
                 return Ok(Action::Switch(Screen::Main(MainState::new(ctx)?)));
             }
-            KeyCode::Char('Q') => {
+            KeyCode::Char('Q') | KeyCode::Left => {
                 return Ok(Action::Switch(Screen::Main(MainState::new(ctx)?)));
             }
             KeyCode::Down => self.next(),
@@ -2193,6 +2306,17 @@ impl RegListState {
                             style = style.fg(Color::Green);
                         }
                     }
+                    
+                    // If not already colored by dirty status, check if it's a subfolder of a repo
+                    if style.fg.is_none() {
+                        let is_subfolder = self.items.iter().any(|j| {
+                            j.repo && i.path.starts_with(&j.path) && i.path != j.path
+                        });
+                        if is_subfolder {
+                            style = style.fg(Color::DarkGray);
+                        }
+                    }
+                    
                     ("".to_string(), None, style)
                 };
                 
@@ -2635,7 +2759,7 @@ impl GotoState {
 
     fn on_key(&mut self, ctx: &mut AppContext, key: KeyEvent) -> anyhow::Result<Action> {
         match key.code {
-            KeyCode::Char('q') | KeyCode::Esc => {
+            KeyCode::Char('Q') | KeyCode::Esc | KeyCode::Left => {
                 return Ok(Action::Switch(Screen::Main(MainState::new(ctx)?)));
             }
             KeyCode::Char('j') | KeyCode::Down => self.next(),
@@ -2718,19 +2842,51 @@ impl GotoState {
         }
         let filter = self.filter.to_lowercase();
         let list: Vec<String> = filter.split_whitespace().map(|s| s.to_string()).collect();
-        let mut output = combined;
-        output.sort_by_key(|i| {
-            let base = Path::new(&i.path)
-                .file_name()
-                .and_then(|s| s.to_str())
-                .unwrap_or("")
-                .to_string();
-            std::cmp::Reverse(match_disorder_count(&base.to_lowercase(), &list))
-        });
-        output
+        
+        let mut filtered: Vec<RegItem> = combined
             .into_iter()
             .filter(|i| match_disorder(&i.path.to_lowercase(), &list))
-            .collect()
+            .collect();
+
+        filtered.sort_by(|a, b| {
+            let base_a = Path::new(&a.path).file_name().and_then(|s| s.to_str()).unwrap_or("").to_lowercase();
+            let base_b = Path::new(&b.path).file_name().and_then(|s| s.to_str()).unwrap_or("").to_lowercase();
+            
+            let score_a = match_disorder_count(&base_a, &list);
+            let score_b = match_disorder_count(&base_b, &list);
+            
+            if score_a != score_b {
+                return score_b.cmp(&score_a); // Higher score first
+            }
+            
+            // Tie-breaker for items with same fragment count in base name
+            if score_a > 0 {
+                let target = filter.replace(' ', "");
+                
+                // Exact match
+                let exact_a = base_a == target;
+                let exact_b = base_b == target;
+                if exact_a != exact_b {
+                    return exact_b.cmp(&exact_a);
+                }
+
+                // Starts with
+                let starts_a = base_a.starts_with(&target);
+                let starts_b = base_b.starts_with(&target);
+                if starts_a != starts_b {
+                    return starts_b.cmp(&starts_a);
+                }
+
+                // Shorter base name preferred (closer match)
+                if base_a.len() != base_b.len() {
+                    return base_a.len().cmp(&base_b.len());
+                }
+            }
+
+            a.path.cmp(&b.path)
+        });
+        
+        filtered
     }
 
     fn focus_item(&self) -> Option<RegItem> {
