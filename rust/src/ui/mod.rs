@@ -3031,16 +3031,18 @@ fn is_double_click(last: &mut Option<(Instant, usize)>, idx: usize) -> bool {
     false
 }
 
-fn with_terminal_pause<F>(f: F) -> anyhow::Result<()>
+pub fn with_terminal_pause<F>(f: F) -> anyhow::Result<()>
 where
     F: FnOnce() -> anyhow::Result<()>,
 {
+    use std::io::Write;
     disable_raw_mode()?;
     crossterm::execute!(
         io::stdout(),
         crossterm::terminal::LeaveAlternateScreen,
         DisableMouseCapture
     )?;
+    io::stdout().flush()?;
     let result = f();
     crossterm::execute!(
         io::stdout(),

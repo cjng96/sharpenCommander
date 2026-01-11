@@ -109,29 +109,19 @@ pub fn system_ret(cmd: &str) -> i32 {
 }
 
 pub fn system_stream(cmd: &str) -> std::io::Result<i32> {
-    let tty_in = std::fs::File::open("/dev/tty")
-        .map(Stdio::from)
-        .unwrap_or_else(|_| Stdio::inherit());
-
-    let tty_out = OpenOptions::new()
-        .write(true)
-        .open("/dev/tty")
-        .map(Stdio::from)
-        .unwrap_or_else(|_| Stdio::inherit());
-
-    let tty_err = OpenOptions::new()
-        .write(true)
-        .open("/dev/tty")
-        .map(Stdio::from)
-        .unwrap_or_else(|_| Stdio::inherit());
-
+    // On Unix-like systems, if we want to run an interactive command, 
+    // the simplest and most reliable way is often to just use Stdio::inherit() 
+    // for all three streams, provided the parent process's streams are 
+    // connected to a TTY.
+    
     let status = Command::new("sh")
         .arg("-c")
         .arg(cmd)
-        .stdin(tty_in)
-        .stdout(tty_out)
-        .stderr(tty_err)
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
         .status()?;
+        
     Ok(status.code().unwrap_or(1))
 }
 
