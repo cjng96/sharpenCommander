@@ -109,10 +109,15 @@ pub fn system_ret(cmd: &str) -> i32 {
 }
 
 pub fn system_stream(cmd: &str) -> std::io::Result<i32> {
+    let stdin = if Path::new("/dev/tty").exists() {
+        Stdio::from(std::fs::File::open("/dev/tty")?)
+    } else {
+        Stdio::inherit()
+    };
     let status = Command::new("sh")
         .arg("-c")
         .arg(cmd)
-        .stdin(Stdio::inherit())
+        .stdin(stdin)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()?;
