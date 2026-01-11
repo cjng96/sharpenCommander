@@ -1625,15 +1625,19 @@ struct RegListState {
     filter: String,
     list_area: Option<Rect>,
     log_area: Option<Rect>,
+    pull_tx: Option<mpsc::Sender<PullEvent>>,
     pull_rx: Option<mpsc::Receiver<PullEvent>>,
+    pull_sem: Arc<Semaphore>,
     pull_infos: HashMap<String, RepoPullInfo>,
     pull_total: usize,
     pull_done: usize,
     status_rx: Option<mpsc::Receiver<StatusEvent>>,
     status_infos: HashMap<String, RepoStatusInfo>,
-    show_log: bool,
+    detail_rx: Option<mpsc::Receiver<(String, Vec<String>)>>,
+    detail_mode: DetailMode,
     log_path: Option<String>,
     log_scroll: u16,
+    status_lines: Vec<String>,
     confirm_delete: bool,
     confirm_target: Option<String>,
     last_click: Option<(Instant, usize)>,
@@ -1649,21 +1653,26 @@ impl RegListState {
             filter: String::new(),
             list_area: None,
             log_area: None,
+            pull_tx: None,
             pull_rx: None,
+            pull_sem: Arc::new(Semaphore::new(5)),
             pull_infos: HashMap::new(),
             pull_total: 0,
             pull_done: 0,
             status_rx: None,
             status_infos: HashMap::new(),
-            show_log: false,
+            detail_rx: None,
+            detail_mode: DetailMode::Status,
             log_path: None,
             log_scroll: 0,
+            status_lines: Vec::new(),
             confirm_delete: false,
             confirm_target: None,
             last_click: None,
         };
         state.list_state.select(Some(0));
         state.start_status_check();
+        state.fetch_detail();
         Ok(state)
     }
 
@@ -1707,9 +1716,47 @@ impl RegListState {
         }
     }
 
+    fn fetch_detail(&mut self) {
+        if let Some(item) = self.focus_item() {
+            let path = item.path.clone();
+            let (tx, rx) = mpsc::channel();
+            self.detail_rx = Some(rx); // Replaces old receiver, dropping it. This acts as a simple cancellation for old pending results in UI thread (though worker threads still run).
+            
+            thread::spawn(move || {
+                let output = std::process::Command::new("git")
+                    .arg("-c").arg("color.status=always")
+                    .arg("status")
+                    .current_dir(&path)
+                    .output();
+                
+                let text = match output {
+                    Ok(out) => String::from_utf8_lossy(&out.stdout).to_string(),
+                    Err(e) => format!("Error: {}", e),
+                };
+                
+                let lines: Vec<String> = strip_ansi(text).lines().map(|s| s.to_string()).collect();
+                let _ = tx.send((path, lines));
+            });
+        }
+    }
+
+    fn drain_detail(&mut self) {
+        let Some(rx) = &self.detail_rx else { return };
+        match rx.try_recv() {
+            Ok((path, lines)) => {
+                if self.focus_item().map(|i| i.path) == Some(path) {
+                    self.status_lines = lines;
+                }
+            }
+            _ => {}
+        }
+    }
+
     fn render(&mut self, f: &mut ratatui::Frame) {
         self.drain_pull_events();
         self.drain_status_events();
+        self.drain_detail();
+
         let header = if self.pull_total > 0 {
             format!("Repo list - pull {}/{}", self.pull_done, self.pull_total)
         } else {
@@ -1720,7 +1767,7 @@ impl RegListState {
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Length(1), // Title
-                Constraint::Min(0),    // Body (List)
+                Constraint::Min(0),    // Body (List + Status)
                 Constraint::Length(2), // Filter (Bottom)
             ])
             .split(f.size());
@@ -1731,29 +1778,53 @@ impl RegListState {
         )));
         f.render_widget(title_widget, layout[0]);
 
-        if self.show_log {
-            let body = Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
-                .split(layout[1]);
-            self.render_list("".to_string(), body[0], f);
+        // Always split view: List (40%) | Status (60%)
+        let body = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
+            .split(layout[1]);
+        
+        self.render_list("".to_string(), body[0], f);
+        
+        // Show status or log based on mode, but default to status
+        if self.detail_mode == DetailMode::Log {
             self.render_log(body[1], f);
         } else {
-            self.render_list("".to_string(), layout[1], f);
+            self.render_status(body[1], f);
         }
 
-        let input_title = if self.confirm_delete {
-            "Delete? (y/n)"
-        } else {
-            "Filter"
-        };
         let input_text = if self.confirm_delete {
-            self.confirm_target.clone().unwrap_or_default()
+             // Disable filter input visual when confirming
+             format!("{}{}", INPUT_PREFIX, self.filter)
         } else {
             format!("{}{}", INPUT_PREFIX, self.filter)
         };
-        let input = Paragraph::new(input_text).block(Block::default().title(input_title));
+        let input = Paragraph::new(input_text).block(Block::default().title("Filter"));
         f.render_widget(input, layout[2]);
+
+        if self.confirm_delete {
+            let area = centered_rect(40, 7, f.size());
+            f.render_widget(Clear, area); // Clear the area first
+            
+            let target = self.confirm_target.clone().unwrap_or_default();
+            let text = vec![
+                Line::from(vec![
+                    Span::raw("Delete from list? "),
+                    Span::styled(target, Style::default().add_modifier(Modifier::BOLD).fg(Color::White)),
+                ]),
+                Line::from(Span::styled("(y) Yes / (N) No", Style::default().fg(Color::DarkGray))),
+            ];
+            
+            let block = Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::DarkGray));
+                
+            let p = Paragraph::new(text)
+                .block(block)
+                .alignment(ratatui::layout::Alignment::Center);
+                
+            f.render_widget(p, area);
+        }
     }
 
     fn on_key(&mut self, ctx: &mut AppContext, key: KeyEvent) -> anyhow::Result<Action> {
@@ -1767,7 +1838,7 @@ impl RegListState {
                     self.confirm_delete = false;
                     self.confirm_target = None;
                 }
-                KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
+                KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc | KeyCode::Enter => {
                     self.confirm_delete = false;
                     self.confirm_target = None;
                 }
@@ -1781,10 +1852,7 @@ impl RegListState {
                 if !self.filter.is_empty() {
                     self.filter.clear();
                     self.list_state.select(Some(0));
-                    return Ok(Action::None);
-                }
-                if self.show_log {
-                    self.show_log = false;
+                    self.fetch_detail();
                     return Ok(Action::None);
                 }
                 return Ok(Action::Switch(Screen::Main(MainState::new(ctx)?)));
@@ -1797,9 +1865,19 @@ impl RegListState {
             KeyCode::Char('j') if key.modifiers.contains(KeyModifiers::ALT) => self.next(),
             KeyCode::Char('k') if key.modifiers.contains(KeyModifiers::ALT) => self.prev(),
             KeyCode::Char('P') => {
-                if !self.pull_active() {
-                    self.start_pull(ctx.config.is_pull_rebase);
+                let targets: Vec<RegItem> = self.items.iter().filter(|i| i.repo).cloned().collect();
+                self.start_pull(targets, ctx.config.is_pull_rebase);
+            }
+            KeyCode::Char('F') => {
+                if let Some(item) = self.focus_item() {
+                    if item.repo {
+                        self.start_pull(vec![item], true); // Always rebase for 'F' as requested
+                    }
                 }
+            }
+            KeyCode::Char('S') | KeyCode::Char('s') => {
+                self.detail_mode = DetailMode::Status;
+                self.fetch_detail();
             }
             KeyCode::Char('T') => {
                 if let Some(item) = self.focus_item() {
@@ -1822,20 +1900,26 @@ impl RegListState {
             }
             KeyCode::Enter => {
                 if let Some(item) = self.focus_item() {
-                    self.show_log = true;
-                    self.log_path = Some(item.path);
-                    self.log_scroll = 0;
+                    let path = if Path::new(&item.path).is_absolute() {
+                        PathBuf::from(&item.path)
+                    } else {
+                        std::env::current_dir()?.join(&item.path)
+                    };
+                    // Change global cwd? MainState usually starts with current_dir.
+                    // We need to set current_dir process-wide or pass it to MainState.
+                    // MainState::new reads current_dir.
+                    if std::env::set_current_dir(&path).is_ok() {
+                        return Ok(Action::Switch(Screen::Main(MainState::new(ctx)?)));
+                    } else {
+                        return Ok(Action::Toast(format!("Failed to enter {}", path.to_string_lossy())));
+                    }
                 }
             }
             KeyCode::PageDown => {
-                if self.show_log {
-                    self.log_scroll = self.log_scroll.saturating_add(5);
-                }
+                self.log_scroll = self.log_scroll.saturating_add(5);
             }
             KeyCode::PageUp => {
-                if self.show_log {
-                    self.log_scroll = self.log_scroll.saturating_sub(5);
-                }
+                self.log_scroll = self.log_scroll.saturating_sub(5);
             }
             KeyCode::Delete => {
                 if let Some(item) = self.focus_item() {
@@ -1866,14 +1950,19 @@ impl RegListState {
                             let idx = (me.row - inner.y) as usize;
                             if idx < self.filtered_items().len() {
                                 self.list_state.select(Some(idx));
-                                if self.show_log {
+                                if self.detail_mode != DetailMode::None {
                                     self.log_path = self.focus_item().map(|i| i.path);
                                     self.log_scroll = 0;
+                                    // If in Status mode, trigger status update
+                                    if self.detail_mode == DetailMode::Status {
+                                        // Re-trigger status logic (simplified: just clear for now or keep old)
+                                        // Ideally we should run status command again, but for now let's just keep UI responsive
+                                    }
                                 }
                                 if matches!(me.kind, MouseEventKind::Down(_)) {
                                     if is_double_click(&mut self.last_click, idx) {
                                         if let Some(item) = self.focus_item() {
-                                            self.show_log = true;
+                                            self.detail_mode = DetailMode::Log;
                                             self.log_path = Some(item.path);
                                             self.log_scroll = 0;
                                         }
@@ -1886,7 +1975,7 @@ impl RegListState {
                         } else if matches!(me.kind, MouseEventKind::ScrollUp) {
                             self.prev();
                         } else if matches!(me.kind, MouseEventKind::Down(_)) {
-                            if self.show_log {
+                            if self.detail_mode != DetailMode::None {
                                 self.log_path = self.focus_item().map(|i| i.path);
                                 self.log_scroll = 0;
                             }
@@ -1936,10 +2025,11 @@ impl RegListState {
             None => 0,
         };
         self.list_state.select(Some(i));
-        if self.show_log {
-            self.log_path = self.focus_item().map(|i| i.path);
-            self.log_scroll = 0;
-        }
+        self.log_path = self.focus_item().map(|i| i.path);
+        self.log_scroll = 0;
+        self.status_lines.clear();
+        self.status_lines.push("Loading...".to_string());
+        self.fetch_detail();
     }
 
     fn prev(&mut self) {
@@ -1948,10 +2038,11 @@ impl RegListState {
             None => 0,
         };
         self.list_state.select(Some(i));
-        if self.show_log {
-            self.log_path = self.focus_item().map(|i| i.path);
-            self.log_scroll = 0;
-        }
+        self.log_path = self.focus_item().map(|i| i.path);
+        self.log_scroll = 0;
+        self.status_lines.clear();
+        self.status_lines.push("Loading...".to_string());
+        self.fetch_detail();
     }
 
     fn render_list(&mut self, header: String, area: Rect, f: &mut ratatui::Frame) {
@@ -2053,14 +2144,69 @@ impl RegListState {
         self.log_area = Some(area);
     }
 
-    fn start_pull(&mut self, is_rebase: bool) {
-        let (tx, rx) = mpsc::channel();
-        let targets: Vec<RegItem> = self.items.iter().filter(|i| i.repo).cloned().collect();
-        self.pull_total = targets.len();
-        self.pull_done = 0;
-        self.pull_rx = Some(rx);
-        self.pull_infos.clear();
-        for item in &targets {
+    fn render_status(&mut self, area: Rect, f: &mut ratatui::Frame) {
+        let title = format!("Status - {}", self.log_path.clone().unwrap_or_default());
+        let mut styled_lines = Vec::new();
+        
+        for line in &self.status_lines {
+            let style = if line.starts_with("On branch") {
+                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)
+            } else if line.contains("Your branch is") {
+                 Style::default().fg(Color::Yellow)
+            } else if line.starts_with("Untracked files:") || line.contains("Changes not staged for commit:") {
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
+            } else if line.contains("Changes to be committed:") {
+                Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)
+            } else if line.trim().starts_with("modified:") {
+                 Style::default().fg(Color::Red)
+            } else if line.trim().starts_with("deleted:") {
+                 Style::default().fg(Color::Red)
+            } else if line.trim().starts_with("new file:") {
+                 Style::default().fg(Color::Green)
+            } else {
+                Style::default()
+            };
+            
+            // Refine modified/new file colors based on section context is hard without state machine parser,
+            // but simple keyword matching works reasonably well for typical output.
+            // If the line is just a filename (under Untracked files), it's usually red.
+            // But implementing full state machine is overkill here. 
+            // Let's refine slightly: if line is indented and we are not sure, check headers.
+            
+            styled_lines.push(Line::from(Span::styled(line.clone(), style)));
+        }
+
+        let view = Paragraph::new(Text::from(styled_lines))
+            .block(Block::default().title(title))
+            .scroll((self.log_scroll, 0));
+        f.render_widget(view, area);
+        self.log_area = Some(area);
+    }
+
+    fn start_pull(&mut self, targets: Vec<RegItem>, is_rebase: bool) {
+        if targets.is_empty() {
+            return;
+        }
+
+        // Initialize channel if it doesn't exist or was disconnected
+        if self.pull_tx.is_none() {
+            let (tx, rx) = mpsc::channel();
+            self.pull_tx = Some(tx);
+            self.pull_rx = Some(rx);
+        }
+        
+        let tx = self.pull_tx.as_ref().unwrap();
+
+        for item in targets {
+            // Skip if this path is already being processed (Pending or Running)
+            if let Some(info) = self.pull_infos.get(&item.path) {
+                match info.status {
+                    PullStatus::Pending | PullStatus::Running => continue,
+                    _ => {}
+                }
+            }
+
+            self.pull_total += 1;
             self.pull_infos.insert(
                 item.path.clone(),
                 RepoPullInfo {
@@ -2068,12 +2214,9 @@ impl RegListState {
                     log: vec![],
                 },
             );
-        }
 
-        let sem = Arc::new(Semaphore::new(5));
-        for item in targets {
             let tx = tx.clone();
-            let sem = sem.clone();
+            let sem = self.pull_sem.clone();
             let path = item.path.clone();
             thread::spawn(move || {
                 sem.acquire();
@@ -2083,10 +2226,6 @@ impl RegListState {
                 sem.release();
             });
         }
-    }
-
-    fn pull_active(&self) -> bool {
-        self.pull_total > 0 && self.pull_done < self.pull_total
     }
 
     fn drain_pull_events(&mut self) {
@@ -2113,11 +2252,16 @@ impl RegListState {
                             info.status = PullStatus::Done { code, message };
                         }
                         self.pull_done = self.pull_done.saturating_add(1);
+                        if self.pull_done >= self.pull_total {
+                            // Reset counters if everything is done to keep UI clean, or just keep incrementing.
+                            // Let's keep them for now, but reset when new batch starts in start_pull if needed.
+                        }
                     }
                 },
                 Err(mpsc::TryRecvError::Empty) => break,
                 Err(mpsc::TryRecvError::Disconnected) => {
                     self.pull_rx = None;
+                    self.pull_tx = None;
                     break;
                 }
             }
@@ -2213,9 +2357,9 @@ impl Semaphore {
 
 fn run_git_pull(path: &str, is_rebase: bool, tx: &mpsc::Sender<PullEvent>) -> (i32, Option<String>) {
     let cmd = if is_rebase {
-        "git pull -r 2>&1"
+        "git fetch -p && git pull -r 2>&1"
     } else {
-        "git pull 2>&1"
+        "git fetch -p && git pull 2>&1"
     };
     let mut child = match std::process::Command::new("sh")
         .arg("-c")
@@ -2747,6 +2891,13 @@ impl<'a> GitActor<'a> {
     }
 }
 
+#[derive(PartialEq)]
+enum DetailMode {
+    None,
+    Log,
+    Status,
+}
+
 struct RepoStatusInfo {
     branch: String,
     upstream: String,
@@ -2797,4 +2948,24 @@ fn run_git_status_check(path: String, tx: mpsc::Sender<StatusEvent>) {
             dirty,
         }),
     });
+}
+
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Percentage(percent_y),
+            Constraint::Percentage((100 - percent_y) / 2),
+        ])
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage(percent_x),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(popup_layout[1])[1]
 }
