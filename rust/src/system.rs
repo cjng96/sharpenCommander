@@ -109,32 +109,28 @@ pub fn system_ret(cmd: &str) -> i32 {
 }
 
 pub fn system_stream(cmd: &str) -> std::io::Result<i32> {
-    let has_tty = Path::new("/dev/tty").exists();
-    
-    let stdin = if has_tty {
-        Stdio::from(std::fs::File::open("/dev/tty")?)
-    } else {
-        Stdio::inherit()
-    };
-    
-    let stdout = if has_tty {
-        Stdio::from(OpenOptions::new().write(true).open("/dev/tty")?)
-    } else {
-        Stdio::inherit()
-    };
-    
-    let stderr = if has_tty {
-        Stdio::from(OpenOptions::new().write(true).open("/dev/tty")?)
-    } else {
-        Stdio::inherit()
-    };
+    let tty_in = std::fs::File::open("/dev/tty")
+        .map(Stdio::from)
+        .unwrap_or_else(|_| Stdio::inherit());
+
+    let tty_out = OpenOptions::new()
+        .write(true)
+        .open("/dev/tty")
+        .map(Stdio::from)
+        .unwrap_or_else(|_| Stdio::inherit());
+
+    let tty_err = OpenOptions::new()
+        .write(true)
+        .open("/dev/tty")
+        .map(Stdio::from)
+        .unwrap_or_else(|_| Stdio::inherit());
 
     let status = Command::new("sh")
         .arg("-c")
         .arg(cmd)
-        .stdin(stdin)
-        .stdout(stdout)
-        .stderr(stderr)
+        .stdin(tty_in)
+        .stdout(tty_out)
+        .stderr(tty_err)
         .status()?;
     Ok(status.code().unwrap_or(1))
 }
