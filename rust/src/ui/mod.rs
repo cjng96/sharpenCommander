@@ -67,28 +67,45 @@ pub fn git_push(_ctx: &mut AppContext) -> anyhow::Result<()> {
         if !tracking.is_empty() {
             println!("\x1b[1;35mRemote branch:\x1b[0m {}", tracking);
             println!("\n\x1b[1;32mCommits to push:\x1b[0m");
-            let _ = system(&format!("git log --color --oneline --graph --decorate --abbrev-commit {}..{}", tracking, current));
+            // Use ^ to include the commit where tracking branch is
+            let log_cmd = format!("git log --color --oneline --graph --decorate --abbrev-commit {}^..{}", tracking, current);
+            if system(&log_cmd).is_err() {
+                // fallback if tracking branch has no parent or other error
+                let _ = system(&format!("git log --color --oneline --graph --decorate --abbrev-commit {}..{}", tracking, current));
+            }
         } else {
             println!("\x1b[1;33mNo tracking branch found.\x1b[0m");
         }
 
-        // Collect suggested remote branches
-        let mut targets = vec![current.clone()];
-        if !tracking.is_empty() {
-            let remote_name = tracking.split('/').last().unwrap_or("").to_string();
-            if !targets.contains(&remote_name) {
-                targets.push(remote_name);
-            }
-        }
+        // Collect suggested remote branches (only remote branches, strip remote name)
+        let mut targets = Vec::new();
         
-        // Add other common remotes
-        if let Ok(remotes) = git::remote_list() {
-            for r in remotes {
-                let r_branch = format!("{}/{}", r, current);
-                if !targets.contains(&r_branch) {
-                    targets.push(r_branch);
+        // Get remote branches: e.g. "origin/master", "origin/feature/abc"
+        if let Ok(out) = system("git branch -r --format='%(refname:short)'") {
+            for line in out.lines() {
+                let line = line.trim();
+                if line.is_empty() { continue; }
+                
+                // Strip the remote name (e.g. "origin/")
+                if let Some(pos) = line.find('/') {
+                    let branch_name = &line[pos+1..];
+                    if !targets.contains(&branch_name.to_string()) {
+                        targets.push(branch_name.to_string());
+                    }
                 }
             }
+        }
+
+        // Put current branch or tracking branch name at the front if they exist in targets
+        if !tracking.is_empty() {
+            let tracking_short = tracking.split('/').last().unwrap_or("").to_string();
+            if let Some(pos) = targets.iter().position(|x| x == &tracking_short) {
+                targets.remove(pos);
+            }
+            targets.insert(0, tracking_short);
+        } else if let Some(pos) = targets.iter().position(|x| x == &current) {
+            targets.remove(pos);
+            targets.insert(0, current.clone());
         }
 
         let target = interactive_push_selector(&targets)?;
@@ -264,6 +281,9 @@ impl<'a> App<'a> {
             if event::poll(timeout)? {
                 match event::read()? {
                     Event::Key(key) => {
+                        if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
+                            return Ok(());
+                        }
                         if self.on_key(key)? {
                             return Ok(());
                         }
@@ -324,9 +344,6 @@ impl<'a> App<'a> {
     }
 
     fn on_key(&mut self, key: KeyEvent) -> anyhow::Result<bool> {
-        if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
-            return Ok(true);
-        }
         let action = match &mut self.screen {
             Screen::Main(state) => state.on_key(self.ctx, key)?,
             Screen::Find(state) => state.on_key(self.ctx, key)?,
@@ -403,6 +420,7 @@ struct MainState {
     work_idx: usize,
     list_area: Option<Rect>,
     last_click: Option<(Instant, usize)>,
+    registered_paths: Vec<String>,
 }
 
 struct DirEntry {
@@ -411,8 +429,9 @@ struct DirEntry {
 }
 
 impl MainState {
-    fn new(_ctx: &mut AppContext) -> anyhow::Result<Self> {
+    fn new(ctx: &mut AppContext) -> anyhow::Result<Self> {
         let cwd = std::env::current_dir()?;
+        let registered_paths = ctx.config.path.iter().map(|i| i.path.clone()).collect();
         let mut state = Self {
             cwd,
             items: Vec::new(),
@@ -424,6 +443,7 @@ impl MainState {
             work_idx: 0,
             list_area: None,
             last_click: None,
+            registered_paths,
         };
         state.refresh();
         if !state.items.is_empty() {
@@ -509,11 +529,15 @@ impl MainState {
             .items
             .iter()
             .map(|i| {
-                let style = if i.is_dir {
-                    Style::default().fg(Color::Green)
-                } else {
-                    Style::default()
-                };
+                let mut style = Style::default();
+                if i.is_dir {
+                    let full_path = self.cwd.join(&i.name).to_string_lossy().to_string();
+                    if self.registered_paths.contains(&full_path) {
+                        style = style.fg(Color::White);
+                    } else {
+                        style = style.fg(Color::Green);
+                    }
+                }
                 ListItem::new(i.name.as_str()).style(style)
             })
             .collect();
@@ -2163,7 +2187,13 @@ impl RegListState {
                     };
                     (status, msg, style)
                 } else {
-                    ("".to_string(), None, Style::default())
+                    let mut style = Style::default();
+                    if let Some(info) = self.status_infos.get(&i.path) {
+                        if info.dirty {
+                            style = style.fg(Color::Green);
+                        }
+                    }
+                    ("".to_string(), None, style)
                 };
                 
                 let mut label = i.path.clone();
