@@ -111,37 +111,30 @@ pub fn system_ret(cmd: &str) -> i32 {
 pub fn system_stream(cmd: &str) -> std::io::Result<i32> {
     app_log(&format!("system_stream: {}", cmd));
 
-    let stdin = std::fs::File::open("/dev/tty")
-        .map(Stdio::from)
-        .unwrap_or_else(|e| {
-            app_log(&format!("Failed to open /dev/tty for stdin: {}", e));
-            Stdio::inherit()
-        });
-
-    let stdout = OpenOptions::new()
-        .write(true)
-        .open("/dev/tty")
-        .map(Stdio::from)
-        .unwrap_or_else(|e| {
-            app_log(&format!("Failed to open /dev/tty for stdout: {}", e));
-            Stdio::inherit()
-        });
-
-    let stderr = OpenOptions::new()
-        .write(true)
-        .open("/dev/tty")
-        .map(Stdio::from)
-        .unwrap_or_else(|e| {
-            app_log(&format!("Failed to open /dev/tty for stderr: {}", e));
-            Stdio::inherit()
-        });
+    let has_tty = OpenOptions::new().read(true).write(true).open("/dev/tty").is_ok();
+    if !has_tty && is_executable_in_path("script") {
+        app_log("system_stream: no /dev/tty, using script");
+        // Fallback for sessions without a controlling tty (e.g. launched by GUI/hotkey).
+        let mut child = Command::new("script")
+            .arg("-q")
+            .arg("/dev/null")
+            .arg("sh")
+            .arg("-c")
+            .arg(cmd)
+            .stdin(Stdio::inherit())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .spawn()?;
+        let status = child.wait()?;
+        return Ok(status.code().unwrap_or(1));
+    }
 
     let mut child = Command::new("sh")
         .arg("-c")
         .arg(cmd)
-        .stdin(stdin)
-        .stdout(stdout)
-        .stderr(stderr)
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
         .spawn()?;
 
     let status = child.wait()?;
