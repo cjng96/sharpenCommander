@@ -1315,11 +1315,48 @@ impl GitStatusState {
                 }
             }
             KeyCode::Char('d') | KeyCode::Char('D') => {
-                if let Some(name) = self.focus_file_name() {
-                    system(&format!("git checkout -- \"{}\"", name))?;
-                    self.items = build_git_items()?;
-                    self.list_state.select(self.first_selectable());
-                    self.load_content()?;
+                if let Some(idx) = self.list_state.selected() {
+                    if let Some(item) = self.items.get(idx) {
+                        if item.kind == GitItemKind::Entry {
+                            if let Some(name) = &item.path {
+                                let status = item.status.as_deref().unwrap_or("");
+                                let mut msg = format!("Reverted: {}", name);
+                                if status == "?" {
+                                    // Untracked - delete file
+                                    let path = Path::new(name);
+                                    if path.exists() {
+                                        if path.is_dir() {
+                                            let _ = std::fs::remove_dir_all(path);
+                                        } else {
+                                            let _ = std::fs::remove_file(path);
+                                        }
+                                        msg = format!("Deleted: {}", name);
+                                    }
+                                } else {
+                                    // Tracked
+                                    // Try to revert to HEAD (handles modified tracked)
+                                    if let Err(_) = system(&format!("git checkout HEAD -- \"{}\"", name)) {
+                                        // If it failed, it might be a staged new file.
+                                        // For staged new file, we unstage and then delete the file.
+                                        let _ = system(&format!("git reset HEAD \"{}\"", name));
+                                        let path = Path::new(name);
+                                        if path.exists() {
+                                            if path.is_dir() {
+                                                let _ = std::fs::remove_dir_all(path);
+                                            } else {
+                                                let _ = std::fs::remove_file(path);
+                                            }
+                                            msg = format!("Deleted (Staged New): {}", name);
+                                        }
+                                    }
+                                }
+                                self.items = build_git_items()?;
+                                self.list_state.select(self.first_selectable());
+                                self.load_content()?;
+                                return Ok(Action::Toast(msg));
+                            }
+                        }
+                    }
                 }
             }
             KeyCode::Char('C') => {
