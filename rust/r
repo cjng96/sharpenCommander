@@ -1,4 +1,5 @@
 #!/bin/sh
 
-cargo watch -x run
+cargo watch -x "run --"
+#find . -name "*.rs" | grep "./src/" | entr -r cargo run
 

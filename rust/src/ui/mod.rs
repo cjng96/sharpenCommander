@@ -1629,6 +1629,8 @@ struct RegListState {
     pull_infos: HashMap<String, RepoPullInfo>,
     pull_total: usize,
     pull_done: usize,
+    status_rx: Option<mpsc::Receiver<StatusEvent>>,
+    status_infos: HashMap<String, RepoStatusInfo>,
     show_log: bool,
     log_path: Option<String>,
     log_scroll: u16,
@@ -1651,6 +1653,8 @@ impl RegListState {
             pull_infos: HashMap::new(),
             pull_total: 0,
             pull_done: 0,
+            status_rx: None,
+            status_infos: HashMap::new(),
             show_log: false,
             log_path: None,
             log_scroll: 0,
@@ -1659,11 +1663,53 @@ impl RegListState {
             last_click: None,
         };
         state.list_state.select(Some(0));
+        state.start_status_check();
         Ok(state)
+    }
+
+    fn start_status_check(&mut self) {
+        let (tx, rx) = mpsc::channel();
+        self.status_rx = Some(rx);
+        self.status_infos.clear();
+
+        let targets: Vec<String> = self.items.iter()
+            .filter(|i| i.repo)
+            .map(|i| i.path.clone())
+            .collect();
+
+        let sem = Arc::new(Semaphore::new(10));
+        for path in targets {
+            let tx = tx.clone();
+            let sem = sem.clone();
+            thread::spawn(move || {
+                sem.acquire();
+                run_git_status_check(path, tx);
+                sem.release();
+            });
+        }
+    }
+
+    fn drain_status_events(&mut self) {
+        let Some(rx) = &self.status_rx else { return };
+        loop {
+            match rx.try_recv() {
+                Ok(ev) => {
+                    if let Some(info) = ev.info {
+                        self.status_infos.insert(ev.path, info);
+                    }
+                }
+                Err(mpsc::TryRecvError::Empty) => break,
+                Err(mpsc::TryRecvError::Disconnected) => {
+                    self.status_rx = None;
+                    break;
+                }
+            }
+        }
     }
 
     fn render(&mut self, f: &mut ratatui::Frame) {
         self.drain_pull_events();
+        self.drain_status_events();
         let header = if self.pull_total > 0 {
             format!("Repo list - pull {}/{}", self.pull_done, self.pull_total)
         } else {
@@ -1934,16 +1980,32 @@ impl RegListState {
                 } else {
                     ("".to_string(), None, Style::default())
                 };
+                
+                let mut label = i.path.clone();
+                if let Some(info) = self.status_infos.get(&i.path) {
+                    if info.dirty {
+                        label.push_str(" *");
+                    }
+                    if !info.branch.is_empty() {
+                        label.push_str(&format!(" [{}", info.branch));
+                        if !info.upstream.is_empty() {
+                            let clean_upstream = info.upstream.replace("refs/remotes/", "");
+                            label.push_str(&format!(" -> {}", clean_upstream));
+                        }
+                        label.push(']');
+                    }
+                }
+
                 let text = if status.is_empty() {
-                    i.path.clone()
+                    label
                 } else if status == "ERR" {
                     if let Some(msg) = msg {
-                        format!("{} [{}] {}", i.path, status, msg)
+                        format!("{} [{}] {}", label, status, msg)
                     } else {
-                        format!("{} [{}]", i.path, status)
+                        format!("{} [{}]", label, status)
                     }
                 } else {
-                    format!("{} [{}]", i.path, status)
+                    format!("{} [{}]", label, status)
                 };
                 ListItem::new(text).style(style)
             })
@@ -2683,4 +2745,56 @@ impl<'a> GitActor<'a> {
         std::env::set_current_dir(&path)?;
         Ok(path)
     }
+}
+
+struct RepoStatusInfo {
+    branch: String,
+    upstream: String,
+    dirty: bool,
+}
+
+struct StatusEvent {
+    path: String,
+    info: Option<RepoStatusInfo>,
+}
+
+fn run_git_status_check(path: String, tx: mpsc::Sender<StatusEvent>) {
+    let output_branch = std::process::Command::new("git")
+        .args(&["rev-parse", "--abbrev-ref", "HEAD"])
+        .current_dir(&path)
+        .output();
+    
+    let branch = match output_branch {
+        Ok(out) => String::from_utf8_lossy(&out.stdout).trim().to_string(),
+        Err(_) => return, // Not a repo or git missing
+    };
+
+    let output_upstream = std::process::Command::new("git")
+        .args(&["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"])
+        .current_dir(&path)
+        .output();
+    
+    let upstream = match output_upstream {
+        Ok(out) => String::from_utf8_lossy(&out.stdout).trim().to_string(),
+        Err(_) => String::new(),
+    };
+
+    let output_status = std::process::Command::new("git")
+        .args(&["status", "--porcelain"])
+        .current_dir(&path)
+        .output();
+    
+    let dirty = match output_status {
+        Ok(out) => !out.stdout.is_empty(),
+        Err(_) => false,
+    };
+
+    let _ = tx.send(StatusEvent {
+        path,
+        info: Some(RepoStatusInfo {
+            branch,
+            upstream,
+            dirty,
+        }),
+    });
 }
