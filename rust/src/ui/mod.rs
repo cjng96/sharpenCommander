@@ -1383,7 +1383,11 @@ impl GitStatusState {
             KeyCode::Char('T') => {
                 with_terminal_pause(|| {
                     app_log("Running tig (GitStatus)");
+                    let root = git::repo_root().unwrap_or_else(|_| PathBuf::from("."));
+                    let old = std::env::current_dir()?;
+                    let _ = std::env::set_current_dir(&root);
                     let res = system_stream("tig");
+                    let _ = std::env::set_current_dir(old);
                     app_log(&format!("tig result: {:?}", res));
                     Ok(())
                 })?;
@@ -1793,7 +1797,11 @@ impl GitCommitState {
             KeyCode::Char('T') => {
                 with_terminal_pause(|| {
                     app_log("Running tig (GitCommit)");
+                    let root = git::repo_root().unwrap_or_else(|_| PathBuf::from("."));
+                    let old = std::env::current_dir()?;
+                    let _ = std::env::set_current_dir(&root);
                     let res = system_stream("tig");
+                    let _ = std::env::set_current_dir(old);
                     app_log(&format!("tig result: {:?}", res));
                     Ok(())
                 })?;
