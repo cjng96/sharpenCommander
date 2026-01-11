@@ -55,10 +55,10 @@ pub fn run_grep(ctx: &mut AppContext, args: &[String]) -> anyhow::Result<()> {
 pub fn git_push(_ctx: &mut AppContext) -> anyhow::Result<()> {
     with_terminal_pause(|| {
         println!("Fetching from remote...");
-        let _ = system("git fetch --prune");
+        let _ = system_stream("git fetch --prune");
 
         println!("\n\x1b[1;32mCurrent file status...\x1b[0m");
-        let _ = system("git -c color.status=always status -s");
+        let _ = system_stream("git -c color.status=always status -s");
 
         let current = git::get_current_branch()?;
         let tracking = git::get_tracking_branch().unwrap_or_default();
@@ -69,14 +69,14 @@ pub fn git_push(_ctx: &mut AppContext) -> anyhow::Result<()> {
             println!("\n\x1b[1;32mCommits (context):\x1b[0m");
             // Show from 3 commits before tracking to current to give full context
             let log_cmd = format!("git log --color --oneline --graph --decorate --abbrev-commit -n 15 {}~3..{}", tracking, current);
-            if system(&log_cmd).is_err() {
+            if system_stream(&log_cmd).unwrap_or(1) != 0 {
                 // Fallback to simpler ranges if ~3 fails (e.g. shallow clone or few commits)
-                let _ = system(&format!("git log --color --oneline --graph --decorate --abbrev-commit -n 15 {}..{}", tracking, current));
+                let _ = system_stream(&format!("git log --color --oneline --graph --decorate --abbrev-commit -n 15 {}..{}", tracking, current));
             }
         } else {
             println!("\x1b[1;33mNo tracking branch found.\x1b[0m");
             println!("\n\x1b[1;32mRecent commits:\x1b[0m");
-            let _ = system("git log --color --oneline --graph --decorate --abbrev-commit -n 10");
+            let _ = system_stream("git log --color --oneline --graph --decorate --abbrev-commit -n 10");
         }
 
         // Collect suggested remote branches (only remote branches, strip remote name)
@@ -160,7 +160,7 @@ fn interactive_push_selector(items: &[String]) -> anyhow::Result<String> {
     let res = loop {
         // Clear previous lines and redraw
         print!("\r\x1b[KPush to remote branch: \x1b[1;36m{}\x1b[0m", input);
-        print!("\n\x1b[K(Suggestions: Use Up/Down arrows to select)");
+        print!("\n\r\x1b[K(Suggestions: Use Up/Down arrows to select)");
         for (i, item) in items.iter().enumerate() {
             if i == selected_idx {
                 print!("\n\r\x1b[K > \x1b[1;32m{}\x1b[0m", item);
