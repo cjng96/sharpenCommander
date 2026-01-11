@@ -778,7 +778,9 @@ impl MainState {
                     with_terminal_pause(|| {
                         let old = std::env::current_dir()?;
                         if std::env::set_current_dir(&target).is_ok() {
-                            let _ = system_stream("tig");
+                            app_log(&format!("Running tig in {}", target.to_string_lossy()));
+                            let res = system_stream("tig");
+                            app_log(&format!("tig result: {:?}", res));
                             let _ = std::env::set_current_dir(old);
                         }
                         Ok(())
@@ -1380,7 +1382,9 @@ impl GitStatusState {
             }
             KeyCode::Char('T') => {
                 with_terminal_pause(|| {
-                    let _ = system_stream("tig");
+                    app_log("Running tig (GitStatus)");
+                    let res = system_stream("tig");
+                    app_log(&format!("tig result: {:?}", res));
                     Ok(())
                 })?;
             }
@@ -1788,7 +1792,9 @@ impl GitCommitState {
             }
             KeyCode::Char('T') => {
                 with_terminal_pause(|| {
-                    let _ = system_stream("tig");
+                    app_log("Running tig (GitCommit)");
+                    let res = system_stream("tig");
+                    app_log(&format!("tig result: {:?}", res));
                     Ok(())
                 })?;
             }
@@ -2165,7 +2171,9 @@ impl RegListState {
                     with_terminal_pause(|| {
                         let old = std::env::current_dir()?;
                         if std::env::set_current_dir(&target).is_ok() {
-                            let _ = system_stream("tig");
+                            app_log(&format!("Running tig in {}", target));
+                            let res = system_stream("tig");
+                            app_log(&format!("tig result: {:?}", res));
                             let _ = std::env::set_current_dir(old);
                         }
                         Ok(())
