@@ -1378,6 +1378,12 @@ impl GitStatusState {
                     open_in_editor(&ctx.config.edit_app, &name);
                 }
             }
+            KeyCode::Char('T') => {
+                with_terminal_pause(|| {
+                    let _ = system_stream("tig");
+                    Ok(())
+                })?;
+            }
             _ => {}
         }
         Ok(Action::None)
@@ -1779,6 +1785,12 @@ impl GitCommitState {
                     system(&git_cmd_at(&self.repo_root, &format!("reset \"{}\"", name)))?;
                     *self = GitCommitState::new(ctx)?;
                 }
+            }
+            KeyCode::Char('T') => {
+                with_terminal_pause(|| {
+                    let _ = system_stream("tig");
+                    Ok(())
+                })?;
             }
             _ => {}
         }
