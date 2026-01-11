@@ -109,17 +109,32 @@ pub fn system_ret(cmd: &str) -> i32 {
 }
 
 pub fn system_stream(cmd: &str) -> std::io::Result<i32> {
-    let stdin = if Path::new("/dev/tty").exists() {
+    let has_tty = Path::new("/dev/tty").exists();
+    
+    let stdin = if has_tty {
         Stdio::from(std::fs::File::open("/dev/tty")?)
     } else {
         Stdio::inherit()
     };
+    
+    let stdout = if has_tty {
+        Stdio::from(OpenOptions::new().write(true).open("/dev/tty")?)
+    } else {
+        Stdio::inherit()
+    };
+    
+    let stderr = if has_tty {
+        Stdio::from(OpenOptions::new().write(true).open("/dev/tty")?)
+    } else {
+        Stdio::inherit()
+    };
+
     let status = Command::new("sh")
         .arg("-c")
         .arg(cmd)
         .stdin(stdin)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
+        .stdout(stdout)
+        .stderr(stderr)
         .status()?;
     Ok(status.code().unwrap_or(1))
 }
