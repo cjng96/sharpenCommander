@@ -110,12 +110,41 @@ pub fn system_ret(cmd: &str) -> i32 {
 
 pub fn system_stream(cmd: &str) -> std::io::Result<i32> {
     app_log(&format!("system_stream: {}", cmd));
-    
-    let status = Command::new("sh")
+
+    let stdin = std::fs::File::open("/dev/tty")
+        .map(Stdio::from)
+        .unwrap_or_else(|e| {
+            app_log(&format!("Failed to open /dev/tty for stdin: {}", e));
+            Stdio::inherit()
+        });
+
+    let stdout = OpenOptions::new()
+        .write(true)
+        .open("/dev/tty")
+        .map(Stdio::from)
+        .unwrap_or_else(|e| {
+            app_log(&format!("Failed to open /dev/tty for stdout: {}", e));
+            Stdio::inherit()
+        });
+
+    let stderr = OpenOptions::new()
+        .write(true)
+        .open("/dev/tty")
+        .map(Stdio::from)
+        .unwrap_or_else(|e| {
+            app_log(&format!("Failed to open /dev/tty for stderr: {}", e));
+            Stdio::inherit()
+        });
+
+    let mut child = Command::new("sh")
         .arg("-c")
         .arg(cmd)
-        .status()?;
-        
+        .stdin(stdin)
+        .stdout(stdout)
+        .stderr(stderr)
+        .spawn()?;
+
+    let status = child.wait()?;
     Ok(status.code().unwrap_or(1))
 }
 
