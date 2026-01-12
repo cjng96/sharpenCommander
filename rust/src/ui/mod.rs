@@ -1410,6 +1410,7 @@ impl GitStatusState {
         let next = self.next_selectable(1);
         if let Some(i) = next {
             self.list_state.select(Some(i));
+            self.content_scroll = 0;
             self.load_content()?;
         }
         Ok(())
@@ -1419,6 +1420,7 @@ impl GitStatusState {
         let prev = self.prev_selectable(1);
         if let Some(i) = prev {
             self.list_state.select(Some(i));
+            self.content_scroll = 0;
             self.load_content()?;
         }
         Ok(())
@@ -1862,6 +1864,7 @@ impl GitCommitState {
             None => 0,
         };
         self.list_state.select(Some(i));
+        self.content_scroll = 0;
         self.load_content()
     }
 
@@ -1871,6 +1874,7 @@ impl GitCommitState {
             None => 0,
         };
         self.list_state.select(Some(i));
+        self.content_scroll = 0;
         self.load_content()
     }
 
@@ -2366,19 +2370,15 @@ impl RegListState {
                     (status, msg, style)
                 } else {
                     let mut style = Style::default();
-                    if let Some(info) = self.status_infos.get(&i.path) {
+                    let is_subfolder = self.items.iter().any(|j| {
+                        j.repo && i.path.starts_with(&j.path) && i.path != j.path
+                    });
+
+                    if is_subfolder {
+                        style = style.fg(Color::DarkGray);
+                    } else if let Some(info) = self.status_infos.get(&i.path) {
                         if info.dirty {
                             style = style.fg(Color::Green);
-                        }
-                    }
-                    
-                    // If not already colored by dirty status, check if it's a subfolder of a repo
-                    if style.fg.is_none() {
-                        let is_subfolder = self.items.iter().any(|j| {
-                            j.repo && i.path.starts_with(&j.path) && i.path != j.path
-                        });
-                        if is_subfolder {
-                            style = style.fg(Color::DarkGray);
                         }
                     }
                     

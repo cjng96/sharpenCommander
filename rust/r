@@ -1,5 +1,6 @@
 #!/bin/sh
 
-cargo watch -x "run --"
+cargo watch -x "run -- $@"
+#bacon /Users/cjng96/iner/sharpenCommander/rust
 #find . -name "*.rs" | grep "./src/" | entr -r cargo run
 

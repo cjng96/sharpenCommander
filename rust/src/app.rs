@@ -102,9 +102,29 @@ pub fn run() -> anyhow::Result<()> {
     setup_sc()?;
     let _ = fs::remove_file("/tmp/cmdDevTool.path");
 
+    let mut args: Vec<String> = env::args().collect();
+    let mut initial_path = None;
+    let mut i = 0;
+    while i < args.len() {
+        if args[i].starts_with("--path=") {
+            initial_path = Some(args[i][7..].to_string());
+            args.remove(i);
+        } else {
+            i += 1;
+        }
+    }
+
+    if let Some(p) = initial_path {
+        let p = crate::system::expand_tilde(&p);
+        env::set_current_dir(&p)?;
+    }
+
     let mut ctx = AppContext::load()?;
-    let args: Vec<String> = env::args().collect();
+    let cur = env::current_dir()?;
+    ctx.save_path(cur.to_string_lossy().as_ref())?;
+
     if args.len() <= 1 {
+        // If it is UI mode, it already uses env::current_dir() in MainState::new
         return ui::run(&mut ctx);
     }
     let cmd = &args[1];
