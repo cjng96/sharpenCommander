@@ -20,8 +20,8 @@ use ratatui::Terminal;
 use crate::app::{open_in_editor, AppContext};
 use crate::config::RegItem;
 use crate::git;
-use crate::system::{app_log, system, system_logged, system_safe, system_stream};
-use crate::util::{match_disorder, match_disorder_count, walk_dirs};
+use crate::system::{app_log, expand_tilde, system, system_logged, system_safe, system_stream};
+use crate::util::{match_disorder, match_disorder_count, strip_ansi, unwrap_quotes_filename};
 
 const INPUT_PREFIX: &str = "$ ";
 static REDRAW_REQUEST: AtomicBool = AtomicBool::new(false);
@@ -178,7 +178,7 @@ fn interactive_push_selector(items: &[String]) -> anyhow::Result<String> {
                 match event.code {
                     KeyCode::Char('c') if event.modifiers.contains(KeyModifiers::CONTROL) => {
                         disable_raw_mode()?;
-                        std::process::exit(0);
+                        return Err(anyhow::anyhow!("Interrupted by user"));
                     }
                     KeyCode::Enter => {
                         break Ok(input.trim().to_string());
@@ -429,9 +429,9 @@ struct MainState {
     registered_paths: Vec<String>,
     confirm_delete: bool,
     confirm_target: Option<String>,
-    filter: String,
 }
 
+#[derive(Clone)]
 struct DirEntry {
     name: String,
     is_dir: bool,
@@ -455,7 +455,6 @@ impl MainState {
             registered_paths,
             confirm_delete: false,
             confirm_target: None,
-            filter: String::new(),
         };
         state.refresh();
         Ok(state)
@@ -463,14 +462,10 @@ impl MainState {
 
     fn refresh(&mut self) {
         let mut list = Vec::new();
-        let filter = self.filter.to_lowercase();
         if let Ok(rd) = std::fs::read_dir(&self.cwd) {
             for entry in rd.flatten() {
                 if let Some(name) = entry.file_name().to_str() {
                     if name == ".dcdata" {
-                        continue;
-                    }
-                    if !filter.is_empty() && !name.to_lowercase().contains(&filter) {
                         continue;
                     }
                     let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
@@ -482,7 +477,6 @@ impl MainState {
             }
         }
         list.sort_by_key(|e| e.name.clone());
-        let matches_found = !list.is_empty();
         self.items = list;
         self.items.insert(
             0,
@@ -492,11 +486,7 @@ impl MainState {
             },
         );
 
-        if !filter.is_empty() && matches_found {
-            self.list_state.select(Some(1));
-        } else {
-            self.list_state.select(Some(0));
-        }
+        self.list_state.select(Some(0));
     }
 
     fn focus_name(&self) -> Option<String> {
@@ -509,7 +499,6 @@ impl MainState {
             if let Some(parent) = self.cwd.parent() {
                 if std::env::set_current_dir(parent).is_ok() {
                     self.cwd = parent.to_path_buf();
-                    self.filter.clear();
                     self.refresh();
                 }
             }
@@ -519,7 +508,6 @@ impl MainState {
         if target.is_dir() {
             if std::env::set_current_dir(&target).is_ok() {
                 self.cwd = target;
-                self.filter.clear();
                 self.refresh();
             }
         }
@@ -535,13 +523,12 @@ impl MainState {
         let left = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Percentage(80), // List
+                Constraint::Percentage(85), // List
                 Constraint::Percentage(15), // Cmd
-                Constraint::Length(1),      // Filter
             ])
             .split(layout[0]);
 
-        let header = format!(">> sc V{} - {}", env!("CARGO_PKG_VERSION"), cwd_str);
+        let header = format!(" >> sc V{} - {}", env!("CARGO_PKG_VERSION"), cwd_str);
         let list_block = Block::default().title(header);
 
         let items: Vec<ListItem> = self
@@ -581,10 +568,6 @@ impl MainState {
         };
         let cmd_list = List::new(cmd_items).block(Block::default().title("Cmd"));
         f.render_widget(cmd_list, left[1]);
-
-        let filter_text = format!("Filter: {}", self.filter);
-        let filter_p = Paragraph::new(filter_text).style(Style::default().fg(Color::Cyan));
-        f.render_widget(filter_p, left[2]);
 
         let right = Layout::default()
             .direction(Direction::Vertical)
@@ -670,7 +653,7 @@ impl MainState {
         }
 
         match key.code {
-            KeyCode::Char('Q') => return Ok(Action::Exit),
+            KeyCode::Char('q') => return Ok(Action::Exit),
             KeyCode::Down | KeyCode::Char('J') => self.select_next(),
             KeyCode::Up | KeyCode::Char('K') => self.select_prev(),
             KeyCode::Right => {
@@ -800,24 +783,6 @@ impl MainState {
                     }
                 }
                 git_push(ctx)?;
-            }
-            KeyCode::Backspace => {
-                if !self.filter.is_empty() {
-                    self.filter.pop();
-                    self.refresh();
-                }
-            }
-            KeyCode::Esc => {
-                if !self.filter.is_empty() {
-                    self.filter.clear();
-                    self.refresh();
-                }
-            }
-            KeyCode::Char(c) => {
-                if c.is_ascii_lowercase() || c.is_numeric() || c == '_' || c == '-' {
-                    self.filter.push(c);
-                    self.refresh();
-                }
             }
             _ => {}
         }
@@ -1120,7 +1085,7 @@ impl GrepState {
             format!("{} --group --color", ctx.config.grep_app)
         };
         let (out, _code) = system_safe(&cmd);
-        let clean = strip_ansi(out);
+        let clean = strip_ansi(&out);
         let mut lines: Vec<String> = clean.lines().map(|l| l.to_string()).collect();
         if lines.is_empty() {
             lines.push("< No result >".to_string());
@@ -1448,7 +1413,7 @@ impl GitStatusState {
             } else {
                 system(&format!("git diff --color \"{}\"", name))?
             };
-            self.content = strip_ansi(out).replace('\t', "    ").lines().map(|s| s.to_string()).collect();
+            self.content = strip_ansi(&out).replace('\t', "    ").lines().map(|s| s.to_string()).collect();
         }
         Ok(())
     }
@@ -1849,7 +1814,7 @@ impl GitCommitState {
             } else {
                 stdout
             };
-            self.content = strip_ansi(body)
+            self.content = strip_ansi(&body)
                 .replace('\t', "    ")
                 .lines()
                 .map(|s| s.to_string())
@@ -2032,7 +1997,7 @@ impl RegListState {
                     Err(e) => format!("Error: {}", e),
                 };
                 
-                let lines: Vec<String> = strip_ansi(text).lines().map(|s| s.to_string()).collect();
+                let lines: Vec<String> = strip_ansi(&text).lines().map(|s| s.to_string()).collect();
                 let _ = tx.send((path, lines));
             });
         }
@@ -2750,9 +2715,15 @@ fn format_diff_lines(lines: &[String], width: u16) -> Vec<Line<'static>> {
     out
 }
 
+#[derive(Clone)]
+enum GotoItem {
+    Repo(RegItem),
+    LocalDir(DirEntry),
+    LocalFile(DirEntry),
+}
+
 struct GotoState {
-    items: Vec<RegItem>,
-    local_dirs: Vec<RegItem>,
+    items: Vec<GotoItem>,
     list_state: ListState,
     filter: String,
     list_area: Option<Rect>,
@@ -2761,21 +2732,37 @@ struct GotoState {
 
 impl GotoState {
     fn new(ctx: &mut AppContext) -> anyhow::Result<Self> {
-        let mut items = ctx.config.path.clone();
-        items.sort_by_key(|i| i.path.clone());
+        let mut items = Vec::new();
+        
+        // 1. Add Registered Repos
+        for reg in &ctx.config.path {
+            items.push(GotoItem::Repo(reg.clone()));
+        }
+        
+        // 2. Add Current Directory Items
         let cwd = std::env::current_dir()?;
-        let local_dirs = walk_dirs(&cwd, &[".git", "node_modules", ".pnpm-store"], 100)
-            .into_iter()
-            .map(|p| RegItem {
-                names: vec![p.to_string_lossy().to_string()],
-                path: p.to_string_lossy().to_string(),
-                groups: vec![],
-                repo: false,
-            })
-            .collect::<Vec<_>>();
+        if let Ok(rd) = std::fs::read_dir(&cwd) {
+            for entry in rd.flatten() {
+                if let Some(name) = entry.file_name().to_str() {
+                    if name == ".dcdata" || name == ".DS_Store" {
+                        continue;
+                    }
+                    let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
+                    let dir_entry = DirEntry {
+                        name: name.to_string(),
+                        is_dir,
+                    };
+                    if is_dir {
+                        items.push(GotoItem::LocalDir(dir_entry));
+                    } else {
+                        items.push(GotoItem::LocalFile(dir_entry));
+                    }
+                }
+            }
+        }
+
         let mut state = Self {
             items,
-            local_dirs,
             list_state: ListState::default(),
             filter: String::new(),
             list_area: None,
@@ -2796,7 +2783,7 @@ impl GotoState {
             .split(f.size());
 
         let title_widget = Paragraph::new(Line::from(Span::styled(
-            " >> Goto",
+            " >> Goto (Repo / Local Dir / Local File)",
             Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
         )));
         f.render_widget(title_widget, layout[0]);
@@ -2804,7 +2791,26 @@ impl GotoState {
         let filtered = self.filtered_items();
         let items: Vec<ListItem> = filtered
             .iter()
-            .map(|i| ListItem::new(i.path.as_str()))
+            .map(|item| {
+                let (icon, label, style) = match item {
+                    GotoItem::Repo(reg) => (
+                        "[R] ",
+                        reg.path.as_str(),
+                        Style::default().fg(Color::White),
+                    ),
+                    GotoItem::LocalDir(dir) => (
+                        "[D] ",
+                        dir.name.as_str(),
+                        Style::default().fg(Color::Green),
+                    ),
+                    GotoItem::LocalFile(file) => (
+                        "[F] ",
+                        file.name.as_str(),
+                        Style::default().fg(Color::Blue),
+                    ),
+                };
+                ListItem::new(format!("{}{}", icon, label)).style(style)
+            })
             .collect();
         let list = List::new(items)
             .highlight_style(
@@ -2831,13 +2837,22 @@ impl GotoState {
             KeyCode::Char('k') | KeyCode::Up => self.prev(),
             KeyCode::Enter => {
                 if let Some(item) = self.focus_item() {
-                    let path = if Path::new(&item.path).is_absolute() {
-                        PathBuf::from(&item.path)
-                    } else {
-                        std::env::current_dir()?.join(&item.path)
-                    };
-                    std::env::set_current_dir(path)?;
-                    return Ok(Action::Switch(Screen::Main(MainState::new(ctx)?)));
+                    match item {
+                        GotoItem::Repo(reg) => {
+                            let path = PathBuf::from(expand_tilde(&reg.path));
+                            std::env::set_current_dir(path)?;
+                            return Ok(Action::Switch(Screen::Main(MainState::new(ctx)?)));
+                        }
+                        GotoItem::LocalDir(dir) => {
+                            let path = std::env::current_dir()?.join(dir.name);
+                            std::env::set_current_dir(path)?;
+                            return Ok(Action::Switch(Screen::Main(MainState::new(ctx)?)));
+                        }
+                        GotoItem::LocalFile(file) => {
+                            let path = std::env::current_dir()?.join(file.name);
+                            open_in_editor(&ctx.config.edit_app, path.to_string_lossy().as_ref());
+                        }
+                    }
                 }
             }
             KeyCode::Char('U') => {
@@ -2859,7 +2874,7 @@ impl GotoState {
         Ok(Action::None)
     }
 
-    fn on_mouse(&mut self, _ctx: &mut AppContext, me: MouseEvent) -> anyhow::Result<Action> {
+    fn on_mouse(&mut self, ctx: &mut AppContext, me: MouseEvent) -> anyhow::Result<Action> {
         if let Some(area) = self.list_area {
             if area.contains(mouse_pos(&me)) {
                 match me.kind {
@@ -2867,20 +2882,27 @@ impl GotoState {
                         let inner = area.inner(&Margin { horizontal: 1, vertical: 1 });
                         if me.row >= inner.y && me.row < inner.y + inner.height {
                             let idx = (me.row - inner.y) as usize;
-                            if idx < self.filtered_items().len() {
+                            let filtered = self.filtered_items();
+                            if idx < filtered.len() {
                                 self.list_state.select(Some(idx));
                                 if matches!(me.kind, MouseEventKind::Down(_)) {
                                     if is_double_click(&mut self.last_click, idx) {
-                                        if let Some(item) = self.focus_item() {
-                                            let path = if Path::new(&item.path).is_absolute() {
-                                                PathBuf::from(&item.path)
-                                            } else {
-                                                std::env::current_dir()?.join(&item.path)
-                                            };
-                                            std::env::set_current_dir(path)?;
-                                            return Ok(Action::Switch(Screen::Main(MainState::new(
-                                                _ctx,
-                                            )?)));
+                                        let item = &filtered[idx];
+                                        match item {
+                                            GotoItem::Repo(reg) => {
+                                                let path = PathBuf::from(expand_tilde(&reg.path));
+                                                std::env::set_current_dir(path)?;
+                                                return Ok(Action::Switch(Screen::Main(MainState::new(ctx)?)));
+                                            }
+                                            GotoItem::LocalDir(dir) => {
+                                                let path = std::env::current_dir()?.join(&dir.name);
+                                                std::env::set_current_dir(path)?;
+                                                return Ok(Action::Switch(Screen::Main(MainState::new(ctx)?)));
+                                            }
+                                            GotoItem::LocalFile(file) => {
+                                                let path = std::env::current_dir()?.join(&file.name);
+                                                open_in_editor(&ctx.config.edit_app, path.to_string_lossy().as_ref());
+                                            }
                                         }
                                     }
                                 }
@@ -2899,62 +2921,73 @@ impl GotoState {
         Ok(Action::None)
     }
 
-    fn filtered_items(&self) -> Vec<RegItem> {
-        let mut combined = self.items.clone();
-        combined.extend(self.local_dirs.clone());
+    fn filtered_items(&self) -> Vec<GotoItem> {
         if self.filter.trim().is_empty() {
-            return combined;
+            return self.items.clone();
         }
         let filter = self.filter.to_lowercase();
         let list: Vec<String> = filter.split_whitespace().map(|s| s.to_string()).collect();
         
-        let mut filtered: Vec<RegItem> = combined
-            .into_iter()
-            .filter(|i| match_disorder(&i.path.to_lowercase(), &list))
+        let mut filtered: Vec<GotoItem> = self.items
+            .iter()
+            .filter(|item| {
+                let target = match item {
+                    GotoItem::Repo(reg) => reg.path.to_lowercase(),
+                    GotoItem::LocalDir(dir) => dir.name.to_lowercase(),
+                    GotoItem::LocalFile(file) => file.name.to_lowercase(),
+                };
+                match_disorder(&target, &list)
+            })
+            .cloned()
             .collect();
 
         filtered.sort_by(|a, b| {
-            let base_a = Path::new(&a.path).file_name().and_then(|s| s.to_str()).unwrap_or("").to_lowercase();
-            let base_b = Path::new(&b.path).file_name().and_then(|s| s.to_str()).unwrap_or("").to_lowercase();
+            let get_name = |item: &GotoItem| match item {
+                GotoItem::Repo(reg) => Path::new(&reg.path).file_name().and_then(|s| s.to_str()).unwrap_or("").to_lowercase(),
+                GotoItem::LocalDir(dir) => dir.name.to_lowercase(),
+                GotoItem::LocalFile(file) => file.name.to_lowercase(),
+            };
             
-            let score_a = match_disorder_count(&base_a, &list);
-            let score_b = match_disorder_count(&base_b, &list);
+            let name_a = get_name(a);
+            let name_b = get_name(b);
+            
+            let score_a = match_disorder_count(&name_a, &list);
+            let score_b = match_disorder_count(&name_b, &list);
             
             if score_a != score_b {
-                return score_b.cmp(&score_a); // Higher score first
+                return score_b.cmp(&score_a);
             }
             
-            // Tie-breaker for items with same fragment count in base name
             if score_a > 0 {
                 let target = filter.replace(' ', "");
-                
-                // Exact match
-                let exact_a = base_a == target;
-                let exact_b = base_b == target;
-                if exact_a != exact_b {
-                    return exact_b.cmp(&exact_a);
+                if (name_a == target) != (name_b == target) {
+                    return (name_b == target).cmp(&(name_a == target));
                 }
-
-                // Starts with
-                let starts_a = base_a.starts_with(&target);
-                let starts_b = base_b.starts_with(&target);
-                if starts_a != starts_b {
-                    return starts_b.cmp(&starts_a);
-                }
-
-                // Shorter base name preferred (closer match)
-                if base_a.len() != base_b.len() {
-                    return base_a.len().cmp(&base_b.len());
+                if name_a.starts_with(&target) != name_b.starts_with(&target) {
+                    return name_b.starts_with(&target).cmp(&name_a.starts_with(&target));
                 }
             }
 
-            a.path.cmp(&b.path)
+            // Type priority: Repo > LocalDir > LocalFile
+            let type_score = |item: &GotoItem| match item {
+                GotoItem::Repo(_) => 0,
+                GotoItem::LocalDir(_) => 1,
+                GotoItem::LocalFile(_) => 2,
+            };
+            
+            let ts_a = type_score(a);
+            let ts_b = type_score(b);
+            if ts_a != ts_b {
+                return ts_a.cmp(&ts_b);
+            }
+
+            name_a.cmp(&name_b)
         });
         
         filtered
     }
 
-    fn focus_item(&self) -> Option<RegItem> {
+    fn focus_item(&self) -> Option<GotoItem> {
         let idx = self.list_state.selected()?;
         self.filtered_items().get(idx).cloned()
     }
@@ -2978,45 +3011,19 @@ impl GotoState {
 }
 
 
-fn strip_ansi(input: String) -> String {
-    let mut output = String::new();
-    let mut chars = input.chars().peekable();
-    while let Some(ch) = chars.next() {
-        if ch == '\u{1b}' {
-            while let Some(c) = chars.next() {
-                if c == 'm' {
-                    break;
-                }
-            }
-        } else {
-            output.push(ch);
-        }
-    }
-    output
-}
-
 fn git_file_last_name(line: &str) -> Option<String> {
     let text = line.trim();
     let first_space = text.find(' ')?;
     let rest = text[first_space + 1..].trim();
     if let Some(pos) = rest.rfind(" -> ") {
         let target = &rest[pos + 4..];
-        return Some(unquote_path(target));
+        return Some(unwrap_quotes_filename(target));
     }
-    Some(unquote_path(rest))
+    Some(unwrap_quotes_filename(rest))
 }
 
 fn git_cmd_at(root: &Path, cmd: &str) -> String {
     format!("git -C \"{}\" {}", root.to_string_lossy(), cmd)
-}
-
-fn unquote_path(input: &str) -> String {
-    let trimmed = input.trim();
-    if trimmed.starts_with('"') && trimmed.ends_with('"') && trimmed.len() >= 2 {
-        trimmed[1..trimmed.len() - 1].replace("\\\"", "\"")
-    } else {
-        trimmed.to_string()
-    }
 }
 
 fn file_size(path: &str) -> u64 {

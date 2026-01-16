@@ -123,80 +123,96 @@ pub fn run() -> anyhow::Result<()> {
     let cur = env::current_dir()?;
     ctx.save_path(cur.to_string_lossy().as_ref())?;
 
-    if args.len() <= 1 {
-        // If it is UI mode, it already uses env::current_dir() in MainState::new
-        return ui::run(&mut ctx);
-    }
-    let cmd = &args[1];
-    let mut target = if args.len() >= 3 { Some(args[2].clone()) } else { None };
-    if let Some(t) = &target {
-        if t == "." {
-            if let Ok(cur) = env::current_dir() {
-                target = Some(cur.to_string_lossy().to_string());
+    let res = (|| -> anyhow::Result<()> {
+        if args.len() <= 1 {
+            // If it is UI mode, it already uses env::current_dir() in MainState::new
+            return ui::run(&mut ctx);
+        }
+        let cmd = &args[1];
+        let mut target = if args.len() >= 3 {
+            Some(args[2].clone())
+        } else {
+            None
+        };
+        if let Some(t) = &target {
+            if t == "." {
+                if let Ok(cur) = env::current_dir() {
+                    target = Some(cur.to_string_lossy().to_string());
+                }
             }
         }
-    }
 
-    match cmd.as_str() {
-        "push" => {
-            println!("Fetching first...");
-            git::fetch();
-            ui::git_push(&mut ctx)?;
-        }
-        "ci" => {
-            ui::run_git_status(&mut ctx)?;
-        }
-        "list" => {
-            for item in &ctx.config.path {
-                println!("{:?}", item);
+        match cmd.as_str() {
+            "push" => {
+                println!("Fetching first...");
+                git::fetch();
+                ui::git_push(&mut ctx)?;
+            }
+            "ci" => {
+                ui::run_git_status(&mut ctx)?;
+            }
+            "list" => {
+                for item in &ctx.config.path {
+                    println!("{:?}", item);
+                }
+            }
+            "config" => {
+                let p = crate::system::expand_tilde("~/.synapcmd");
+                if p.is_dir() {
+                    let _ = env::set_current_dir(&p);
+                } else if let Some(parent) = p.parent() {
+                    let _ = env::set_current_dir(parent);
+                }
+            }
+            "which" => {
+                let cmdline = args[1..].join(" ");
+                let (out, _code) = system_safe(&cmdline);
+                println!("{out}");
+                if let Some(pp) = Path::new(&out).parent() {
+                    let _ = env::set_current_dir(pp);
+                }
+            }
+            "find" => {
+                ui::run_find(&mut ctx, &args[1..])?;
+            }
+            "grep" => {
+                ui::run_grep(&mut ctx, &args[1..])?;
+            }
+            "st" => {
+                if let Some(t) = target {
+                    ui::git_status_component(&mut ctx, &t)?;
+                } else {
+                    ui::git_status_component(&mut ctx, "")?;
+                }
+            }
+            "fetch" => {
+                ui::git_fetch(&mut ctx, target.as_deref())?;
+            }
+            "merge" => {
+                ui::git_merge(&mut ctx, target.as_deref())?;
+            }
+            "update" => {
+                ui::git_update(&mut ctx, target.as_deref())?;
+            }
+            _ => {
+                if cmd == "." {
+                    // Already in current dir
+                } else {
+                    let item = ctx.reg_find_by_name(cmd)?;
+                    let _ = env::set_current_dir(&item.path);
+                }
             }
         }
-        "config" => {
-            ctx.save_path("~/.synapcmd")?;
-        }
-        "which" => {
-            let cmdline = args[1..].join(" ");
-            let (out, _code) = system_safe(&cmdline);
-            println!("{out}");
-            if let Some(pp) = Path::new(&out).parent() {
-                ctx.save_path(pp.to_string_lossy().as_ref())?;
-            }
-        }
-        "find" => {
-            ui::run_find(&mut ctx, &args[1..])?;
-        }
-        "grep" => {
-            ui::run_grep(&mut ctx, &args[1..])?;
-        }
-        "st" => {
-            if let Some(t) = target {
-                ui::git_status_component(&mut ctx, &t)?;
-            } else {
-                ui::git_status_component(&mut ctx, "")?;
-            }
-        }
-        "fetch" => {
-            ui::git_fetch(&mut ctx, target.as_deref())?;
-        }
-        "merge" => {
-            ui::git_merge(&mut ctx, target.as_deref())?;
-        }
-        "update" => {
-            ui::git_update(&mut ctx, target.as_deref())?;
-        }
-        _ => {
-            if cmd == "." {
-                let cur = env::current_dir()?;
-                ctx.save_path(cur.to_string_lossy().as_ref())?;
-            } else {
-                let item = ctx.reg_find_by_name(cmd)?;
-                ctx.save_path(&item.path)?;
-            }
-        }
+        Ok(())
+    })();
+
+    if let Ok(cur) = env::current_dir() {
+        let _ = ctx.save_path(cur.to_string_lossy().as_ref());
     }
-    Ok(())
+    res
 }
 
 pub fn open_in_editor(edit_app: &str, target: &str) {
     let _ = system_ret(&format!("{} {}", edit_app, target));
 }
+

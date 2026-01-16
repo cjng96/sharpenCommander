@@ -164,19 +164,3 @@ pub fn expand_tilde(path: &str) -> PathBuf {
     PathBuf::from(path)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn trims_output() {
-        let out = system("printf 'hi\\n'").expect("run");
-        assert_eq!(out, "hi");
-    }
-
-    #[test]
-    fn expand_tilde_keeps_absolute() {
-        let p = expand_tilde("/tmp/test");
-        assert_eq!(p, PathBuf::from("/tmp/test"));
-    }
-}

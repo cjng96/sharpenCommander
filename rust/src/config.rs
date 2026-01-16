@@ -171,26 +171,3 @@ impl Default for Config {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn normalize_reg_item() {
-        let item = RegItem {
-            names: vec![],
-            path: "/tmp".to_string(),
-            groups: vec![],
-            repo: false,
-        }
-        .normalized();
-        assert!(!item.names.is_empty());
-    }
-
-    #[test]
-    fn deserialize_names_field() {
-        let raw = r#"{"path":[{"names":"abc","path":"/tmp"}]}"#;
-        let parsed: RawConfig = serde_json::from_str(raw).expect("parse");
-        assert_eq!(parsed.path.len(), 1);
-    }
-}

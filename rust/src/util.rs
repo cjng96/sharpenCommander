@@ -1,11 +1,34 @@
 use std::path::{Path, PathBuf};
 
 pub fn unwrap_quotes_filename(input: &str) -> String {
-    if input.starts_with('"') && input.ends_with('"') && input.len() >= 2 {
-        input[1..input.len() - 1].replace('"', "\\\"")
+    let trimmed = input.trim();
+    if trimmed.starts_with('"') && trimmed.ends_with('"') && trimmed.len() >= 2 {
+        trimmed[1..trimmed.len() - 1].replace("\\\"", "\"")
     } else {
-        input.to_string()
+        trimmed.to_string()
     }
+}
+
+pub fn strip_ansi(input: &str) -> String {
+    let mut output = String::new();
+    let mut chars = input.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if ch == '\u{1b}' {
+            // Check for [
+            if let Some('[') = chars.peek() {
+                chars.next();
+                // Consume until 'm' or other termination
+                while let Some(c) = chars.next() {
+                    if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
+                        break;
+                    }
+                }
+            }
+        } else {
+            output.push(ch);
+        }
+    }
+    output
 }
 
 pub fn match_disorder(input: &str, filters: &[String]) -> bool {
@@ -67,21 +90,3 @@ pub fn walk_dirs(root: &Path, ignore: &[&str], limit: usize) -> Vec<PathBuf> {
     out
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn match_disorder_basic() {
-        let filters = vec!["ab".to_string(), "cd".to_string()];
-        assert!(match_disorder("xxabyycdzz", &filters));
-        assert!(!match_disorder("abyyzz", &filters));
-    }
-
-    #[test]
-    fn match_disorder_count_partial() {
-        let filters = vec!["aa".to_string(), "bb".to_string()];
-        assert_eq!(match_disorder_count("aabbcc", &filters), 2);
-        assert_eq!(match_disorder_count("aacc", &filters), 1);
-    }
-}

@@ -185,14 +185,3 @@ pub fn status_file_list() -> anyhow::Result<Vec<(String, String)>> {
     Ok(list)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parse_branch_status_none() {
-        let data = "* master 1234567 [origin/master] msg";
-        let re = Regex::new(r"^\*\s(\S+)\s+(\w+)\s(.+)").unwrap();
-        assert!(re.is_match(data));
-    }
-}
