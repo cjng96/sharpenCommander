@@ -65,3 +65,35 @@ fn test_reg_find_by_name() {
     assert!(ctx.reg_find_by_name("myrepo").is_ok());
     assert!(ctx.reg_find_by_name("OTHER").is_err());
 }
+
+#[test]
+fn test_calculate_goto_score() {
+    let fragments = vec!["abc".to_string()];
+    let filter = "abc";
+    
+    let exact = calculate_goto_score("abc", filter, &fragments);
+    let starts = calculate_goto_score("abcd", filter, &fragments);
+    let contains = calculate_goto_score("xabcy", filter, &fragments);
+    let none = calculate_goto_score("def", filter, &fragments);
+    
+    assert!(exact > starts);
+    assert!(starts > contains);
+    assert!(contains > none);
+    assert_eq!(none, 0);
+}
+
+#[test]
+fn test_app_context_save_path() {
+    let ctx = AppContext {
+        config: Config::default(),
+        config_path: PathBuf::from("fake"),
+    };
+    
+    // We can't easily test /tmp/ write in all environments, but we can verify the function exists and runs
+    let res = ctx.save_path("/tmp/test_path");
+    assert!(res.is_ok());
+    
+    let saved = std::fs::read_to_string("/tmp/cmdDevTool.path").unwrap();
+    assert_eq!(saved, "/tmp/test_path");
+}
+

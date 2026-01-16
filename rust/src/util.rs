@@ -57,6 +57,23 @@ pub fn match_disorder_count(input: &str, filters: &[String]) -> usize {
     count
 }
 
+pub fn calculate_goto_score(name: &str, filter: &str, fragments: &[String]) -> i32 {
+    let score = match_disorder_count(name, fragments) as i32;
+    if score == 0 {
+        return 0;
+    }
+
+    let mut bonus = 0;
+    let target = filter.replace(' ', "");
+    if name == target {
+        bonus += 100;
+    } else if name.starts_with(&target) {
+        bonus += 50;
+    }
+    
+    score * 10 + bonus
+}
+
 pub fn walk_dirs(root: &Path, ignore: &[&str], limit: usize) -> Vec<PathBuf> {
     let mut out = Vec::new();
     let mut stack = vec![root.to_path_buf()];

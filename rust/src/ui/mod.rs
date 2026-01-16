@@ -21,7 +21,7 @@ use crate::app::{open_in_editor, AppContext};
 use crate::config::RegItem;
 use crate::git;
 use crate::system::{app_log, expand_tilde, system, system_logged, system_safe, system_stream};
-use crate::util::{match_disorder, match_disorder_count, strip_ansi, unwrap_quotes_filename};
+use crate::util::{calculate_goto_score, match_disorder, strip_ansi, unwrap_quotes_filename};
 
 const INPUT_PREFIX: &str = "$ ";
 static REDRAW_REQUEST: AtomicBool = AtomicBool::new(false);
@@ -2951,21 +2951,11 @@ impl GotoState {
             let name_a = get_name(a);
             let name_b = get_name(b);
             
-            let score_a = match_disorder_count(&name_a, &list);
-            let score_b = match_disorder_count(&name_b, &list);
+            let score_a = calculate_goto_score(&name_a, &filter, &list);
+            let score_b = calculate_goto_score(&name_b, &filter, &list);
             
             if score_a != score_b {
                 return score_b.cmp(&score_a);
-            }
-            
-            if score_a > 0 {
-                let target = filter.replace(' ', "");
-                if (name_a == target) != (name_b == target) {
-                    return (name_b == target).cmp(&(name_a == target));
-                }
-                if name_a.starts_with(&target) != name_b.starts_with(&target) {
-                    return name_b.starts_with(&target).cmp(&name_a.starts_with(&target));
-                }
             }
 
             // Type priority: Repo > LocalDir > LocalFile
