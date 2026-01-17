@@ -654,9 +654,9 @@ impl MainState {
 
         match key.code {
             KeyCode::Char('q') => return Ok(Action::Exit),
-            KeyCode::Down | KeyCode::Char('J') => self.select_next(),
-            KeyCode::Up | KeyCode::Char('K') => self.select_prev(),
-            KeyCode::Right => {
+            KeyCode::Down | KeyCode::Char('j') => self.select_next(),
+            KeyCode::Up | KeyCode::Char('k') => self.select_prev(),
+            KeyCode::Right | KeyCode::Char('l') | KeyCode::Char('g') | KeyCode::Char('G') => {
                 return Ok(Action::Switch(Screen::Goto(GotoState::new(ctx)?)));
             }
             KeyCode::Char('H') if key.modifiers.contains(KeyModifiers::ALT) => {
@@ -667,7 +667,7 @@ impl MainState {
                     self.enter_dir(&name);
                 }
             }
-            KeyCode::Char('U') | KeyCode::Char('.') | KeyCode::Left => {
+            KeyCode::Char('U') | KeyCode::Char('.') | KeyCode::Left | KeyCode::Char('h') => {
                 self.enter_dir("..");
             }
             KeyCode::Enter => {
@@ -704,9 +704,6 @@ impl MainState {
                         return Ok(Action::Toast(err.to_string()));
                     }
                 }
-            }
-            KeyCode::Char('G') => {
-                return Ok(Action::Switch(Screen::Goto(GotoState::new(ctx)?)));
             }
             KeyCode::Char('R') => {
                 if let Some(name) = self.focus_name() {
@@ -751,24 +748,17 @@ impl MainState {
                 }
             }
             KeyCode::Char('T') => {
-                if let Some(name) = self.focus_name() {
-                    let path = self.cwd.join(&name);
-                    let target = if path.is_dir() {
-                        path
-                    } else {
-                        self.cwd.clone()
-                    };
-                    with_terminal_pause(|| {
-                        let old = std::env::current_dir()?;
-                        if std::env::set_current_dir(&target).is_ok() {
-                            app_log(&format!("Running tig in {}", target.to_string_lossy()));
-                            let res = system_stream("tig");
-                            app_log(&format!("tig result: {:?}", res));
-                            let _ = std::env::set_current_dir(old);
-                        }
-                        Ok(())
-                    })?;
-                }
+                let target = self.cwd.clone();
+                with_terminal_pause(|| {
+                    let old = std::env::current_dir()?;
+                    if std::env::set_current_dir(&target).is_ok() {
+                        app_log(&format!("Running tig in {}", target.to_string_lossy()));
+                        let res = system_stream("tig");
+                        app_log(&format!("tig result: {:?}", res));
+                        let _ = std::env::set_current_dir(old);
+                    }
+                    Ok(())
+                })?;
             }
             KeyCode::Char('P') => {
                 if let Some(name) = self.focus_name() {
