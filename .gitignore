@@ -68,3 +68,4 @@ target/
 
 .dcdata
 .DS_Store
+test_dir/
