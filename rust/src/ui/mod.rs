@@ -364,6 +364,7 @@ impl<'a> App<'a> {
             Action::Exit => Ok(true),
             Action::Switch(screen) => {
                 self.screen = screen;
+                REDRAW_REQUEST.store(true, Ordering::SeqCst);
                 Ok(false)
             }
             Action::Toast(msg) => {
@@ -388,6 +389,7 @@ impl<'a> App<'a> {
             Action::Exit => Ok(true),
             Action::Switch(screen) => {
                 self.screen = screen;
+                REDRAW_REQUEST.store(true, Ordering::SeqCst);
                 Ok(false)
             }
             Action::Toast(msg) => {
@@ -1313,6 +1315,30 @@ impl GitStatusState {
                                 return Ok(Action::Toast(msg));
                             }
                         }
+                    }
+                }
+            }
+            KeyCode::Char('i') | KeyCode::Char('I') => {
+                let focused = self.list_state.selected()
+                    .and_then(|idx| self.items.get(idx))
+                    .and_then(|item| {
+                        if item.kind == GitItemKind::Entry {
+                            item.path.as_ref().map(|p| (p.clone(), item.status.clone()))
+                        } else {
+                            None
+                        }
+                    });
+
+                if let Some((name, status)) = focused {
+                    let status_str = status.as_deref().unwrap_or("");
+                    if status_str == "?" {
+                        git::add_to_gitignore(&name)?;
+                        self.items = build_git_items()?;
+                        self.list_state.select(self.first_selectable());
+                        self.load_content()?;
+                        return Ok(Action::Toast(format!("Added to .gitignore: {}", name)));
+                    } else {
+                        return Ok(Action::Toast(format!("Warning: {} is not untracked", name)));
                     }
                 }
             }
@@ -2351,6 +2377,18 @@ impl RegListState {
                             let clean_upstream = info.upstream.replace("refs/remotes/", "");
                             label.push_str(&format!(" -> {}", clean_upstream));
                         }
+                        
+                        // Add ahead/behind info
+                        if info.ahead > 0 || info.behind > 0 {
+                            label.push(' ');
+                            if info.ahead > 0 {
+                                label.push_str(&format!("+{}", info.ahead));
+                            }
+                            if info.behind > 0 {
+                                label.push_str(&format!("-{}", info.behind));
+                            }
+                        }
+                        
                         label.push(']');
                     }
                 }
@@ -3236,6 +3274,8 @@ struct RepoStatusInfo {
     branch: String,
     upstream: String,
     dirty: bool,
+    ahead: usize,
+    behind: usize,
 }
 
 struct StatusEvent {
@@ -3274,12 +3314,31 @@ fn run_git_status_check(path: String, tx: mpsc::Sender<StatusEvent>) {
         Err(_) => false,
     };
 
+    let mut ahead = 0;
+    let mut behind = 0;
+    if !upstream.is_empty() {
+        let output_counts = std::process::Command::new("git")
+            .args(&["rev-list", "--count", "--left-right", "HEAD...@{u}"])
+            .current_dir(&path)
+            .output();
+        if let Ok(out) = output_counts {
+            let text = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            let parts: Vec<&str> = text.split_whitespace().collect();
+            if parts.len() == 2 {
+                ahead = parts[0].parse().unwrap_or(0);
+                behind = parts[1].parse().unwrap_or(0);
+            }
+        }
+    }
+
     let _ = tx.send(StatusEvent {
         path,
         info: Some(RepoStatusInfo {
             branch,
             upstream,
             dirty,
+            ahead,
+            behind,
         }),
     });
 }

@@ -97,3 +97,35 @@ fn test_app_context_save_path() {
     assert_eq!(saved, "/tmp/test_path");
 }
 
+#[test]
+fn test_add_to_gitignore() {
+    let temp = std::env::temp_dir().join("sc_test_repo_gitignore");
+    if temp.exists() {
+        let _ = std::fs::remove_dir_all(&temp);
+    }
+    std::fs::create_dir_all(&temp).unwrap();
+    
+    // git init
+    std::process::Command::new("git")
+        .arg("init")
+        .current_dir(&temp)
+        .output()
+        .unwrap();
+        
+    // Save current dir
+    let old_dir = std::env::current_dir().unwrap();
+    std::env::set_current_dir(&temp).unwrap();
+    
+    let res1 = sc::git::add_to_gitignore("test_file.txt");
+    let res2 = sc::git::add_to_gitignore("test_dir/");
+    
+    // Restore dir
+    std::env::set_current_dir(old_dir).unwrap();
+    
+    assert!(res1.is_ok());
+    assert!(res2.is_ok());
+    let content = std::fs::read_to_string(temp.join(".gitignore")).unwrap();
+    assert!(content.contains("test_file.txt"));
+    assert!(content.contains("test_dir/"));
+}
+

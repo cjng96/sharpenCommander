@@ -1,5 +1,6 @@
 use regex::Regex;
 use std::path::{Path, PathBuf};
+use std::io::Write;
 
 use crate::system::{system, system_safe, system_logged};
 
@@ -183,5 +184,16 @@ pub fn status_file_list() -> anyhow::Result<Vec<(String, String)>> {
         list.push((line.to_string(), status_code));
     }
     Ok(list)
+}
+
+pub fn add_to_gitignore(path: &str) -> anyhow::Result<()> {
+    let root = repo_root()?;
+    let gitignore_path = root.join(".gitignore");
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(gitignore_path)?;
+    writeln!(file, "{}", path)?;
+    Ok(())
 }
 
