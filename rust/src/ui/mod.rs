@@ -1974,11 +1974,13 @@ impl RegListState {
 
     fn drain_status_events(&mut self) {
         let Some(rx) = &self.status_rx else { return };
+        let mut changed = false;
         loop {
             match rx.try_recv() {
                 Ok(ev) => {
                     if let Some(info) = ev.info {
                         self.status_infos.insert(ev.path, info);
+                        changed = true;
                     }
                 }
                 Err(mpsc::TryRecvError::Empty) => break,
@@ -1986,6 +1988,34 @@ impl RegListState {
                     self.status_rx = None;
                     break;
                 }
+            }
+        }
+        if changed {
+            self.sort_items();
+        }
+    }
+
+    fn sort_items(&mut self) {
+        let selected_path = self.focus_item().map(|i| i.path.clone());
+        
+        self.items.sort_by(|a, b| {
+            let a_info = self.status_infos.get(&a.path);
+            let b_info = self.status_infos.get(&b.path);
+            
+            let a_changed = a_info.map(|info| info.dirty || info.ahead > 0 || info.behind > 0).unwrap_or(false);
+            let b_changed = b_info.map(|info| info.dirty || info.ahead > 0 || info.behind > 0).unwrap_or(false);
+            
+            if a_changed != b_changed {
+                b_changed.cmp(&a_changed) // Changed ones first
+            } else {
+                a.path.cmp(&b.path)
+            }
+        });
+
+        if let Some(path) = selected_path {
+            let filtered = self.filtered_items();
+            if let Some(pos) = filtered.iter().position(|i| i.path == path) {
+                self.list_state.select(Some(pos));
             }
         }
     }
