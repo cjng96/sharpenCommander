@@ -851,43 +851,42 @@ impl MainState {
         if let Some(area) = self.list_area {
             if area.contains(mouse_pos(&me)) {
                 match me.kind {
-                    MouseEventKind::Down(_) | MouseEventKind::ScrollDown | MouseEventKind::ScrollUp => {
+                    MouseEventKind::Down(_) => {
                         let inner = area.inner(&Margin { horizontal: 1, vertical: 1 });
                         if me.row >= inner.y && me.row < inner.y + inner.height {
                             let idx = (me.row - inner.y) as usize;
                             if idx < self.items.len() {
                                 self.list_state.select(Some(idx));
-                                if matches!(me.kind, MouseEventKind::Down(_)) {
-                                    let is_play_click = me.column >= inner.x + 20;
-                                    let mut run_lua = None;
-                                    let mut enter_target = None;
+                                let is_play_click = me.column >= inner.x + 20;
+                                let mut run_lua = None;
+                                let mut enter_target = None;
 
-                                    if let Some(entry) = self.items.get(idx) {
-                                        if is_play_click && entry.name.ends_with(".lua") {
-                                            run_lua = Some(entry.name.clone());
-                                        } else if is_double_click(&mut self.last_click, idx) {
-                                            enter_target = Some(entry.name.clone());
-                                        }
+                                if let Some(entry) = self.items.get(idx) {
+                                    if is_play_click && entry.name.ends_with(".lua") {
+                                        run_lua = Some(entry.name.clone());
+                                    } else if is_double_click(&mut self.last_click, idx) {
+                                        enter_target = Some(entry.name.clone());
                                     }
+                                }
 
-                                    if let Some(name) = run_lua {
-                                        let path = self.cwd.join(&name);
-                                        with_terminal_pause(|| {
-                                            println!("$ lua {}", name);
-                                            let _ = system_stream(&format!("lua \"{}\"", path.to_string_lossy()));
-                                            Ok(())
-                                        })?;
-                                    } else if let Some(name) = enter_target {
-                                        self.enter_dir(&name);
-                                    }
+                                if let Some(name) = run_lua {
+                                    let path = self.cwd.join(&name);
+                                    with_terminal_pause(|| {
+                                        println!("$ lua {}", name);
+                                        let _ = system_stream(&format!("lua \"{}\"", path.to_string_lossy()));
+                                        Ok(())
+                                    })?;
+                                } else if let Some(name) = enter_target {
+                                    self.enter_dir(&name);
                                 }
                             }
                         }
-                        if matches!(me.kind, MouseEventKind::ScrollDown) {
-                            self.select_next();
-                        } else if matches!(me.kind, MouseEventKind::ScrollUp) {
-                            self.select_prev();
-                        }
+                    }
+                    MouseEventKind::ScrollDown => {
+                        self.select_next();
+                    }
+                    MouseEventKind::ScrollUp => {
+                        self.select_prev();
                     }
                     _ => {}
                 }
@@ -1019,30 +1018,29 @@ impl FindState {
         if let Some(area) = self.list_area {
             if area.contains(mouse_pos(&me)) {
                 match me.kind {
-                    MouseEventKind::Down(_) | MouseEventKind::ScrollDown | MouseEventKind::ScrollUp => {
+                    MouseEventKind::Down(_) => {
                         let inner = area.inner(&Margin { horizontal: 1, vertical: 1 });
                         if me.row >= inner.y && me.row < inner.y + inner.height {
                             let idx = (me.row - inner.y) as usize;
                             if idx < self.files.len() {
                                 self.list_state.select(Some(idx));
                                 self.load_content();
-                                if matches!(me.kind, MouseEventKind::Down(_)) {
-                                    if is_double_click(&mut self.last_click, idx) {
-                                        if let Some(file) = self.focus_file() {
-                                            let path = Path::new(&file);
-                                            if let Some(parent) = path.parent() {
-                                                let _ = parent.to_string_lossy();
-                                            }
+                                if is_double_click(&mut self.last_click, idx) {
+                                    if let Some(file) = self.focus_file() {
+                                        let path = Path::new(&file);
+                                        if let Some(parent) = path.parent() {
+                                            let _ = parent.to_string_lossy();
                                         }
                                     }
                                 }
                             }
                         }
-                        if matches!(me.kind, MouseEventKind::ScrollDown) {
-                            self.next();
-                        } else if matches!(me.kind, MouseEventKind::ScrollUp) {
-                            self.prev();
-                        }
+                    }
+                    MouseEventKind::ScrollDown => {
+                        self.next();
+                    }
+                    MouseEventKind::ScrollUp => {
+                        self.prev();
                     }
                     _ => {}
                 }
@@ -1154,33 +1152,32 @@ impl GrepState {
         if let Some(area) = self.list_area {
             if area.contains(mouse_pos(&me)) {
                 match me.kind {
-                    MouseEventKind::Down(_) | MouseEventKind::ScrollDown | MouseEventKind::ScrollUp => {
+                    MouseEventKind::Down(_) => {
                         let inner = area.inner(&Margin { horizontal: 1, vertical: 1 });
                         if me.row >= inner.y && me.row < inner.y + inner.height {
                             let idx = (me.row - inner.y) as usize;
                             if idx < self.lines.len() {
                                 self.list_state.select(Some(idx));
-                                if matches!(me.kind, MouseEventKind::Down(_)) {
-                                    if is_double_click(&mut self.last_click, idx) {
-                                        if let Some(line) = self.focus_line() {
-                                            if !line.contains(':') {
-                                                return Ok(Action::None);
-                                            }
-                                            let file = line.split(':').next().unwrap_or("");
-                                            let path = Path::new(file);
-                                            if let Some(parent) = path.parent() {
-                                                let _ = parent.to_string_lossy();
-                                            }
+                                if is_double_click(&mut self.last_click, idx) {
+                                    if let Some(line) = self.focus_line() {
+                                        if !line.contains(':') {
+                                            return Ok(Action::None);
+                                        }
+                                        let file = line.split(':').next().unwrap_or("");
+                                        let path = Path::new(file);
+                                        if let Some(parent) = path.parent() {
+                                            let _ = parent.to_string_lossy();
                                         }
                                     }
                                 }
                             }
                         }
-                        if matches!(me.kind, MouseEventKind::ScrollDown) {
-                            self.next();
-                        } else if matches!(me.kind, MouseEventKind::ScrollUp) {
-                            self.prev();
-                        }
+                    }
+                    MouseEventKind::ScrollDown => {
+                        self.next();
+                    }
+                    MouseEventKind::ScrollUp => {
+                        self.prev();
                     }
                     _ => {}
                 }
@@ -1470,7 +1467,7 @@ impl GitStatusState {
         if let Some(area) = self.list_area {
             if area.contains(mouse_pos(&me)) {
                 match me.kind {
-                    MouseEventKind::Down(_) | MouseEventKind::ScrollDown | MouseEventKind::ScrollUp => {
+                    MouseEventKind::Down(_) => {
                         let inner = area.inner(&Margin { horizontal: 1, vertical: 1 });
                         if me.row >= inner.y && me.row < inner.y + inner.height {
                             let idx = (me.row - inner.y) as usize;
@@ -1478,17 +1475,16 @@ impl GitStatusState {
                                 if self.items[idx].kind == GitItemKind::Entry {
                                     self.list_state.select(Some(idx));
                                     let _ = self.load_content();
-                                    if matches!(me.kind, MouseEventKind::Down(_)) {
-                                        let _ = is_double_click(&mut self.last_click, idx);
-                                    }
+                                    let _ = is_double_click(&mut self.last_click, idx);
                                 }
                             }
                         }
-                        if matches!(me.kind, MouseEventKind::ScrollDown) {
-                            let _ = self.next();
-                        } else if matches!(me.kind, MouseEventKind::ScrollUp) {
-                            let _ = self.prev();
-                        }
+                    }
+                    MouseEventKind::ScrollDown => {
+                        let _ = self.next();
+                    }
+                    MouseEventKind::ScrollUp => {
+                        let _ = self.prev();
                     }
                     _ => {}
                 }
@@ -1863,23 +1859,22 @@ impl GitCommitState {
         if let Some(area) = self.file_area {
             if area.contains(mouse_pos(&me)) {
                 match me.kind {
-                    MouseEventKind::Down(_) | MouseEventKind::ScrollDown | MouseEventKind::ScrollUp => {
+                    MouseEventKind::Down(_) => {
                         let inner = area.inner(&Margin { horizontal: 1, vertical: 1 });
                         if me.row >= inner.y && me.row < inner.y + inner.height {
                             let idx = (me.row - inner.y) as usize;
                             if idx < self.files.len() {
                                 self.list_state.select(Some(idx));
                                 let _ = self.load_content();
-                                if matches!(me.kind, MouseEventKind::Down(_)) {
-                                    let _ = is_double_click(&mut self.last_click, idx);
-                                }
+                                let _ = is_double_click(&mut self.last_click, idx);
                             }
                         }
-                        if matches!(me.kind, MouseEventKind::ScrollDown) {
-                            let _ = self.next();
-                        } else if matches!(me.kind, MouseEventKind::ScrollUp) {
-                            let _ = self.prev();
-                        }
+                    }
+                    MouseEventKind::ScrollDown => {
+                        let _ = self.next();
+                    }
+                    MouseEventKind::ScrollUp => {
+                        let _ = self.prev();
                     }
                     _ => {}
                 }
@@ -2130,8 +2125,7 @@ impl RegListState {
             KeyCode::Esc => {
                 if !self.filter.is_empty() {
                     self.filter.clear();
-                    self.list_state.select(Some(0));
-                    self.fetch_detail();
+                    self.select_at(0);
                     return Ok(Action::None);
                 }
                 return Ok(Action::Switch(Screen::Main(MainState::new(ctx)?)));
@@ -2210,22 +2204,38 @@ impl RegListState {
             }
             KeyCode::Backspace => {
                 self.filter.pop();
-                self.list_state.select(Some(0));
+                self.select_at(0);
             }
             KeyCode::Char(c) => {
                 self.filter.push(c);
-                self.list_state.select(Some(0));
+                self.select_at(0);
             }
             _ => {}
         }
         Ok(Action::None)
     }
 
+    fn select_at(&mut self, idx: usize) {
+        let len = self.filtered_items().len();
+        if len == 0 {
+            self.list_state.select(None);
+            self.status_lines.clear();
+            return;
+        }
+        let i = min(idx, len.saturating_sub(1));
+        self.list_state.select(Some(i));
+        self.log_path = self.focus_item().map(|i| i.path);
+        self.log_scroll = 0;
+        self.status_lines.clear();
+        self.status_lines.push("Loading...".to_string());
+        self.fetch_detail();
+    }
+
     fn on_mouse(&mut self, _ctx: &mut AppContext, me: MouseEvent) -> anyhow::Result<Action> {
         if let Some(area) = self.list_area {
             if area.contains(mouse_pos(&me)) {
                 match me.kind {
-                    MouseEventKind::Down(_) | MouseEventKind::ScrollDown | MouseEventKind::ScrollUp => {
+                    MouseEventKind::Down(_) => {
                         let inner = area.inner(&Margin { horizontal: 1, vertical: 1 });
                         if me.row >= inner.y && me.row < inner.y + inner.height {
                             let idx = (me.row - inner.y) as usize;
@@ -2234,33 +2244,23 @@ impl RegListState {
                                 if self.detail_mode != DetailMode::None {
                                     self.log_path = self.focus_item().map(|i| i.path);
                                     self.log_scroll = 0;
-                                    // If in Status mode, trigger status update
-                                    if self.detail_mode == DetailMode::Status {
-                                        // Re-trigger status logic (simplified: just clear for now or keep old)
-                                        // Ideally we should run status command again, but for now let's just keep UI responsive
-                                    }
+                                    self.fetch_detail();
                                 }
-                                if matches!(me.kind, MouseEventKind::Down(_)) {
-                                    if is_double_click(&mut self.last_click, idx) {
-                                        if let Some(item) = self.focus_item() {
-                                            self.detail_mode = DetailMode::Log;
-                                            self.log_path = Some(item.path);
-                                            self.log_scroll = 0;
-                                        }
+                                if is_double_click(&mut self.last_click, idx) {
+                                    if let Some(item) = self.focus_item() {
+                                        self.detail_mode = DetailMode::Log;
+                                        self.log_path = Some(item.path);
+                                        self.log_scroll = 0;
                                     }
                                 }
                             }
                         }
-                        if matches!(me.kind, MouseEventKind::ScrollDown) {
-                            self.next();
-                        } else if matches!(me.kind, MouseEventKind::ScrollUp) {
-                            self.prev();
-                        } else if matches!(me.kind, MouseEventKind::Down(_)) {
-                            if self.detail_mode != DetailMode::None {
-                                self.log_path = self.focus_item().map(|i| i.path);
-                                self.log_scroll = 0;
-                            }
-                        }
+                    }
+                    MouseEventKind::ScrollDown => {
+                        self.next();
+                    }
+                    MouseEventKind::ScrollUp => {
+                        self.prev();
                     }
                     _ => {}
                 }
@@ -2300,17 +2300,11 @@ impl RegListState {
     }
 
     fn next(&mut self) {
-        let len = self.filtered_items().len();
         let i = match self.list_state.selected() {
-            Some(i) => min(i + 1, len.saturating_sub(1)),
+            Some(i) => i + 1,
             None => 0,
         };
-        self.list_state.select(Some(i));
-        self.log_path = self.focus_item().map(|i| i.path);
-        self.log_scroll = 0;
-        self.status_lines.clear();
-        self.status_lines.push("Loading...".to_string());
-        self.fetch_detail();
+        self.select_at(i);
     }
 
     fn prev(&mut self) {
@@ -2318,12 +2312,7 @@ impl RegListState {
             Some(i) => i.saturating_sub(1),
             None => 0,
         };
-        self.list_state.select(Some(i));
-        self.log_path = self.focus_item().map(|i| i.path);
-        self.log_scroll = 0;
-        self.status_lines.clear();
-        self.status_lines.push("Loading...".to_string());
-        self.fetch_detail();
+        self.select_at(i);
     }
 
     fn render_list(&mut self, header: String, area: Rect, f: &mut ratatui::Frame) {
@@ -2906,41 +2895,40 @@ impl GotoState {
         if let Some(area) = self.list_area {
             if area.contains(mouse_pos(&me)) {
                 match me.kind {
-                    MouseEventKind::Down(_) | MouseEventKind::ScrollDown | MouseEventKind::ScrollUp => {
+                    MouseEventKind::Down(_) => {
                         let inner = area.inner(&Margin { horizontal: 1, vertical: 1 });
                         if me.row >= inner.y && me.row < inner.y + inner.height {
                             let idx = (me.row - inner.y) as usize;
                             let filtered = self.filtered_items();
                             if idx < filtered.len() {
                                 self.list_state.select(Some(idx));
-                                if matches!(me.kind, MouseEventKind::Down(_)) {
-                                    if is_double_click(&mut self.last_click, idx) {
-                                        let item = &filtered[idx];
-                                        match item {
-                                            GotoItem::Repo(reg) => {
-                                                let path = PathBuf::from(expand_tilde(&reg.path));
-                                                std::env::set_current_dir(path)?;
-                                                return Ok(Action::Switch(Screen::Main(MainState::new(ctx)?)));
-                                            }
-                                            GotoItem::LocalDir(dir) => {
-                                                let path = std::env::current_dir()?.join(&dir.name);
-                                                std::env::set_current_dir(path)?;
-                                                return Ok(Action::Switch(Screen::Main(MainState::new(ctx)?)));
-                                            }
-                                            GotoItem::LocalFile(file) => {
-                                                let path = std::env::current_dir()?.join(&file.name);
-                                                open_in_editor(&ctx.config.edit_app, path.to_string_lossy().as_ref());
-                                            }
+                                if is_double_click(&mut self.last_click, idx) {
+                                    let item = &filtered[idx];
+                                    match item {
+                                        GotoItem::Repo(reg) => {
+                                            let path = PathBuf::from(expand_tilde(&reg.path));
+                                            std::env::set_current_dir(path)?;
+                                            return Ok(Action::Switch(Screen::Main(MainState::new(ctx)?)));
+                                        }
+                                        GotoItem::LocalDir(dir) => {
+                                            let path = std::env::current_dir()?.join(&dir.name);
+                                            std::env::set_current_dir(path)?;
+                                            return Ok(Action::Switch(Screen::Main(MainState::new(ctx)?)));
+                                        }
+                                        GotoItem::LocalFile(file) => {
+                                            let path = std::env::current_dir()?.join(&file.name);
+                                            open_in_editor(&ctx.config.edit_app, path.to_string_lossy().as_ref());
                                         }
                                     }
                                 }
                             }
                         }
-                        if matches!(me.kind, MouseEventKind::ScrollDown) {
-                            self.next();
-                        } else if matches!(me.kind, MouseEventKind::ScrollUp) {
-                            self.prev();
-                        }
+                    }
+                    MouseEventKind::ScrollDown => {
+                        self.next();
+                    }
+                    MouseEventKind::ScrollUp => {
+                        self.prev();
                     }
                     _ => {}
                 }
