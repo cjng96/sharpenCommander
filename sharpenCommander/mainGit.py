@@ -347,15 +347,20 @@ class DlgGitStatus(cDialog):
         if len(itemList) <= 0:
             return False
 
-        focusIdx = self.widgetFileList.focus_position
+        # find old focus
+        oldIdx = self.widgetFileList.focus_position
+
         refreshBtnListTerminal(
             itemList, self.widgetFileList, lambda btn: self.onFileSelected(btn)
         )
         size = len(self.widgetFileList.body)
 
-        focusIdx += focusMove
+        focusIdx = oldIdx + focusMove
         if focusIdx >= size:
             focusIdx = size - 1
+        if focusIdx < 0:
+            focusIdx = 0
+
         # self.widgetFileList.focus_position = focusIdx
         self.widgetFileList.set_focus(focusIdx)
         self.onFileSelected(self.widgetFileList.focus)  # auto display
@@ -400,7 +405,7 @@ class DlgGitStatus(cDialog):
             # fname = gitFileBtnName(btn)
             fname = gitFileLastName(btn)
             system('git add "%s"' % fname)
-            self.refreshFileList(1)
+            self.refreshFileList(0)
 
         elif key == "P":
 

@@ -96,11 +96,16 @@ class mListBox(urwid.ListBox):
                 return
 
         # general process
-        widget = self.focus
-        widget.base_widget.set_label(widget.base_widget.markup[0])
+        for i, widget in enumerate(self.body):
+            if not hasattr(widget, "base_widget") or not hasattr(
+                widget.base_widget, "markup"
+            ):
+                continue
 
-        widget = self.body[newFocus]
-        widget.base_widget.set_label(widget.base_widget.markup[1])
+            if i == newFocus:
+                widget.base_widget.set_label(widget.base_widget.markup[1])
+            else:
+                widget.base_widget.set_label(widget.base_widget.markup[0])
 
     # def render(self, size, focus=False):
     # 	super().render(size, focus)
@@ -316,7 +321,7 @@ def textListMakeTerminal(lstStr):
     return outList
 
 
-def btnListMakeTerminal(lstTerminal, onClick, isFirstFocus=True, doApply=None):
+def btnListMakeTerminal(lstTerminal, onClick, isFirstFocus=False, doApply=None):
     """
     [31와 같은 터미널 문자열을 지원한다.
     lstTerminal = list of (termianlText, attr)
@@ -343,7 +348,7 @@ def btnListMakeTerminal(lstTerminal, onClick, isFirstFocus=True, doApply=None):
     return outList
 
 
-def btnListMakeMarkup(lstMarkup, onClick, isFirstFocus=True, doApply=None):
+def btnListMakeMarkup(lstMarkup, onClick, isFirstFocus=False, doApply=None):
     """
     lstMarkup = list of (markup, text, attr)
     """
