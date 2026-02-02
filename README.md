@@ -22,7 +22,7 @@ pip3 install sharpen-commander
 
 ## Environment setup
 
-\*\* if you have installed pip3 and virtualenv already, skip it.
+ if you have installed pip3 and virtualenv already, skip it.
 
 \$ sudo apt install python3 python3-pip git
 \$ sudo pip3 install virtualenv
@@ -53,7 +53,7 @@ Type 'dc'
 - `/` - command mode
 - reg - Register current folder
 - find/ff - Running find command with CUI result
-  ex> ff \*\*.py
+  ex> ff .py
 - grep/gg - Running grep command with CUI result
   ex> gg Metric
 
@@ -79,12 +79,12 @@ Type 'dc'
 
 ### on commit dialog,
 
-\*\* you can see all staged modification for input commit message
+ you can see all staged modification for input commit message
 
 - up/down - scroll current file's content
 - f9/f10 - prev/next file to see modification
 
-\*\* then input commit message and then enter to do commit
+ then input commit message and then enter to do commit
 
 ## Register folder list(L key)
 
@@ -93,7 +93,7 @@ Type 'dc'
 
 # Commandline commends
 
-\$ dcf -name "\*\*.py"
+\$ dcf -name ".py"
 
 \$ dcg "printf"
 
@@ -101,19 +101,19 @@ Type 'dc'
 
 \$ dc update
 
-\*\* all projects that regsitered as repo are updated(git fetch + rebase to remote tracking branch + print status)
+ all projects that regsitered as repo are updated(git fetch + rebase to remote tracking branch + print status)
 
-\*\* `update` command is comprised of `dc fetch` + `dc merge` + `dc st(status)`
+ `update` command is comprised of `dc fetch` + `dc merge` + `dc st(status)`
 
 ## print all project's status
 
 \$ dc st
 
-\*\* you can combinate several command as follows,
+ you can combinate several command as follows,
 
 \$ dc fetch st
 
-\*\* you can print current folder or certain repo's status as well
+ you can print current folder or certain repo's status as well
 
 \$ dc update .
 
@@ -123,14 +123,14 @@ Type 'dc'
 
 \$ dc ci
 
-\*\* you can use the following keys
+ you can use the following keys
 
 ## git push
 
-\*\* you can conveniently push commits just specify target branch name
+ you can conveniently push commits just specify target branch name
 
-\*\* push command always check tracking branch firstly than ask you to rebase onto.
+ push command always check tracking branch firstly than ask you to rebase onto.
 
 \$ dc push
 
-\*\* just type target branch you want to push to
+ just type target branch you want to push to

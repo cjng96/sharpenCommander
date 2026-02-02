@@ -34,6 +34,37 @@ impl RegItem {
         }
         self
     }
+
+    pub fn display_name(&self, status: Option<&crate::git::RepoStatusInfo>) -> String {
+        let status_str = status.map(|s| s.format_status()).unwrap_or_default();
+        let status_part = if status_str.is_empty() {
+            "".to_string()
+        } else {
+            format!(" {}", status_str.trim())
+        };
+
+        if let Some(name) = self.names.get(0) {
+            if name != &self.path {
+                let path_buf = Path::new(&self.path);
+                let path_to_show = if path_buf.file_name().and_then(|s| s.to_str()) == Some(name) {
+                    if let Some(parent) = path_buf.parent() {
+                        let parent_str = parent.to_string_lossy();
+                        if !parent_str.is_empty() {
+                            parent_str.to_string()
+                        } else {
+                            self.path.clone()
+                        }
+                    } else {
+                        self.path.clone()
+                    }
+                } else {
+                    self.path.clone()
+                };
+                return format!("{}{} ({})", name, status_part, path_to_show);
+            }
+        }
+        format!("{}{} ", self.path, status_part)
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -168,6 +199,48 @@ impl Default for Config {
         };
         cfg.ensure_defaults();
         cfg
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_reg_item_display_name() {
+        let item_with_name_match = RegItem {
+            names: vec!["project".to_string()],
+            path: "/path/to/project".to_string(),
+            groups: vec![],
+            repo: true,
+        };
+        assert_eq!(item_with_name_match.display_name(None), "project (/path/to)");
+
+        // Test with status
+        let status = crate::git::RepoStatusInfo {
+            branch: "main".to_string(),
+            upstream: "origin/main".to_string(),
+            dirty: true,
+            ahead: 1,
+            behind: 0,
+        };
+        assert_eq!(item_with_name_match.display_name(Some(&status)), "project * ↑1 (/path/to)");
+
+        let item_with_name_mismatch = RegItem {
+            names: vec!["alias".to_string()],
+            path: "/path/to/project".to_string(),
+            groups: vec![],
+            repo: true,
+        };
+        assert_eq!(item_with_name_mismatch.display_name(None), "alias (/path/to/project)");
+
+        let item_without_name = RegItem {
+            names: vec![],
+            path: "/path/to/project".to_string(),
+            groups: vec![],
+            repo: true,
+        };
+        assert_eq!(item_without_name.display_name(None), "/path/to/project ");
     }
 }
 

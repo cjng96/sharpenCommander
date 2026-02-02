@@ -1,4 +1,41 @@
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, Condvar};
+
+pub struct Semaphore {
+    max: usize,
+    lock: Mutex<usize>,
+    cvar: Condvar,
+}
+
+impl Semaphore {
+    pub fn new(max: usize) -> Self {
+        Self {
+            max,
+            lock: Mutex::new(0),
+            cvar: Condvar::new(),
+        }
+    }
+
+    pub fn acquire(&self) {
+        let mut count = self.lock.lock().expect("lock");
+        while *count >= self.max {
+            count = self.cvar.wait(count).expect("wait");
+        }
+        *count += 1;
+    }
+
+    pub fn release(&self) {
+        let mut count = self.lock.lock().expect("lock");
+        if *count > 0 {
+            *count -= 1;
+        }
+        self.cvar.notify_one();
+    }
+}
+
+pub fn file_size(path: &str) -> u64 {
+    std::fs::metadata(path).map(|m| m.len()).unwrap_or(0)
+}
 
 pub fn unwrap_quotes_filename(input: &str) -> String {
     let trimmed = input.trim();
@@ -10,25 +47,10 @@ pub fn unwrap_quotes_filename(input: &str) -> String {
 }
 
 pub fn strip_ansi(input: &str) -> String {
-    let mut output = String::new();
-    let mut chars = input.chars().peekable();
-    while let Some(ch) = chars.next() {
-        if ch == '\u{1b}' {
-            // Check for [
-            if let Some('[') = chars.peek() {
-                chars.next();
-                // Consume until 'm' or other termination
-                while let Some(c) = chars.next() {
-                    if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
-                        break;
-                    }
-                }
-            }
-        } else {
-            output.push(ch);
-        }
-    }
-    output
+    let re = regex::Regex::new(r"\x1b\[[0-9;]*[a-zA-Z]").unwrap();
+    let cleaned = re.replace_all(input, "");
+    // Also remove carriage returns which often cause remnants in terminal UIs
+    cleaned.replace('\r', "")
 }
 
 pub fn match_disorder(input: &str, filters: &[String]) -> bool {

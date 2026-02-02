@@ -179,20 +179,16 @@ pub fn run() -> anyhow::Result<()> {
                 ui::run_grep(&mut ctx, &args[1..])?;
             }
             "st" => {
-                if let Some(t) = target {
-                    ui::git_status_component(&mut ctx, &t)?;
-                } else {
-                    ui::git_status_component(&mut ctx, "")?;
-                }
+                git::run_action(ctx.config.is_pull_rebase, ctx.config.path.clone(), git::GitAction::Status, target.as_deref())?;
             }
             "fetch" => {
-                ui::git_fetch(&mut ctx, target.as_deref())?;
+                git::run_action(ctx.config.is_pull_rebase, ctx.config.path.clone(), git::GitAction::Fetch, target.as_deref())?;
             }
             "merge" => {
-                ui::git_merge(&mut ctx, target.as_deref())?;
+                git::run_action(ctx.config.is_pull_rebase, ctx.config.path.clone(), git::GitAction::Merge, target.as_deref())?;
             }
             "update" => {
-                ui::git_update(&mut ctx, target.as_deref())?;
+                git::run_action(ctx.config.is_pull_rebase, ctx.config.path.clone(), git::GitAction::Update, target.as_deref())?;
             }
             _ => {
                 if cmd == "." {
