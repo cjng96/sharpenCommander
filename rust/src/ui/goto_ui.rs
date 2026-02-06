@@ -22,7 +22,12 @@ pub struct GotoState {
 
 impl GotoState {
     pub fn new(ctx: &AppContext) -> anyhow::Result<Self> {
-        let ctrl = GotoCtrl::new(ctx)?;
+        Self::with_filter(ctx, "")
+    }
+
+    pub fn with_filter(ctx: &AppContext, filter: &str) -> anyhow::Result<Self> {
+        let mut ctrl = GotoCtrl::new(ctx)?;
+        ctrl.filter = filter.to_string();
         let mut list_state = ListState::default();
         list_state.select(Some(ctrl.selected_idx));
         Ok(Self {

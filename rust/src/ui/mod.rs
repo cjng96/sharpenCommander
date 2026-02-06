@@ -59,6 +59,13 @@ pub fn run_grep(ctx: &mut AppContext, args: &[String]) -> anyhow::Result<()> {
     run_app(&mut app)
 }
 
+pub fn run_goto(ctx: &mut AppContext, filter: &str) -> anyhow::Result<()> {
+    let state = goto_ui::GotoState::with_filter(ctx, filter)?;
+    let mut app = App::new(ctx)?;
+    app.screen = Screen::Goto(Box::new(state));
+    run_app(&mut app)
+}
+
 fn run_app(app: &mut App<'_>) -> anyhow::Result<()> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();

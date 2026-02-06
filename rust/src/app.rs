@@ -119,6 +119,31 @@ pub fn run() -> anyhow::Result<()> {
         env::set_current_dir(&p)?;
     }
 
+    if args.iter().any(|arg| arg == "--help" || arg == "-h") {
+        println!("Sharpen Commander (sc)");
+        println!("Usage: sc [OPTIONS] [COMMAND] [FILTER]");
+        println!();
+        println!("Options:");
+        println!("  -h, --help        Print help");
+        println!("  --path=<PATH>     Set initial path");
+        println!();
+        println!("Commands:");
+        println!("  push              Git fetch and push");
+        println!("  ci                Git status UI");
+        println!("  list              List registered paths");
+        println!("  config            Go to config directory");
+        println!("  which <CMD>       Go to directory containing command");
+        println!("  find <ARGS>       Search files");
+        println!("  grep <ARGS>       Search text");
+        println!("  st [TARGET]       Git status summary");
+        println!("  fetch [TARGET]    Git fetch");
+        println!("  merge [TARGET]    Git merge");
+        println!("  update [TARGET]   Git fetch and pull");
+        println!();
+        println!("If no command is recognized, it opens the Goto screen with the argument as a filter.");
+        return Ok(());
+    }
+
     let mut ctx = AppContext::load()?;
     let cur = env::current_dir()?;
     ctx.save_path(cur.to_string_lossy().as_ref())?;
@@ -194,8 +219,7 @@ pub fn run() -> anyhow::Result<()> {
                 if cmd == "." {
                     // Already in current dir
                 } else {
-                    let item = ctx.reg_find_by_name(cmd)?;
-                    let _ = env::set_current_dir(&item.path);
+                    return ui::run_goto(&mut ctx, cmd);
                 }
             }
         }
