@@ -1,4 +1,3 @@
-use std::path::{PathBuf};
 use std::time::Instant;
 
 use crossterm::event::{KeyCode, KeyEvent, MouseEvent, MouseEventKind};
@@ -7,8 +6,7 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, List, ListItem, ListState, Paragraph};
 
-use crate::app::{open_in_editor, AppContext};
-use crate::system::expand_tilde;
+use crate::app::{open_in_editor, open_in_explorer, AppContext};
 use crate::ui::common::{Action, Screen, INPUT_PREFIX, mouse_pos, is_double_click};
 use crate::ui::main_ui::{MainState};
 use crate::ui::goto_ctrl::{GotoCtrl, GotoItem};
@@ -103,21 +101,22 @@ impl GotoState {
             }
             KeyCode::Char('j') | KeyCode::Down => self.ctrl.next(),
             KeyCode::Char('k') | KeyCode::Up => self.ctrl.prev(),
+            KeyCode::Char('E') => {
+                if let Some(item) = self.ctrl.focus_item() {
+                    let path = item.get_path();
+                    open_in_explorer(&path.to_string_lossy());
+                    return Ok(Action::Switch(Screen::Main(Box::new(MainState::new(ctx)?))));
+                }
+            }
             KeyCode::Enter => {
                 if let Some(item) = self.ctrl.focus_item() {
+                    let path = item.get_path();
                     match item {
-                        GotoItem::Repo(reg) => {
-                            let path = PathBuf::from(expand_tilde(&reg.path));
+                        GotoItem::Repo(_) | GotoItem::LocalDir(_) => {
                             std::env::set_current_dir(path)?;
                             return Ok(Action::Switch(Screen::Main(Box::new(MainState::new(ctx)?))));
                         }
-                        GotoItem::LocalDir(dir) => {
-                            let path = std::env::current_dir()?.join(dir.name);
-                            std::env::set_current_dir(path)?;
-                            return Ok(Action::Switch(Screen::Main(Box::new(MainState::new(ctx)?))));
-                        }
-                        GotoItem::LocalFile(file) => {
-                            let path = std::env::current_dir()?.join(file.name);
+                        GotoItem::LocalFile(_) => {
                             open_in_editor(&ctx.config.edit_app, path.to_string_lossy().as_ref());
                         }
                     }
@@ -155,19 +154,13 @@ impl GotoState {
                                 self.ctrl.set_selected(idx);
                                 if is_double_click(&mut self.last_click, idx) {
                                     let item = &filtered[idx];
+                                    let path = item.get_path();
                                     match item {
-                                        GotoItem::Repo(reg) => {
-                                            let path = PathBuf::from(expand_tilde(&reg.path));
+                                        GotoItem::Repo(_) | GotoItem::LocalDir(_) => {
                                             std::env::set_current_dir(path)?;
                                             return Ok(Action::Switch(Screen::Main(Box::new(MainState::new(ctx)?))));
                                         }
-                                        GotoItem::LocalDir(dir) => {
-                                            let path = std::env::current_dir()?.join(&dir.name);
-                                            std::env::set_current_dir(path)?;
-                                            return Ok(Action::Switch(Screen::Main(Box::new(MainState::new(ctx)?))));
-                                        }
-                                        GotoItem::LocalFile(file) => {
-                                            let path = std::env::current_dir()?.join(&file.name);
+                                        GotoItem::LocalFile(_) => {
                                             open_in_editor(&ctx.config.edit_app, path.to_string_lossy().as_ref());
                                         }
                                     }

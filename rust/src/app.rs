@@ -236,3 +236,14 @@ pub fn open_in_editor(edit_app: &str, target: &str) {
     let _ = system_ret(&format!("{} {}", edit_app, target));
 }
 
+pub fn open_in_explorer(target: &str) {
+    #[cfg(target_os = "macos")]
+    let cmd = "open";
+    #[cfg(target_os = "windows")]
+    let cmd = "explorer";
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    let cmd = "xdg-open";
+
+    let _ = crate::system::system_ret(&format!("{} \"{}\"", cmd, target));
+}
+

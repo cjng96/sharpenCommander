@@ -110,3 +110,8 @@
 - 설명: 검색 일치도 및 타입 우선순위에 따른 정렬 확인
 - 상태: (계획) 미구현
 - 위치: -
+
+### 선택 항목 경로 획득 (`test_goto_ctrl_focus_item_path`)
+- 설명: 현재 선택된 아이템(Repo, LocalDir, LocalFile)의 절대 경로를 올바르게 반환하는지 확인
+- 상태: 구현됨
+- 위치: `rust/src/ui/goto_ctrl.rs`

@@ -1,7 +1,8 @@
 use std::cmp::min;
-use std::path::{Path};
+use std::path::{Path, PathBuf};
 use crate::app::AppContext;
 use crate::config::RegItem;
+use crate::system::expand_tilde;
 use crate::ui::main_ctrl::DirEntry;
 use crate::util::{calculate_goto_score, match_disorder};
 
@@ -10,6 +11,16 @@ pub enum GotoItem {
     Repo(RegItem),
     LocalDir(DirEntry),
     LocalFile(DirEntry),
+}
+
+impl GotoItem {
+    pub fn get_path(&self) -> PathBuf {
+        match self {
+            GotoItem::Repo(reg) => PathBuf::from(expand_tilde(&reg.path)),
+            GotoItem::LocalDir(dir) => std::env::current_dir().unwrap_or_default().join(&dir.name),
+            GotoItem::LocalFile(file) => std::env::current_dir().unwrap_or_default().join(&file.name),
+        }
+    }
 }
 
 pub struct GotoCtrl {
@@ -180,5 +191,30 @@ mod tests {
             _ => false,
         });
         assert!(!has_p1);
+    }
+
+    #[test]
+    fn test_goto_ctrl_focus_item_path() {
+        let repo_path = "/tmp/repo_path";
+        let repos = vec![
+            RegItem {
+                names: vec!["repo".to_string()],
+                path: repo_path.to_string(),
+                groups: vec![],
+                repo: true,
+            },
+        ];
+        
+        let ctrl = GotoCtrl::with_repos(repos).unwrap();
+        let item = &ctrl.items[0];
+        
+        assert_eq!(item.get_path(), PathBuf::from(repo_path));
+        
+        let local_dir = GotoItem::LocalDir(DirEntry {
+            name: "test_dir".to_string(),
+            is_dir: true,
+        });
+        let expected_dir = std::env::current_dir().unwrap().join("test_dir");
+        assert_eq!(local_dir.get_path(), expected_dir);
     }
 }
