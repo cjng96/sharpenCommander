@@ -6,7 +6,7 @@ use crossterm::event::{KeyEvent, MouseEvent};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use ratatui::layout::{Constraint, Direction, Layout, Position, Rect};
-use ratatui::style::{Color, Style};
+use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 
 use crate::app::AppContext;
@@ -43,6 +43,34 @@ pub fn format_diff_lines(lines: &[String], width: u16) -> Vec<Line<'static>> {
     let mut first_hunk = true;
     let rule_len = width.max(1) as usize;
     for line in lines {
+        if line.starts_with("diff --git") {
+            out.push(Line::from(Span::styled(
+                line.clone(),
+                Style::default().add_modifier(Modifier::BOLD),
+            )));
+            continue;
+        }
+        if line.starts_with("index ") {
+            out.push(Line::from(Span::styled(
+                line.clone(),
+                Style::default().fg(Color::DarkGray),
+            )));
+            continue;
+        }
+        if line.starts_with("--- ") {
+            out.push(Line::from(Span::styled(
+                line.clone(),
+                Style::default().fg(Color::Red),
+            )));
+            continue;
+        }
+        if line.starts_with("+++ ") {
+            out.push(Line::from(Span::styled(
+                line.clone(),
+                Style::default().fg(Color::Green),
+            )));
+            continue;
+        }
         if line.starts_with("@@") {
             if !first_hunk {
                 out.push(Line::from(Span::styled(
@@ -57,23 +85,26 @@ pub fn format_diff_lines(lines: &[String], width: u16) -> Vec<Line<'static>> {
             )));
             continue;
         }
-        let style = if line.starts_with("diff --git")
-            || line.starts_with("index ")
-            || line.starts_with("--- ")
-            || line.starts_with("+++ ")
-        {
-            Style::default().fg(Color::Yellow)
-        } else if line.starts_with('+') {
-            Style::default().fg(Color::Green)
-        } else if line.starts_with('-') {
-            Style::default().fg(Color::Red)
-        } else {
-            Style::default()
-        };
-        out.push(Line::from(Span::styled(line.clone(), style)));
+        if line.starts_with('+') {
+            out.push(Line::from(Span::styled(
+                line.clone(),
+                Style::default().fg(Color::Green),
+            )));
+            continue;
+        }
+        if line.starts_with('-') {
+            out.push(Line::from(Span::styled(
+                line.clone(),
+                Style::default().fg(Color::Red),
+            )));
+            continue;
+        }
+
+        out.push(Line::from(Span::styled(line.clone(), Style::default())));
     }
     out
 }
+
 
 pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     let popup_layout = Layout::default()
@@ -168,5 +199,35 @@ where
             env::set_current_dir(&self.old_cwd).unwrap();
             let _ = fs::remove_dir_all(&self.root);
         }
+    }
+
+    #[test]
+    fn test_format_diff_lines_git_diff_headers() {
+        let lines = vec![
+            "diff --git a/lib/main.dart b/lib/main.dart".to_string(),
+            "index 1111111..2222222 100644".to_string(),
+            "--- a/lib/main.dart".to_string(),
+            "+++ b/lib/main.dart".to_string(),
+        ];
+        let out = format_diff_lines(&lines, 80);
+        assert_eq!(out[0].spans[0].style.add_modifier, Modifier::BOLD);
+        assert_eq!(out[1].spans[0].style.fg, Some(Color::DarkGray));
+        assert_eq!(out[2].spans[0].style.fg, Some(Color::Red));
+        assert_eq!(out[3].spans[0].style.fg, Some(Color::Green));
+    }
+
+    #[test]
+    fn test_format_diff_lines_git_diff_hunk_and_changes() {
+        let lines = vec![
+            "@@ -1,2 +1,2 @@".to_string(),
+            "-old line".to_string(),
+            "+new line".to_string(),
+            " context".to_string(),
+        ];
+        let out = format_diff_lines(&lines, 80);
+        assert_eq!(out[0].spans[0].style.fg, Some(Color::Cyan));
+        assert_eq!(out[1].spans[0].style.fg, Some(Color::Red));
+        assert_eq!(out[2].spans[0].style.fg, Some(Color::Green));
+        assert_eq!(out[3].spans[0].style.fg, None);
     }
     

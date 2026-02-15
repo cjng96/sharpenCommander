@@ -44,7 +44,6 @@
 
 
 
-
 ## Grep 화면 (Grep Screen)
 코드 검색(Grep) 결과를 확인하는 화면입니다.
 
@@ -59,16 +58,20 @@
   - [x] 메인 화면 `T` 입력 시 GitHistory 화면으로 전환합니다.
   - [x] 현재 경로가 Git 저장소가 아니면 화면 전환 없이 Toast 경고를 표시합니다.
 - [ ] git history창 기본 레이아웃:
-  - [x] 최상단: filter 입력란 (현재 필터 문자열 표시)
+  - [x] 최상단: filter 입력란 (현재 필터 문자열 표시, 입력 영역 높이 1줄, 제목 라인 배경/글자색 강조)
   - [x] 상단: 커밋 목록 (`hash`, `author`, `date`, `subject`)(10줄정도 만)
   - [x] 하단: 선택된 커밋의 상세 diff/통계 표시
 - [ ] 커밋 목록:
   - [x] 항목 이동 (`Down/J`, `Up/K`)
   - [x] 페이지 이동 (`PgDown`, `PgUp`)
   - [x] 선택 항목 변경 시 우측 상세 내용 즉시 갱신
+  - [x] `Filter`, `Commits`, `Detail` 구분은 섹션 제목 라인 전체 폭(full width)에 배경색/글자색 스타일로 표시합니다.
 - [ ] 상세 보기:
   - [x] 선택 커밋의 패치와 통계를 표시합니다 (`git show --patch --stat <commit>` 기반).
   - [x] 상세 diff 스크롤 (`Ctrl+J`, `Ctrl+K` 또는 마우스 휠) 지원
+  - [x] 색상 규칙은 `git diff --color` 기본 스타일을 따릅니다 (`diff --git`: 강조, `---`: red, `+++`: green, `@@`: cyan, `-`: red, `+`: green).
+  - [x] unified diff hunk는 `git diff`와 동일하게 변경 주변 컨텍스트 라인 3줄을 포함해 표시합니다.
+  - [x] `git diff`와 동일하게 파일 단위 diff만 표시하며, 디렉토리(tree) 항목은 표시하지 않습니다.
 - [ ] 필터:
   - [x] 상단 filter 입력란에 문자열을 입력할 수 있습니다.
   - [x] 입력 문자열 기준으로 `author`와 `subject(커밋 메시지)`를 대상으로 필터링합니다.
@@ -79,6 +82,7 @@
   - [x] Git 스테이지 화면 이동 (`C`)
 - [ ] 범위(초기 버전):
   - [x] 외부 `tig` 프로세스 실행은 하지 않습니다.
+  - [x] GitHistory 데이터 조회(`commit list`, `commit detail`)는 외부 `git` 프로세스 호출 대신 `gitoxide(gix)` 기반으로 구현합니다.
   - [ ] commit hash 복사, author 필터, 추가 로드 기능은 후속 단계로 분리합니다.
 
 

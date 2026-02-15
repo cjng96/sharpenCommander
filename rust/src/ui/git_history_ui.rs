@@ -1,14 +1,25 @@
 use std::time::Instant;
 
 use crossterm::event::{KeyCode, KeyEvent, MouseEvent, MouseEventKind};
-use ratatui::layout::{Constraint, Direction, Layout, Margin, Rect};
-use ratatui::style::{Modifier, Style};
-use ratatui::text::Text;
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
+use ratatui::style::{Color, Modifier, Style};
+use ratatui::text::{Line, Text};
 use ratatui::widgets::{Block, List, ListItem, ListState, Paragraph};
 
 use crate::app::AppContext;
 use crate::ui::common::{format_diff_lines, is_double_click, mouse_pos, Action, Screen};
 use crate::ui::git_history_ctrl::GitHistoryCtrl;
+
+const SECTION_TITLE_BG: Color = Color::DarkGray;
+const SECTION_TITLE_FG: Color = Color::White;
+const FILTER_INPUT_HEIGHT: u16 = 1;
+
+fn section_title_line(label: &str) -> Line<'static> {
+    Line::styled(
+        format!(" {} ", label),
+        Style::default().bg(SECTION_TITLE_BG).fg(SECTION_TITLE_FG),
+    )
+}
 
 pub struct GitHistoryState {
     pub ctrl: GitHistoryCtrl,
@@ -37,33 +48,41 @@ impl GitHistoryState {
     pub fn render(&mut self, f: &mut ratatui::Frame) {
         let layout = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Length(3), Constraint::Min(1)])
+            .constraints([
+                Constraint::Length(1),
+                Constraint::Length(FILTER_INPUT_HEIGHT),
+                Constraint::Length(1),
+                Constraint::Length(12),
+                Constraint::Length(1),
+                Constraint::Min(1),
+            ])
             .split(f.size());
 
-        let input_title = if self.input_mode {
+        let filter_title = if self.input_mode {
             "Filter (author, subject) [input]"
         } else {
             "Filter (author, subject)"
         };
-        let filter =
-            Paragraph::new(self.ctrl.filter.clone()).block(Block::default().title(input_title));
-        f.render_widget(filter, layout[0]);
+        f.render_widget(
+            Paragraph::new(section_title_line(filter_title))
+                .style(Style::default().bg(SECTION_TITLE_BG).fg(SECTION_TITLE_FG)),
+            layout[0],
+        );
+        let filter = Paragraph::new(self.ctrl.filter.clone()).block(Block::default());
+        f.render_widget(filter, layout[1]);
         if self.input_mode {
-            let inner = layout[0].inner(&Margin {
-                horizontal: 1,
-                vertical: 1,
-            });
-            let cursor_x = inner
+            let cursor_x = layout[1]
                 .x
                 .saturating_add(self.ctrl.filter.len() as u16)
-                .min(inner.x + inner.width.saturating_sub(1));
-            f.set_cursor(cursor_x, inner.y);
+                .min(layout[1].x + layout[1].width.saturating_sub(1));
+            f.set_cursor(cursor_x, layout[1].y);
         }
 
-        let body = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Length(12), Constraint::Min(1)])
-            .split(layout[1]);
+        f.render_widget(
+            Paragraph::new(section_title_line("Commits"))
+                .style(Style::default().bg(SECTION_TITLE_BG).fg(SECTION_TITLE_FG)),
+            layout[2],
+        );
 
         let items: Vec<ListItem> = if self.ctrl.filtered.is_empty() {
             vec![ListItem::new("< No commit >")]
@@ -80,16 +99,21 @@ impl GitHistoryState {
             Some(self.ctrl.selected_idx)
         });
         let list = List::new(items)
-            .block(Block::default().title("Commits"))
+            .block(Block::default())
             .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
-        f.render_stateful_widget(list, body[0], &mut self.list_state);
-        self.list_area = Some(body[0]);
+        f.render_stateful_widget(list, layout[3], &mut self.list_state);
+        self.list_area = Some(layout[3]);
 
-        let detail_lines = format_diff_lines(&self.ctrl.detail, body[1].width);
-        let detail =
-            Paragraph::new(Text::from(detail_lines)).block(Block::default().title("Detail"));
-        f.render_widget(detail.scroll((self.ctrl.detail_scroll, 0)), body[1]);
-        self.detail_area = Some(body[1]);
+        f.render_widget(
+            Paragraph::new(section_title_line("Detail"))
+                .style(Style::default().bg(SECTION_TITLE_BG).fg(SECTION_TITLE_FG)),
+            layout[4],
+        );
+
+        let detail_lines = format_diff_lines(&self.ctrl.detail, layout[5].width);
+        let detail = Paragraph::new(Text::from(detail_lines)).block(Block::default());
+        f.render_widget(detail.scroll((self.ctrl.detail_scroll, 0)), layout[5]);
+        self.detail_area = Some(layout[5]);
     }
 
     pub fn on_key(&mut self, ctx: &mut AppContext, key: KeyEvent) -> anyhow::Result<Action> {
@@ -160,10 +184,7 @@ impl GitHistoryState {
             if area.contains(mouse_pos(&me)) {
                 match me.kind {
                     MouseEventKind::Down(_) => {
-                        let inner = area.inner(&Margin {
-                            horizontal: 1,
-                            vertical: 1,
-                        });
+                        let inner = area;
                         if me.row >= inner.y && me.row < inner.y + inner.height {
                             let idx = (me.row - inner.y) as usize;
                             if idx < self.ctrl.filtered.len() {
@@ -205,5 +226,22 @@ impl crate::ui::common::ScreenState for GitHistoryState {
     }
     fn on_mouse(&mut self, ctx: &mut AppContext, me: MouseEvent) -> anyhow::Result<Action> {
         self.on_mouse(ctx, me)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{section_title_line, FILTER_INPUT_HEIGHT, SECTION_TITLE_BG, SECTION_TITLE_FG};
+
+    #[test]
+    fn test_section_title_line_uses_colors() {
+        let line = section_title_line("Filter");
+        assert_eq!(line.style.bg, Some(SECTION_TITLE_BG));
+        assert_eq!(line.style.fg, Some(SECTION_TITLE_FG));
+    }
+
+    #[test]
+    fn test_filter_input_height_is_one_line() {
+        assert_eq!(FILTER_INPUT_HEIGHT, 1);
     }
 }

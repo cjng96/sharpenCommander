@@ -1,7 +1,13 @@
 use regex::Regex;
 use std::path::{Path, PathBuf};
+use std::ops::Range;
 use std::io::{Write, BufReader, BufRead};
 use std::sync::mpsc;
+
+use gix::bstr::ByteSlice;
+use gix::prelude::TreeDiffChangeExt;
+use gix::revision::walk::Sorting;
+use gix::traverse::commit::simple::CommitTimeOrder;
 
 use crate::system::{system, system_safe, system_logged};
 use crate::config::RegItem;
@@ -50,6 +56,207 @@ impl CommitSummary {
     pub fn to_list_label(&self) -> String {
         format!("{} {} {} {}", self.hash, self.date, self.author, self.subject)
     }
+}
+
+fn short_hash(hash: &str) -> String {
+    hash.chars().take(7).collect()
+}
+
+fn first_line(text: &str) -> String {
+    text.lines()
+        .next()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "< no message >".to_string())
+}
+
+#[derive(Clone)]
+struct UnifiedEdit {
+    old: Range<usize>,
+    new: Range<usize>,
+}
+
+struct UnifiedHunk {
+    old_start: usize,
+    old_end: usize,
+    new_start: usize,
+    new_end: usize,
+    edits: Vec<UnifiedEdit>,
+}
+
+fn emit_unified_hunks(
+    lines: &mut Vec<String>,
+    old_lines: &[String],
+    new_lines: &[String],
+    edits: &[UnifiedEdit],
+    context: usize,
+) {
+    if edits.is_empty() {
+        return;
+    }
+
+    let mut hunks: Vec<UnifiedHunk> = Vec::new();
+    for edit in edits {
+        let old_start = edit.old.start.saturating_sub(context);
+        let old_end = (edit.old.end + context).min(old_lines.len());
+        let new_start = edit.new.start.saturating_sub(context);
+        let new_end = (edit.new.end + context).min(new_lines.len());
+
+        if let Some(last) = hunks.last_mut() {
+            if old_start <= last.old_end && new_start <= last.new_end {
+                last.old_end = last.old_end.max(old_end);
+                last.new_end = last.new_end.max(new_end);
+                last.edits.push(edit.clone());
+                continue;
+            }
+        }
+        hunks.push(UnifiedHunk {
+            old_start,
+            old_end,
+            new_start,
+            new_end,
+            edits: vec![edit.clone()],
+        });
+    }
+
+    for h in hunks {
+        let old_count = h.old_end.saturating_sub(h.old_start);
+        let new_count = h.new_end.saturating_sub(h.new_start);
+        let old_pos = if old_count == 0 { h.old_start } else { h.old_start + 1 };
+        let new_pos = if new_count == 0 { h.new_start } else { h.new_start + 1 };
+        lines.push(format!(
+            "@@ -{},{} +{},{} @@",
+            old_pos, old_count, new_pos, new_count
+        ));
+
+        let mut old_i = h.old_start;
+        let mut new_i = h.new_start;
+        for edit in &h.edits {
+            let shared_context = edit
+                .old
+                .start
+                .saturating_sub(old_i)
+                .min(edit.new.start.saturating_sub(new_i));
+            for _ in 0..shared_context {
+                if old_i < old_lines.len() {
+                    lines.push(format!(" {}", old_lines[old_i]));
+                }
+                old_i += 1;
+                new_i += 1;
+            }
+
+            while old_i < edit.old.end {
+                if old_i < old_lines.len() {
+                    lines.push(format!("-{}", old_lines[old_i]));
+                }
+                old_i += 1;
+            }
+            while new_i < edit.new.end {
+                if new_i < new_lines.len() {
+                    lines.push(format!("+{}", new_lines[new_i]));
+                }
+                new_i += 1;
+            }
+        }
+
+        let tail_context = h
+            .old_end
+            .saturating_sub(old_i)
+            .min(h.new_end.saturating_sub(new_i));
+        for _ in 0..tail_context {
+            if old_i < old_lines.len() {
+                lines.push(format!(" {}", old_lines[old_i]));
+            }
+            old_i += 1;
+        }
+    }
+}
+
+fn append_patch_for_change(
+    repo: &gix::Repository,
+    lines: &mut Vec<String>,
+    change: &gix::object::tree::diff::ChangeDetached,
+) -> anyhow::Result<()> {
+    use gix::object::tree::diff::ChangeDetached;
+    let path = match change {
+        ChangeDetached::Addition { location, .. }
+        | ChangeDetached::Deletion { location, .. }
+        | ChangeDetached::Modification { location, .. }
+        | ChangeDetached::Rewrite { location, .. } => location.to_str_lossy().to_string(),
+    };
+
+    let (old_path, new_path) = match change {
+        ChangeDetached::Addition { .. } => ("/dev/null".to_string(), format!("b/{}", path)),
+        ChangeDetached::Deletion { .. } => (format!("a/{}", path), "/dev/null".to_string()),
+        ChangeDetached::Modification { .. } | ChangeDetached::Rewrite { .. } => {
+            (format!("a/{}", path), format!("b/{}", path))
+        }
+    };
+    let can_line_diff = match change {
+        ChangeDetached::Addition { entry_mode, .. } => entry_mode.is_blob_or_symlink(),
+        ChangeDetached::Deletion { entry_mode, .. } => entry_mode.is_blob_or_symlink(),
+        ChangeDetached::Modification {
+            previous_entry_mode,
+            entry_mode,
+            ..
+        } => previous_entry_mode.is_blob_or_symlink() && entry_mode.is_blob_or_symlink(),
+        ChangeDetached::Rewrite {
+            source_entry_mode,
+            entry_mode,
+            ..
+        } => source_entry_mode.is_blob_or_symlink() && entry_mode.is_blob_or_symlink(),
+    };
+    if !can_line_diff {
+        // Keep output aligned with `git diff`: skip tree-only changes.
+        return Ok(());
+    }
+
+    lines.push(format!("diff --git a/{} b/{}", path, path));
+    lines.push(format!("--- {}", old_path));
+    lines.push(format!("+++ {}", new_path));
+
+    let mut cache = repo.diff_resource_cache_for_tree_diff()?;
+    let attached = change.attach(repo, repo);
+    let platform = match attached.diff(&mut cache) {
+        Ok(p) => p,
+        Err(_) => {
+            lines.push("# unsupported change for line diff".to_string());
+            lines.push(String::new());
+            return Ok(());
+        }
+    };
+
+    let prep = platform.resource_cache.prepare_diff()?;
+    match prep.operation {
+        gix_diff::blob::platform::prepare_diff::Operation::InternalDiff { algorithm } => {
+            let input = prep.interned_input();
+            let old_lines: Vec<String> = input
+                .before
+                .iter()
+                .map(|&line| input.interner[line].as_bstr().to_str_lossy().to_string())
+                .collect();
+            let new_lines: Vec<String> = input
+                .after
+                .iter()
+                .map(|&line| input.interner[line].as_bstr().to_str_lossy().to_string())
+                .collect();
+
+            let mut edits: Vec<UnifiedEdit> = Vec::new();
+            gix_diff::blob::diff(algorithm, &input, |before: std::ops::Range<u32>, after: std::ops::Range<u32>| {
+                edits.push(UnifiedEdit {
+                    old: before.start as usize..before.end as usize,
+                    new: after.start as usize..after.end as usize,
+                });
+            });
+            emit_unified_hunks(lines, &old_lines, &new_lines, &edits, 3);
+        }
+        gix_diff::blob::platform::prepare_diff::Operation::SourceOrDestinationIsBinary => {
+            lines.push("# binary file, hunk omitted".to_string());
+        }
+        gix_diff::blob::platform::prepare_diff::Operation::ExternalCommand { .. } => {}
+    }
+    lines.push(String::new());
+    Ok(())
 }
 
 impl RepoStatusInfo {
@@ -133,6 +340,231 @@ mod tests {
             subject: "message".to_string(),
         };
         assert_eq!(item.to_list_label(), "abc1234 2026-01-01 me message");
+    }
+
+    #[test]
+    fn test_short_hash() {
+        assert_eq!(short_hash("1234567890abcdef"), "1234567");
+        assert_eq!(short_hash("abcd"), "abcd");
+    }
+
+    #[test]
+    fn test_first_line() {
+        assert_eq!(first_line("title\nbody"), "title");
+        assert_eq!(first_line(""), "< no message >");
+        assert_eq!(first_line("\n\n"), "< no message >");
+    }
+
+    #[test]
+    fn test_commit_history_and_detail_with_gix() {
+        use std::fs;
+        use std::process::Command;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let root = std::env::temp_dir().join(format!(
+            "sc_git_history_{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&root).unwrap();
+
+        let out = Command::new("git")
+            .arg("init")
+            .current_dir(&root)
+            .output()
+            .unwrap();
+        assert!(out.status.success());
+
+        fs::write(root.join("a.txt"), "hello\n").unwrap();
+        let out = Command::new("git")
+            .args(["add", "."])
+            .current_dir(&root)
+            .output()
+            .unwrap();
+        assert!(out.status.success());
+
+        let out = Command::new("git")
+            .args([
+                "-c",
+                "user.name=Tester",
+                "-c",
+                "user.email=tester@example.com",
+                "commit",
+                "-m",
+                "first commit",
+            ])
+            .current_dir(&root)
+            .output()
+            .unwrap();
+        assert!(out.status.success());
+
+        let commits = commit_history_at(&root, 10).unwrap();
+        assert!(!commits.is_empty());
+        assert!(commits[0].subject.contains("first commit"));
+
+        let detail = commit_detail_at(&root, &commits[0].hash).unwrap();
+        assert!(detail.iter().any(|l| l.starts_with("commit ")));
+        assert!(detail.iter().any(|l| l.starts_with("Author: ")));
+        assert!(detail.iter().any(|l| l.starts_with("diff --git ")));
+        assert!(detail.iter().any(|l| l.starts_with("+hello")));
+    }
+
+    #[test]
+    fn test_commit_detail_contains_three_context_lines() {
+        use std::fs;
+        use std::process::Command;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let root = std::env::temp_dir().join(format!(
+            "sc_git_history_ctx_{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&root).unwrap();
+
+        assert!(Command::new("git")
+            .arg("init")
+            .current_dir(&root)
+            .output()
+            .unwrap()
+            .status
+            .success());
+
+        let initial = "l1\nl2\nl3\nl4\nl5\nl6\nl7\n";
+        fs::write(root.join("a.txt"), initial).unwrap();
+        assert!(Command::new("git")
+            .args(["add", "."])
+            .current_dir(&root)
+            .output()
+            .unwrap()
+            .status
+            .success());
+        assert!(Command::new("git")
+            .args([
+                "-c",
+                "user.name=Tester",
+                "-c",
+                "user.email=tester@example.com",
+                "commit",
+                "-m",
+                "base",
+            ])
+            .current_dir(&root)
+            .output()
+            .unwrap()
+            .status
+            .success());
+
+        let changed = "l1\nl2\nl3\nl4_changed\nl5\nl6\nl7\n";
+        fs::write(root.join("a.txt"), changed).unwrap();
+        assert!(Command::new("git")
+            .args(["add", "."])
+            .current_dir(&root)
+            .output()
+            .unwrap()
+            .status
+            .success());
+        assert!(Command::new("git")
+            .args([
+                "-c",
+                "user.name=Tester",
+                "-c",
+                "user.email=tester@example.com",
+                "commit",
+                "-m",
+                "change line 4",
+            ])
+            .current_dir(&root)
+            .output()
+            .unwrap()
+            .status
+            .success());
+
+        let commits = commit_history_at(&root, 10).unwrap();
+        let detail = commit_detail_at(&root, &commits[0].hash).unwrap();
+        let hunk_idx = detail
+            .iter()
+            .position(|l| l.starts_with("@@ -"))
+            .expect("hunk header missing");
+        let hunk_block: Vec<&String> = detail
+            .iter()
+            .skip(hunk_idx + 1)
+            .take_while(|l| !l.is_empty())
+            .collect();
+
+        assert!(hunk_block.iter().any(|l| l.starts_with(" l1")));
+        assert!(hunk_block.iter().any(|l| l.starts_with(" l2")));
+        assert!(hunk_block.iter().any(|l| l.starts_with(" l3")));
+        assert!(hunk_block.iter().any(|l| l.starts_with("-l4")));
+        assert!(hunk_block.iter().any(|l| l.starts_with("+l4_changed")));
+        assert!(hunk_block.iter().any(|l| l.starts_with(" l5")));
+        assert!(hunk_block.iter().any(|l| l.starts_with(" l6")));
+        assert!(hunk_block.iter().any(|l| l.starts_with(" l7")));
+    }
+
+    #[test]
+    fn test_commit_detail_does_not_emit_tree_entries() {
+        use std::fs;
+        use std::process::Command;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let root = std::env::temp_dir().join(format!(
+            "sc_git_history_tree_{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&root).unwrap();
+
+        assert!(Command::new("git")
+            .arg("init")
+            .current_dir(&root)
+            .output()
+            .unwrap()
+            .status
+            .success());
+
+        fs::create_dir_all(root.join("dir/sub")).unwrap();
+        fs::write(root.join("dir/sub/a.txt"), "hello\n").unwrap();
+        assert!(Command::new("git")
+            .args(["add", "."])
+            .current_dir(&root)
+            .output()
+            .unwrap()
+            .status
+            .success());
+        assert!(Command::new("git")
+            .args([
+                "-c",
+                "user.name=Tester",
+                "-c",
+                "user.email=tester@example.com",
+                "commit",
+                "-m",
+                "add nested file",
+            ])
+            .current_dir(&root)
+            .output()
+            .unwrap()
+            .status
+            .success());
+
+        let commits = commit_history_at(&root, 10).unwrap();
+        let detail = commit_detail_at(&root, &commits[0].hash).unwrap();
+        assert!(detail
+            .iter()
+            .any(|l| l.starts_with("diff --git a/dir/sub/a.txt b/dir/sub/a.txt")));
+        assert!(!detail
+            .iter()
+            .any(|l| l.starts_with("diff --git a/dir b/dir")));
+        assert!(!detail
+            .iter()
+            .any(|l| l.contains("non-blob change (tree/submodule)")));
     }
 }
 
@@ -743,36 +1175,66 @@ pub fn commit_list() -> anyhow::Result<Vec<String>> {
 }
 
 pub fn commit_history_at(root: &Path, limit: usize) -> anyhow::Result<Vec<CommitSummary>> {
-    let cmd = format!(
-        r#"LANG=C git -C "{}" log --date=short --pretty=format:"%h%x1f%an%x1f%ad%x1f%s" -n {}"#,
-        root.to_string_lossy(),
-        limit
-    );
-    let out = system_logged("GitHistory", &cmd)?;
-    let mut list = Vec::new();
-    for line in out.lines() {
-        let parts: Vec<&str> = line.split('\x1f').collect();
-        if parts.len() != 4 {
-            continue;
-        }
-        list.push(CommitSummary {
-            hash: parts[0].to_string(),
-            author: parts[1].to_string(),
-            date: parts[2].to_string(),
-            subject: parts[3].to_string(),
+    let repo = gix::open(root.to_path_buf())?;
+    let head = repo.head_id()?.detach();
+    let walk = repo
+        .rev_walk([head])
+        .sorting(Sorting::ByCommitTime(CommitTimeOrder::NewestFirst))
+        .all()?;
+
+    let mut out = Vec::new();
+    for info in walk.take(limit) {
+        let info = info?;
+        let commit = info.object()?;
+        let author = commit.author()?.name.to_str_lossy().to_string();
+        let subject = first_line(&commit.message_raw_sloppy().to_str_lossy());
+        let date = commit.time()?.seconds.to_string();
+        let hash = short_hash(&info.id.to_string());
+
+        out.push(CommitSummary {
+            hash,
+            author,
+            date,
+            subject,
         });
     }
-    Ok(list)
+    Ok(out)
 }
 
 pub fn commit_detail_at(root: &Path, hash: &str) -> anyhow::Result<Vec<String>> {
-    let cmd = format!(
-        r#"LANG=C git -C "{}" show --patch --stat --no-color {}"#,
-        root.to_string_lossy(),
-        hash
-    );
-    let out = system_logged("GitHistory", &cmd)?;
-    Ok(out.lines().map(|s| s.to_string()).collect())
+    let repo = gix::open(root.to_path_buf())?;
+    let id = repo.rev_parse_single(hash.as_bytes().as_bstr())?;
+    let commit = id.object()?.into_commit();
+
+    let commit_id = commit.id.to_string();
+    let author = commit.author()?;
+    let author_name = author.name.to_str_lossy().to_string();
+    let author_email = author.email.to_str_lossy().to_string();
+    let time = commit.time()?;
+    let message = commit.message_raw_sloppy().to_str_lossy().to_string();
+
+    let tree = commit.tree()?;
+    let parent_tree = if let Some(parent_id) = commit.parent_ids().next() {
+        Some(parent_id.object()?.into_commit().tree()?)
+    } else {
+        None
+    };
+    let changes = repo.diff_tree_to_tree(parent_tree.as_ref(), Some(&tree), None)?;
+
+    let mut lines = Vec::new();
+    lines.push(format!("commit {}", commit_id));
+    lines.push(format!("Author: {} <{}>", author_name, author_email));
+    lines.push(format!("Date:   {} {}", time.seconds, time.offset));
+    lines.push(String::new());
+    for msg_line in message.lines() {
+        lines.push(format!("    {}", msg_line));
+    }
+    lines.push(String::new());
+    lines.push(format!("Files changed: {}", changes.len()));
+    for ch in &changes {
+        append_patch_for_change(&repo, &mut lines, ch)?;
+    }
+    Ok(lines)
 }
 
 pub fn status_file_list() -> anyhow::Result<Vec<(String, String)>> {
