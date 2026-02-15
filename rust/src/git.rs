@@ -434,7 +434,7 @@ pub fn build_git_items() -> anyhow::Result<Vec<GitItem>> {
     Ok(items)
 }
 
-pub fn run_git_status_check(path: String, tx: mpsc::Sender<StatusEvent>) {
+pub fn run_git_stage_check(path: String, tx: mpsc::Sender<StatusEvent>) {
     let output_branch = std::process::Command::new("git")
         .args(&["-c", "color.ui=false", "rev-parse", "--abbrev-ref", "HEAD"])
         .env("LANG", "C")
@@ -549,7 +549,7 @@ pub fn run_action(is_pull_rebase: bool, repo_list: Vec<RegItem>, action: GitActi
     Ok(())
 }
 
-pub fn get_git_status_output(path: &str) -> anyhow::Result<String> {
+pub fn get_git_stage_output(path: &str) -> anyhow::Result<String> {
     let output = std::process::Command::new("git")
         .arg("-c").arg("color.status=never")
         .arg("status")
@@ -719,7 +719,7 @@ pub fn commit_list() -> anyhow::Result<Vec<String>> {
 
 pub fn status_file_list() -> anyhow::Result<Vec<(String, String)>> {
     // Get status without color for reliable parsing
-    let out = system_logged("GitStatus", "LANG=C git status -s")?;
+    let out = system_logged("GitStage", "LANG=C git status -s")?;
     let mut list = Vec::new();
     for line in out.lines() {
         if line.len() < 3 {

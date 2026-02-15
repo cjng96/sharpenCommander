@@ -5,8 +5,8 @@ pub mod find_ui;
 pub mod find_ctrl;
 pub mod grep_ui;
 pub mod grep_ctrl;
-pub mod git_status_ui;
-pub mod git_status_ctrl;
+pub mod git_stage_ui;
+pub mod git_stage_ctrl;
 pub mod git_commit_ui;
 pub mod git_commit_ctrl;
 pub mod reg_list_ui;
@@ -38,10 +38,10 @@ pub fn run(ctx: &mut AppContext) -> anyhow::Result<()> {
     run_app(&mut app)
 }
 
-pub fn run_git_status(ctx: &mut AppContext) -> anyhow::Result<()> {
-    let state = git_status_ui::GitStatusState::new(ctx)?;
+pub fn run_git_stage(ctx: &mut AppContext) -> anyhow::Result<()> {
+    let state = git_stage_ui::GitStageState::new(ctx)?;
     let mut app = App::new(ctx)?;
-    app.screen = Screen::GitStatus(Box::new(state));
+    app.screen = Screen::GitStage(Box::new(state));
     run_app(&mut app)
 }
 
@@ -146,7 +146,7 @@ impl<'a> App<'a> {
             Screen::Main(state) => state.render(f),
             Screen::Find(state) => state.render(f),
             Screen::Grep(state) => state.render(f),
-            Screen::GitStatus(state) => state.render(f),
+            Screen::GitStage(state) => state.render(f),
             Screen::GitCommit(state) => state.render(f),
             Screen::RegList(state) => state.render(f),
             Screen::Goto(state) => state.render(f),
@@ -182,7 +182,7 @@ impl<'a> App<'a> {
             Screen::Main(state) => state.on_key(self.ctx, key)?,
             Screen::Find(state) => state.on_key(self.ctx, key)?,
             Screen::Grep(state) => state.on_key(self.ctx, key)?,
-            Screen::GitStatus(state) => state.on_key(self.ctx, key)?,
+            Screen::GitStage(state) => state.on_key(self.ctx, key)?,
             Screen::GitCommit(state) => state.on_key(self.ctx, key)?,
             Screen::RegList(state) => state.on_key(self.ctx, key)?,
             Screen::Goto(state) => state.on_key(self.ctx, key)?,
@@ -207,7 +207,7 @@ impl<'a> App<'a> {
             Screen::Main(state) => state.on_mouse(self.ctx, me)?,
             Screen::Find(state) => state.on_mouse(self.ctx, me)?,
             Screen::Grep(state) => state.on_mouse(self.ctx, me)?,
-            Screen::GitStatus(state) => state.on_mouse(self.ctx, me)?,
+            Screen::GitStage(state) => state.on_mouse(self.ctx, me)?,
             Screen::GitCommit(state) => state.on_mouse(self.ctx, me)?,
             Screen::RegList(state) => state.on_mouse(self.ctx, me)?,
             Screen::Goto(state) => state.on_mouse(self.ctx, me)?,

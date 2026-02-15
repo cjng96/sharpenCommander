@@ -4,14 +4,14 @@ use crate::git::{self, GitItem, GitItemKind};
 use crate::system::{system};
 use crate::util::{file_size, strip_ansi};
 
-pub struct GitStatusCtrl {
+pub struct GitStageCtrl {
     pub items: Vec<GitItem>,
     pub selected_idx: Option<usize>,
     pub content: Vec<String>,
     pub content_scroll: u16,
 }
 
-impl GitStatusCtrl {
+impl GitStageCtrl {
     pub fn new(_ctx: &AppContext) -> anyhow::Result<Self> {
         let items = git::build_git_items()?;
         Self::with_items(items)
@@ -143,8 +143,8 @@ mod tests {
     use crate::system::system;
 
     #[test]
-    fn test_git_status_ctrl_navigation() {
-        let env = TestEnv::setup("test_git_status_ctrl");
+    fn test_git_stage_ctrl_navigation() {
+        let env = TestEnv::setup("test_git_stage_ctrl");
         let _ = system("git init");
         std::fs::write(env.root.join("file1"), "data").unwrap();
         let _ = system("git add file1");
@@ -155,7 +155,7 @@ mod tests {
             GitItem { label: "file2".to_string(), status: Some("?".to_string()), kind: GitItemKind::Entry, path: Some("file2".to_string()) },
         ];
         
-        let mut ctrl = GitStatusCtrl::with_items(items).unwrap();
+        let mut ctrl = GitStageCtrl::with_items(items).unwrap();
         
         assert_eq!(ctrl.selected_idx, Some(1)); // first selectable is index 1
         assert_eq!(ctrl.focus_file_name(), Some("file1".to_string()));

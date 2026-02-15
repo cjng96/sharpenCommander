@@ -103,7 +103,7 @@ impl GitCommitState {
                     self.ctrl.input_mode = false;
                 }
                 KeyCode::F(4) => {
-                    return Ok(Action::Switch(Screen::GitStatus(Box::new(crate::ui::git_status_ui::GitStatusState::new(ctx)?))));
+                    return Ok(Action::Switch(Screen::GitStage(Box::new(crate::ui::git_stage_ui::GitStageState::new(ctx)?))));
                 }
                 KeyCode::Down => {
                     self.ctrl.next()?;
@@ -142,10 +142,10 @@ impl GitCommitState {
 
         match key.code {
             KeyCode::Esc | KeyCode::Char('q') => {
-                return Ok(Action::Switch(Screen::GitStatus(Box::new(crate::ui::git_status_ui::GitStatusState::new(ctx)?))));
+                return Ok(Action::Switch(Screen::GitStage(Box::new(crate::ui::git_stage_ui::GitStageState::new(ctx)?))));
             }
             KeyCode::F(4) => {
-                return Ok(Action::Switch(Screen::GitStatus(Box::new(crate::ui::git_status_ui::GitStatusState::new(ctx)?))));
+                return Ok(Action::Switch(Screen::GitStage(Box::new(crate::ui::git_stage_ui::GitStageState::new(ctx)?))));
             }
             KeyCode::Char('i') => {
                 self.ctrl.input_mode = true;

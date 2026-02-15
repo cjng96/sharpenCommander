@@ -11,19 +11,19 @@ use crate::app::{open_in_editor, AppContext};
 use crate::git::{self, GitItemKind};
 use crate::system::{app_log, system, system_stream};
 use crate::ui::common::{Action, Screen, mouse_pos, is_double_click, format_diff_lines, with_terminal_pause};
-use crate::ui::git_status_ctrl::GitStatusCtrl;
+use crate::ui::git_stage_ctrl::GitStageCtrl;
 
-pub struct GitStatusState {
-    pub ctrl: GitStatusCtrl,
+pub struct GitStageState {
+    pub ctrl: GitStageCtrl,
     pub list_state: ListState,
     pub list_area: Option<Rect>,
     pub content_area: Option<Rect>,
     pub last_click: Option<(Instant, usize)>,
 }
 
-impl GitStatusState {
+impl GitStageState {
     pub fn new(ctx: &AppContext) -> anyhow::Result<Self> {
-        let ctrl = GitStatusCtrl::new(ctx)?;
+        let ctrl = GitStageCtrl::new(ctx)?;
         let mut list_state = ListState::default();
         list_state.select(ctrl.selected_idx);
         Ok(Self {
@@ -54,7 +54,7 @@ impl GitStatusState {
         
         self.list_state.select(self.ctrl.selected_idx);
         let list = List::new(items)
-            .block(Block::default().title("Git status"))
+            .block(Block::default().title("Git stage"))
             .highlight_style(Style::default().add_modifier(ratatui::style::Modifier::REVERSED));
         f.render_stateful_widget(list, layout[0], &mut self.list_state);
         self.list_area = Some(layout[0]);
@@ -150,7 +150,7 @@ impl GitStatusState {
                 match crate::ui::git_commit_ui::GitCommitState::new(ctx) {
                     Ok(state) => return Ok(Action::Switch(Screen::GitCommit(Box::new(state)))),
                     Err(err) => {
-                        app_log(&format!("Key C (GitStatus) error: {}", err));
+                        app_log(&format!("Key C (GitStage) error: {}", err));
                         return Ok(Action::Toast(err.to_string()));
                     }
                 }
@@ -162,7 +162,7 @@ impl GitStatusState {
             }
             KeyCode::Char('T') => {
                 with_terminal_pause(|| {
-                    app_log("Running tig (GitStatus)");
+                    app_log("Running tig (GitStage)");
                     let root = git::repo_root().unwrap_or_else(|_| std::path::PathBuf::from("."));
                     let old = std::env::current_dir()?;
                     let _ = std::env::set_current_dir(&root);
@@ -216,7 +216,7 @@ impl GitStatusState {
     }
 }
 
-impl crate::ui::common::ScreenState for GitStatusState {
+impl crate::ui::common::ScreenState for GitStageState {
     fn render(&mut self, f: &mut ratatui::Frame) {
         self.render(f);
     }

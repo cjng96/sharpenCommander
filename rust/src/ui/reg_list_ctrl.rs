@@ -84,7 +84,7 @@ impl RegListCtrl {
             let sem = sem.clone();
             thread::spawn(move || {
                 sem.acquire();
-                git::run_git_status_check(path, tx);
+                git::run_git_stage_check(path, tx);
                 sem.release();
             });
         }
@@ -144,7 +144,7 @@ impl RegListCtrl {
             self.detail_rx = Some(rx); 
             
             thread::spawn(move || {
-                let text = match git::get_git_status_output(&path) {
+                let text = match git::get_git_stage_output(&path) {
                     Ok(out) => out,
                     Err(e) => format!("Error: {}", e),
                 };

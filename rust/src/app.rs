@@ -129,7 +129,7 @@ pub fn run() -> anyhow::Result<()> {
         println!();
         println!("Commands:");
         println!("  push              Git fetch and push");
-        println!("  ci                Git status UI");
+        println!("  ci                Git stage UI");
         println!("  list              List registered paths");
         println!("  config            Go to config directory");
         println!("  which <CMD>       Go to directory containing command");
@@ -174,7 +174,7 @@ pub fn run() -> anyhow::Result<()> {
                 ui::git_push(&mut ctx)?;
             }
             "ci" => {
-                ui::run_git_status(&mut ctx)?;
+                ui::run_git_stage(&mut ctx)?;
             }
             "list" => {
                 for item in &ctx.config.path {
@@ -246,4 +246,3 @@ pub fn open_in_explorer(target: &str) {
 
     let _ = crate::system::system_ret(&format!("{} \"{}\"", cmd, target));
 }
-

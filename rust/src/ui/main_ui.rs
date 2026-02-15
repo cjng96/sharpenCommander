@@ -294,8 +294,8 @@ impl MainState {
                     "Key C (Main) cwd={}",
                     self.cwd.to_string_lossy()
                 ));
-                match crate::ui::git_status_ui::GitStatusState::new(ctx) {
-                    Ok(state) => return Ok(Action::Switch(Screen::GitStatus(Box::new(state)))),
+                match crate::ui::git_stage_ui::GitStageState::new(ctx) {
+                    Ok(state) => return Ok(Action::Switch(Screen::GitStage(Box::new(state)))),
                     Err(err) => {
                         app_log(&format!("Key C (Main) error: {}", err));
                         return Ok(Action::Toast(err.to_string()));
