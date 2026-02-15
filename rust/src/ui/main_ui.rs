@@ -345,17 +345,10 @@ impl MainState {
                 }
             }
             KeyCode::Char('T') => {
-                let target = self.cwd.clone();
-                with_terminal_pause(|| {
-                    let old = std::env::current_dir()?;
-                    if std::env::set_current_dir(&target).is_ok() {
-                        app_log(&format!("Running tig in {}", target.to_string_lossy()));
-                        let res = crate::system::system_stream("tig");
-                        app_log(&format!("tig result: {:?}", res));
-                        let _ = std::env::set_current_dir(old);
-                    }
-                    Ok(())
-                })?;
+                match crate::ui::git_history_ui::GitHistoryState::new(ctx) {
+                    Ok(state) => return Ok(Action::Switch(Screen::GitHistory(Box::new(state)))),
+                    Err(err) => return Ok(Action::Toast(err.to_string())),
+                }
             }
             KeyCode::Char('P') => {
                 if let Some(name) = self.focus_name() {

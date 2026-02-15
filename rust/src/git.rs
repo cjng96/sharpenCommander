@@ -38,6 +38,20 @@ pub struct RepoStatusInfo {
     pub behind: usize,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CommitSummary {
+    pub hash: String,
+    pub author: String,
+    pub date: String,
+    pub subject: String,
+}
+
+impl CommitSummary {
+    pub fn to_list_label(&self) -> String {
+        format!("{} {} {} {}", self.hash, self.date, self.author, self.subject)
+    }
+}
+
 impl RepoStatusInfo {
     pub fn format_status(&self) -> String {
         let mut parts = Vec::new();
@@ -108,6 +122,17 @@ mod tests {
             behind: 1,
         };
         assert_eq!(complex.format_status(), " * +2 -1");
+    }
+
+    #[test]
+    fn test_commit_summary_label() {
+        let item = CommitSummary {
+            hash: "abc1234".to_string(),
+            author: "me".to_string(),
+            date: "2026-01-01".to_string(),
+            subject: "message".to_string(),
+        };
+        assert_eq!(item.to_list_label(), "abc1234 2026-01-01 me message");
     }
 }
 
@@ -717,6 +742,39 @@ pub fn commit_list() -> anyhow::Result<Vec<String>> {
     commit_list_at(&root)
 }
 
+pub fn commit_history_at(root: &Path, limit: usize) -> anyhow::Result<Vec<CommitSummary>> {
+    let cmd = format!(
+        r#"LANG=C git -C "{}" log --date=short --pretty=format:"%h%x1f%an%x1f%ad%x1f%s" -n {}"#,
+        root.to_string_lossy(),
+        limit
+    );
+    let out = system_logged("GitHistory", &cmd)?;
+    let mut list = Vec::new();
+    for line in out.lines() {
+        let parts: Vec<&str> = line.split('\x1f').collect();
+        if parts.len() != 4 {
+            continue;
+        }
+        list.push(CommitSummary {
+            hash: parts[0].to_string(),
+            author: parts[1].to_string(),
+            date: parts[2].to_string(),
+            subject: parts[3].to_string(),
+        });
+    }
+    Ok(list)
+}
+
+pub fn commit_detail_at(root: &Path, hash: &str) -> anyhow::Result<Vec<String>> {
+    let cmd = format!(
+        r#"LANG=C git -C "{}" show --patch --stat --no-color {}"#,
+        root.to_string_lossy(),
+        hash
+    );
+    let out = system_logged("GitHistory", &cmd)?;
+    Ok(out.lines().map(|s| s.to_string()).collect())
+}
+
 pub fn status_file_list() -> anyhow::Result<Vec<(String, String)>> {
     // Get status without color for reliable parsing
     let out = system_logged("GitStage", "LANG=C git status -s")?;
@@ -741,4 +799,3 @@ pub fn add_to_gitignore(path: &str) -> anyhow::Result<()> {
     writeln!(file, "{}", path)?;
     Ok(())
 }
-

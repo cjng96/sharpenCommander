@@ -5,6 +5,8 @@ pub mod find_ui;
 pub mod find_ctrl;
 pub mod grep_ui;
 pub mod grep_ctrl;
+pub mod git_history_ui;
+pub mod git_history_ctrl;
 pub mod git_stage_ui;
 pub mod git_stage_ctrl;
 pub mod git_commit_ui;
@@ -146,6 +148,7 @@ impl<'a> App<'a> {
             Screen::Main(state) => state.render(f),
             Screen::Find(state) => state.render(f),
             Screen::Grep(state) => state.render(f),
+            Screen::GitHistory(state) => state.render(f),
             Screen::GitStage(state) => state.render(f),
             Screen::GitCommit(state) => state.render(f),
             Screen::RegList(state) => state.render(f),
@@ -182,6 +185,7 @@ impl<'a> App<'a> {
             Screen::Main(state) => state.on_key(self.ctx, key)?,
             Screen::Find(state) => state.on_key(self.ctx, key)?,
             Screen::Grep(state) => state.on_key(self.ctx, key)?,
+            Screen::GitHistory(state) => state.on_key(self.ctx, key)?,
             Screen::GitStage(state) => state.on_key(self.ctx, key)?,
             Screen::GitCommit(state) => state.on_key(self.ctx, key)?,
             Screen::RegList(state) => state.on_key(self.ctx, key)?,
@@ -207,6 +211,7 @@ impl<'a> App<'a> {
             Screen::Main(state) => state.on_mouse(self.ctx, me)?,
             Screen::Find(state) => state.on_mouse(self.ctx, me)?,
             Screen::Grep(state) => state.on_mouse(self.ctx, me)?,
+            Screen::GitHistory(state) => state.on_mouse(self.ctx, me)?,
             Screen::GitStage(state) => state.on_mouse(self.ctx, me)?,
             Screen::GitCommit(state) => state.on_mouse(self.ctx, me)?,
             Screen::RegList(state) => state.on_mouse(self.ctx, me)?,

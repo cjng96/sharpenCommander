@@ -25,6 +25,7 @@ pub enum Screen {
     Main(Box<dyn ScreenState>),
     Find(Box<dyn ScreenState>),
     Grep(Box<dyn ScreenState>),
+    GitHistory(Box<dyn ScreenState>),
     GitStage(Box<dyn ScreenState>),
     GitCommit(Box<dyn ScreenState>),
     RegList(Box<dyn ScreenState>),
