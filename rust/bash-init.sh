@@ -16,10 +16,16 @@ function goPath()
 		cd $PP
 	fi
 }
-function ss()
+function sc2()
 {
 	PP=$(pwd)
 	cd $SCR_DIR
 	cargo run -- --path=$PP $@
+	goPath
+}
+
+function sc()
+{
+	~/bin/sc $@
 	goPath
 }
