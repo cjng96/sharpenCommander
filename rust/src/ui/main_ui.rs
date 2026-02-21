@@ -111,6 +111,20 @@ impl MainState {
         }
     }
 
+    fn focus_editor_target(&self) -> Option<PathBuf> {
+        let idx = self.list_state.selected()?;
+        let entry = self.items.get(idx)?;
+        if entry.name == ".." {
+            return Some(self.cwd.clone());
+        }
+        let path = self.cwd.join(&entry.name);
+        if path.is_file() || path.is_dir() {
+            Some(path)
+        } else {
+            None
+        }
+    }
+
     pub fn render(&mut self, f: &mut ratatui::Frame) {
         let cwd_str = self.cwd.to_string_lossy();
         let layout = Layout::default()
@@ -274,13 +288,8 @@ impl MainState {
                 }
             }
             KeyCode::Char('E') => {
-                if let Some(idx) = self.list_state.selected() {
-                    if let Some(entry) = self.items.get(idx) {
-                        let path = self.cwd.join(&entry.name);
-                        if path.is_file() {
-                            open_in_editor(&ctx.config.edit_app, path.to_string_lossy().as_ref());
-                        }
-                    }
+                if let Some(path) = self.focus_editor_target() {
+                    open_in_editor(&ctx.config.edit_app, path.to_string_lossy().as_ref());
                 }
             }
             KeyCode::Char('/') => {
@@ -493,5 +502,149 @@ impl crate::ui::common::ScreenState for MainState {
     }
     fn on_mouse(&mut self, ctx: &mut AppContext, me: MouseEvent) -> anyhow::Result<Action> {
         self.on_mouse(ctx, me)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::Config;
+    use crossterm::event::KeyEvent;
+    use std::fs;
+    use std::path::Path;
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    static TEST_ID: AtomicU64 = AtomicU64::new(0);
+
+    fn test_dir(prefix: &str) -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let id = TEST_ID.fetch_add(1, Ordering::Relaxed);
+        let dir = std::env::temp_dir().join(format!("sc_main_ui_{prefix}_{nanos}_{id}"));
+        let _ = fs::create_dir_all(&dir);
+        dir
+    }
+
+    fn make_ctx(edit_app: String) -> crate::app::AppContext {
+        let mut config = Config::default();
+        config.edit_app = edit_app;
+        crate::app::AppContext {
+            config,
+            config_path: PathBuf::from("unused"),
+        }
+    }
+
+    fn make_state(cwd: &Path, focused_entry: &str, is_dir: bool) -> MainState {
+        let mut list_state = ListState::default();
+        list_state.select(Some(1));
+        MainState {
+            cwd: cwd.to_path_buf(),
+            items: vec![
+                DirEntry {
+                    name: "..".to_string(),
+                    is_dir: true,
+                },
+                DirEntry {
+                    name: focused_entry.to_string(),
+                    is_dir,
+                },
+            ],
+            list_state,
+            input: String::new(),
+            input_mode: false,
+            cmd_list: Vec::new(),
+            work_list: vec![cwd.to_path_buf()],
+            work_idx: 0,
+            list_area: None,
+            last_click: None,
+            registered_paths: Vec::new(),
+            confirm_delete: false,
+            confirm_target: None,
+        }
+    }
+
+    fn write_capture_script(dir: &Path) -> (PathBuf, PathBuf) {
+        let script_path = dir.join("capture_target.sh");
+        let out_path = dir.join("captured_target.txt");
+        let script = format!(
+            "#!/bin/sh\nprintf '%s' \"$1\" > \"{}\"\n",
+            out_path.to_string_lossy()
+        );
+        fs::write(&script_path, script).expect("write capture script");
+        (script_path, out_path)
+    }
+
+    #[test]
+    fn test_main_e_opens_selected_file() {
+        let dir = test_dir("open_file");
+        let target = dir.join("sample.txt");
+        fs::write(&target, "x").expect("write sample file");
+
+        let (script_path, out_path) = write_capture_script(&dir);
+        let mut ctx = make_ctx(format!("sh {}", script_path.to_string_lossy()));
+        let mut state = make_state(&dir, "sample.txt", false);
+
+        let _ = state.on_key(&mut ctx, KeyEvent::new(KeyCode::Char('E'), KeyModifiers::NONE));
+
+        let captured = fs::read_to_string(out_path).expect("read captured target");
+        assert_eq!(captured, target.to_string_lossy());
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn test_main_e_opens_selected_directory() {
+        let dir = test_dir("open_dir");
+        let target = dir.join("folder_a");
+        fs::create_dir_all(&target).expect("create target directory");
+
+        let (script_path, out_path) = write_capture_script(&dir);
+        let mut ctx = make_ctx(format!("sh {}", script_path.to_string_lossy()));
+        let mut state = make_state(&dir, "folder_a", true);
+
+        let _ = state.on_key(&mut ctx, KeyEvent::new(KeyCode::Char('E'), KeyModifiers::NONE));
+
+        let captured = fs::read_to_string(out_path).expect("read captured target");
+        assert_eq!(captured, target.to_string_lossy());
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn test_main_e_on_parent_entry_opens_current_directory() {
+        let dir = test_dir("open_current");
+        let (script_path, out_path) = write_capture_script(&dir);
+        let mut ctx = make_ctx(format!("sh {}", script_path.to_string_lossy()));
+
+        let mut list_state = ListState::default();
+        list_state.select(Some(0));
+        let mut state = MainState {
+            cwd: dir.clone(),
+            items: vec![DirEntry {
+                name: "..".to_string(),
+                is_dir: true,
+            }],
+            list_state,
+            input: String::new(),
+            input_mode: false,
+            cmd_list: Vec::new(),
+            work_list: vec![dir.clone()],
+            work_idx: 0,
+            list_area: None,
+            last_click: None,
+            registered_paths: Vec::new(),
+            confirm_delete: false,
+            confirm_target: None,
+        };
+
+        let _ = state.on_key(&mut ctx, KeyEvent::new(KeyCode::Char('E'), KeyModifiers::NONE));
+
+        let captured = fs::read_to_string(out_path).expect("read captured target");
+        assert_eq!(captured, dir.to_string_lossy());
+
+        let _ = fs::remove_dir_all(dir);
     }
 }
